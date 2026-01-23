@@ -2,7 +2,7 @@ export type SiteConfig = typeof siteConfig;
 
 export const siteConfig = {
   name: "Agentic Framework",
-
+  description: "Build intelligent AI agents with ease.",
   navItems: [
     {
       label: "Home",
