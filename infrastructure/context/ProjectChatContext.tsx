@@ -61,6 +61,10 @@ interface ProjectChatContextType {
   currentProjectId: string | null;
   setCurrentProjectId: (id: string | null) => void;
 
+  // Project owner ID (for shared projects)
+  projectOwnerId: string | null;
+  setProjectOwnerId: (id: string | null) => void;
+
   // Configuration mode
   isConfiguration: boolean;
   setIsConfiguration: (config: boolean) => void;
@@ -118,6 +122,7 @@ export function ProjectChatProvider({ children }: { children: ReactNode }) {
     null
   );
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const [projectOwnerId, setProjectOwnerId] = useState<string | null>(null);
   const [isConfiguration, setIsConfiguration] = useState(false);
   const [pageTitle, setPageTitle] = useState<string | null>(null);
   const [breadcrumbs, setBreadcrumbs] = useState<Array<{ label: string; href?: string }>>([]);
@@ -260,6 +265,8 @@ export function ProjectChatProvider({ children }: { children: ReactNode }) {
         setProjectContext,
         currentProjectId,
         setCurrentProjectId,
+        projectOwnerId,
+        setProjectOwnerId,
         isConfiguration,
         setIsConfiguration,
         pageTitle,

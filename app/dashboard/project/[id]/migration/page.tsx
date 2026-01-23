@@ -45,6 +45,7 @@ export default function MigrationPage() {
     setPageTitle,
     setMigrationConfigChatFunctions,
     projectContext,
+    projectOwnerId,
   } = useProjectChat();
   const [project, setProject] = useState<Project | null>(null);
 
@@ -85,7 +86,7 @@ export default function MigrationPage() {
     getConfigChatMessages,
     addConfigChatMessage,
     clearConfigChatMessages,
-  } = useMigration(projectId);
+  } = useMigration(projectId, projectOwnerId);
 
   // Create memoized migration config chat functions
   const migrationConfigChatFunctions = useMemo(() => {

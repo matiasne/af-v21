@@ -1,5 +1,6 @@
 import {
   collection,
+  collectionGroup,
   doc,
   getDoc,
   getDocs,
@@ -272,28 +273,70 @@ export class FirebaseProjectRepository implements ProjectRepository {
     }
   }
 
-  async getSharedProjects(userId: string): Promise<Project[]> {
-    // Query all users' projects where the current user is in the sharedWith array
-    const usersRef = collection(db, "users");
-    const usersSnapshot = await getDocs(usersRef);
+  async getSharedProjects(userId: string, userEmail?: string): Promise<Project[]> {
+    // Use collectionGroup to query all projects collections across all users
+    const projectsGroup = collectionGroup(db, "projects");
+    const querySnapshot = await getDocs(projectsGroup);
 
     const sharedProjects: Project[] = [];
 
-    for (const userDoc of usersSnapshot.docs) {
-      const projectsRef = collection(db, "users", userDoc.id, "projects");
-      const q = query(projectsRef, orderBy("createdAt", "desc"));
-      const projectsSnapshot = await getDocs(q);
+    querySnapshot.docs.forEach((docSnapshot) => {
+      const project = { id: docSnapshot.id, ...docSnapshot.data() } as Project;
+      // Check if current user is in sharedWith array by either userId or email
+      const isShared = project.sharedWith?.some(
+        (share) => share.userId === userId || (userEmail && share.email === userEmail)
+      );
+      // Exclude projects owned by the user (they're already fetched by getProjects)
+      if (isShared && project.ownerId !== userId) {
+        sharedProjects.push(project);
+      }
+    });
 
-      projectsSnapshot.docs.forEach((doc) => {
-        const project = { id: doc.id, ...doc.data() } as Project;
-        // Check if current user is in sharedWith array
-        if (project.sharedWith?.some(share => share.userId === userId)) {
-          sharedProjects.push(project);
+    // Sort by updatedAt descending
+    return sharedProjects.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  }
+
+  async getProjectByIdFromAnyOwner(projectId: string, currentUserId: string, currentUserEmail?: string): Promise<{ project: Project; ownerId: string } | null> {
+    // Use collectionGroup to find the project across all users
+    const projectsGroup = collectionGroup(db, "projects");
+    const querySnapshot = await getDocs(projectsGroup);
+
+    for (const docSnapshot of querySnapshot.docs) {
+      if (docSnapshot.id === projectId) {
+        const project = { id: docSnapshot.id, ...docSnapshot.data() } as Project;
+        // Extract ownerId from the document path: users/{ownerId}/projects/{projectId}
+        const pathParts = docSnapshot.ref.path.split("/");
+        const ownerId = pathParts[1];
+
+        // Check if user has access (is owner or in sharedWith)
+        const isOwner = project.ownerId === currentUserId;
+        const isShared = project.sharedWith?.some(
+          (share) => share.userId === currentUserId || (currentUserEmail && share.email === currentUserEmail)
+        );
+
+        if (isOwner || isShared) {
+          return { project, ownerId };
         }
-      });
+      }
     }
 
-    return sharedProjects;
+    return null;
+  }
+
+  subscribeToProjectByOwner(
+    ownerId: string,
+    projectId: string,
+    onUpdate: (project: Project | null) => void
+  ): Unsubscribe {
+    const docRef = this.getProjectDoc(ownerId, projectId);
+
+    return onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        onUpdate({ id: docSnap.id, ...docSnap.data() } as Project);
+      } else {
+        onUpdate(null);
+      }
+    });
   }
 
   async shareProject(

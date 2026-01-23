@@ -16,7 +16,6 @@ function ProjectLayoutContent({ children }: { children: ReactNode }) {
   const params = useParams();
   const projectId = params.id as string;
   const { user } = useAuth();
-  const { migration } = useMigration(projectId);
 
   const {
     projectContext,
@@ -28,7 +27,10 @@ function ProjectLayoutContent({ children }: { children: ReactNode }) {
     breadcrumbs,
     backUrl,
     isConfiguration,
+    projectOwnerId,
   } = useProjectChat();
+
+  const { migration } = useMigration(projectId, projectOwnerId);
 
   return (
     <>

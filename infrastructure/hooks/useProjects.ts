@@ -30,7 +30,7 @@ export function useProjects() {
       // Fetch both owned and shared projects
       const [ownedProjects, sharedProjects] = await Promise.all([
         projectRepository.getProjects(user.uid),
-        projectRepository.getSharedProjects(user.uid),
+        projectRepository.getSharedProjects(user.uid, user.email || undefined),
       ]);
 
       // Combine and sort by updatedAt
@@ -251,6 +251,31 @@ export function useProjects() {
     [user, projectRepository],
   );
 
+  const subscribeToProjectByOwner = useCallback(
+    (ownerId: string, projectId: string, onUpdate: (project: Project | null) => void) => {
+      return projectRepository.subscribeToProjectByOwner(ownerId, projectId, onUpdate);
+    },
+    [projectRepository],
+  );
+
+  const getProjectByIdFromAnyOwner = useCallback(
+    async (projectId: string): Promise<{ project: Project; ownerId: string } | null> => {
+      if (!user) return null;
+
+      try {
+        return await projectRepository.getProjectByIdFromAnyOwner(
+          projectId,
+          user.uid,
+          user.email || undefined
+        );
+      } catch (err) {
+        setError(err as Error);
+        return null;
+      }
+    },
+    [user, projectRepository],
+  );
+
   const shareProject = useCallback(
     async (
       projectId: string,
@@ -398,6 +423,8 @@ export function useProjects() {
     getLegacyFilesCount,
     updateExecutorModel,
     subscribeToProject,
+    subscribeToProjectByOwner,
+    getProjectByIdFromAnyOwner,
     shareProject,
     unshareProject,
     updateShareRole,

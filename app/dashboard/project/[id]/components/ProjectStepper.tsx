@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { Tabs, Tab } from "@heroui/tabs";
 
 import { UIType } from "@/domain/entities/Project";
 
@@ -89,85 +90,49 @@ export function ProjectStepper({
     return steps.findIndex((s) => s.id === stepId);
   };
 
-  return (
-    <div className="w-full mb-6 p-6 bg-default-50 dark:bg-default-900 rounded-lg shadow-sm">
-      {/* Step indicators */}
-      <div className="flex items-center justify-between relative">
-        {/* Progress line background */}
-        <div className="absolute top-5 left-0 right-0 h-0.5 bg-default-200 dark:bg-default-700 -z-10" />
+  const renderTabTitle = (step: Step) => {
+    const status = getStepStatus(step.id);
+    const isCompleted = status === "completed";
+    const isRunning = status === "running";
 
-        {/* Progress line filled */}
-        <div
-          className="absolute top-5 left-0 h-0.5 bg-primary transition-all duration-300 -z-10"
-          style={{
-            width: `${(getStepIndex(currentStep) / (steps.length - 1)) * 100}%`,
-          }}
-        />
-
-        {steps.map((step, index) => {
-          const status = getStepStatus(step.id);
-          const isActive = step.id === currentStep;
-          const isPast = getStepIndex(step.id) < getStepIndex(currentStep);
-          const isCompleted = status === "completed";
-          const isRunning = status === "running";
-
-          return (
-            <button
-              key={step.id}
-              onClick={() => onStepChange(step.id)}
-              className={`flex flex-row gap-6 items-center relative z-10 transition-all duration-200 ${
-                isActive ? "scale-105" : "hover:scale-102"
-              }`}
-            >
-              {/* Step circle */}
-              <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-200 ${
-                  isActive
-                    ? "bg-primary text-primary-foreground ring-4 ring-primary/30"
-                    : isCompleted || isPast
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-default-100 dark:bg-default-800 text-default-500"
-                }`}
-              >
-                {isCompleted ? (
-                  <svg
-                    className="h-5 w-5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2.5}
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M4.5 12.75l6 6 9-13.5"
-                    />
-                  </svg>
-                ) : isRunning ? (
-                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  index + 1
-                )}
-              </div>
-
-              {/* Step label */}
-              <div className="mt-0 text-center">
-                <p
-                  className={`text-sm font-medium ${
-                    isActive
-                      ? "text-primary"
-                      : isCompleted || isPast
-                        ? "text-default-700 dark:text-default-300"
-                        : "text-default-400"
-                  }`}
-                >
-                  {step.label}
-                </p>
-              </div>
-            </button>
-          );
-        })}
+    return (
+      <div className="flex items-center gap-2">
+        {isCompleted && (
+          <svg
+            className="h-4 w-4 text-success"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.5}
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M4.5 12.75l6 6 9-13.5"
+            />
+          </svg>
+        )}
+        {isRunning && (
+          <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+        )}
+        <span>{step.label}</span>
       </div>
+    );
+  };
+
+  return (
+    <div className="w-full mb-6">
+      <Tabs
+        aria-label="Project steps"
+        color="primary"
+        radius="full"
+        selectedKey={currentStep}
+        onSelectionChange={(key) => onStepChange(key as ProjectStep)}
+      >
+        {steps.map((step) => (
+          <Tab key={step.id} title={renderTabTitle(step)} />
+        ))}
+      </Tabs>
     </div>
   );
 }

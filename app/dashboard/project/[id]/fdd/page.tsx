@@ -271,7 +271,7 @@ export default function FDDPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const { projects, loading: projectsLoading } = useProjects();
-  const { setProjectContext, setCurrentProjectId, setIsConfiguration, setPageTitle } =
+  const { setProjectContext, setCurrentProjectId, setIsConfiguration, setPageTitle, projectOwnerId } =
     useProjectChat();
   const [project, setProject] = useState<Project | null>(null);
   const [toc, setToc] = useState<FDDTableOfContents | null>(null);
@@ -281,7 +281,7 @@ export default function FDDPage() {
   const sectionRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const projectId = params.id as string;
-  const { migration, initializing: migrationInitializing } = useMigration(projectId);
+  const { migration, initializing: migrationInitializing } = useMigration(projectId, projectOwnerId);
 
   // Scroll to section when selected from sidebar
   const scrollToSection = useCallback((sectionNumber: string) => {

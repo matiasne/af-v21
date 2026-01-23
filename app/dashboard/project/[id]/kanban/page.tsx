@@ -68,6 +68,7 @@ export default function KanbanPage() {
     setCurrentProjectId,
     setIsConfiguration,
     setPageTitle,
+    projectOwnerId,
   } = useProjectChat();
   const [project, setProject] = useState<Project | null>(null);
   const [tasks, setTasks] = useState<ExecutionPlanTask[]>([]);
@@ -89,7 +90,7 @@ export default function KanbanPage() {
   const {
     migration,
     loading: migrationLoading,
-  } = useMigration(projectId);
+  } = useMigration(projectId, projectOwnerId);
 
   const [selectedModel, setSelectedModel] = useState<string>(
     project?.executorModel || "claude-sonnet-4-5"

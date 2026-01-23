@@ -32,6 +32,7 @@ export default function FilesPage() {
     setCurrentProjectId,
     setIsConfiguration,
     setPageTitle,
+    projectOwnerId,
   } = useProjectChat();
 
   const [project, setProject] = useState<Project | null>(null);
@@ -43,7 +44,7 @@ export default function FilesPage() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const projectId = params.id as string;
-  const { migration } = useMigration(projectId);
+  const { migration } = useMigration(projectId, projectOwnerId);
 
   // Set page title
   useEffect(() => {

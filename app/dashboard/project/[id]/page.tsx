@@ -43,6 +43,8 @@ export default function ProjectDashboardPage() {
     projects,
     loading: projectsLoading,
     subscribeToProject,
+    subscribeToProjectByOwner,
+    getProjectByIdFromAnyOwner,
     updateProject,
     deleteProject,
     shareProject,
@@ -67,6 +69,7 @@ export default function ProjectDashboardPage() {
     setIsTechStackComplete,
     setProjectContext,
     setCurrentProjectId,
+    setProjectOwnerId: setContextProjectOwnerId,
     setIsConfiguration,
     setMigrationConfigChatFunctions,
     projectContext,
@@ -96,6 +99,7 @@ export default function ProjectDashboardPage() {
   } = useDisclosure();
 
   const [project, setProject] = useState<Project | null>(null);
+  const [projectOwnerId, setProjectOwnerId] = useState<string | null>(null);
   const [isUpdatingUIType, setIsUpdatingUIType] = useState(false);
   const [codeAnalysisStatus, setCodeAnalysisStatus] = useState<string | undefined>(undefined);
   const [codeAnalysisError, setCodeAnalysisError] = useState<string | undefined>(undefined);
@@ -149,7 +153,7 @@ export default function ProjectDashboardPage() {
     getConfigChatMessages,
     addConfigChatMessage,
     clearConfigChatMessages,
-  } = useMigration(projectId);
+  } = useMigration(projectId, projectOwnerId);
 
   // Create memoized migration config chat functions
   const migrationConfigChatFunctions = useMemo(() => {
@@ -523,6 +527,12 @@ export default function ProjectDashboardPage() {
     }
   }, [project, projectState.step, setProjectContext, setCurrentProjectId]);
 
+  // Sync project owner ID with context (for shared project support in subpages)
+  useEffect(() => {
+    setContextProjectOwnerId(projectOwnerId);
+    return () => setContextProjectOwnerId(null);
+  }, [projectOwnerId, setContextProjectOwnerId]);
+
   // Sync configuration mode with layout
   useEffect(() => {
     setIsConfiguration(projectState.isConfiguration);
@@ -548,27 +558,46 @@ export default function ProjectDashboardPage() {
     }
   }, [user, authLoading, router]);
 
-  // Initial load from projects array
+  // Initial load - find project from projects array or fetch from any owner (for shared projects)
   useEffect(() => {
-    if (projects.length > 0 && projectId && !project) {
+    const loadProject = async () => {
+      if (!projectId || !user) return;
+
+      // First try to find in the already loaded projects array
       const foundProject = projects.find((p) => p.id === projectId);
 
       if (foundProject) {
         setProject(foundProject);
+        // Set the owner ID - either it's our project or we need to use the ownerId from shared project
+        setProjectOwnerId(foundProject.ownerId || user.uid);
         if (foundProject.analysis?.newTechStack) {
           setNewTechStack(foundProject.analysis.newTechStack);
         }
-      } else {
-        router.push("/dashboard");
+      } else if (!projectsLoading) {
+        // If not found in projects array and loading is done, try to fetch from any owner
+        const result = await getProjectByIdFromAnyOwner(projectId);
+        if (result) {
+          setProject(result.project);
+          setProjectOwnerId(result.ownerId);
+          if (result.project.analysis?.newTechStack) {
+            setNewTechStack(result.project.analysis.newTechStack);
+          }
+        } else {
+          // Project not found or no access
+          router.push("/dashboard");
+        }
       }
-    }
-  }, [projects, projectId, router, project]);
+    };
+
+    loadProject();
+  }, [projects, projectId, projectsLoading, user, router, getProjectByIdFromAnyOwner, setNewTechStack]);
 
   // Real-time subscription for project updates
   useEffect(() => {
-    if (!projectId || !user) return;
+    if (!projectId || !user || !projectOwnerId) return;
 
-    const unsubscribe = subscribeToProject(projectId, (updatedProject) => {
+    // Use the owner's ID for subscription (handles both owned and shared projects)
+    const unsubscribe = subscribeToProjectByOwner(projectOwnerId, projectId, (updatedProject) => {
       if (updatedProject) {
         setProject(updatedProject);
         if (updatedProject.analysis?.newTechStack) {
@@ -580,16 +609,16 @@ export default function ProjectDashboardPage() {
     });
 
     return () => unsubscribe();
-  }, [projectId, user, subscribeToProject, router]);
+  }, [projectId, user, projectOwnerId, subscribeToProjectByOwner, router, setNewTechStack]);
 
   // Real-time subscription for code-analysis-module action
   useEffect(() => {
-    if (!projectId || !user?.uid) return;
+    if (!projectId || !projectOwnerId) return;
 
     const codeAnalysisCol = collection(
       db,
       "users",
-      user.uid,
+      projectOwnerId,
       "projects",
       projectId,
       "code-analysis-module"

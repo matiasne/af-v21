@@ -16,12 +16,12 @@ export default function FilesAnalysisPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const { projects, loading: projectsLoading } = useProjects();
-  const { setProjectContext, setCurrentProjectId, setIsConfiguration, setPageTitle, setBreadcrumbs } =
+  const { setProjectContext, setCurrentProjectId, setIsConfiguration, setPageTitle, setBreadcrumbs, projectOwnerId } =
     useProjectChat();
   const [project, setProject] = useState<Project | null>(null);
 
   const projectId = params.id as string;
-  const { migration, initializing: migrationInitializing } = useMigration(projectId);
+  const { migration, initializing: migrationInitializing } = useMigration(projectId, projectOwnerId);
 
   // Set page title and breadcrumbs
   useEffect(() => {

@@ -73,8 +73,10 @@ export interface UseMigrationReturn {
   unsubscribe: () => void;
 }
 
-export function useMigration(projectId: string): UseMigrationReturn {
+export function useMigration(projectId: string, ownerId?: string | null): UseMigrationReturn {
   const { user } = useAuth();
+  // Use ownerId if provided (for shared projects), otherwise use current user's ID
+  const effectiveUserId = ownerId || user?.uid;
   const [migration, setMigration] = useState<MigrationAction | null>(null);
   const [allMigrations, setAllMigrations] = useState<MigrationAction[]>([]);
   const [processResult, setProcessResult] = useState<ProcessResult | null>(
@@ -107,7 +109,7 @@ export function useMigration(projectId: string): UseMigrationReturn {
   // Subscribe to migration updates
   const subscribeTo = useCallback(
     (migrationId: string) => {
-      if (!user?.uid || !projectId) return;
+      if (!effectiveUserId || !projectId) return;
 
       // Unsubscribe from previous subscriptions
       unsubscribeMigrationRef.current?.();
@@ -123,7 +125,7 @@ export function useMigration(projectId: string): UseMigrationReturn {
       );
 
       const unsub = migrationRepository.subscribeMigration(
-        user.uid,
+        effectiveUserId,
         projectId,
         migrationId,
         (updatedMigration) => {
@@ -147,12 +149,12 @@ export function useMigration(projectId: string): UseMigrationReturn {
       );
       unsubscribeMigrationRef.current = unsub;
     },
-    [user?.uid, projectId],
+    [effectiveUserId, projectId],
   );
 
   // Subscribe to process result and step results when migration changes
   useEffect(() => {
-    if (!user?.uid || !projectId || !migration?.id) return;
+    if (!effectiveUserId || !projectId || !migration?.id) return;
 
     let unsubProcessLocal: (() => void) | null = null;
     let unsubStepsLocal: (() => void) | null = null;
@@ -161,7 +163,7 @@ export function useMigration(projectId: string): UseMigrationReturn {
     // Get latest process result and subscribe
     const fetchAndSubscribe = async () => {
       const latest = await migrationRepository.getLatestProcessResult(
-        user.uid,
+        effectiveUserId,
         projectId,
         migration.id,
       );
@@ -171,7 +173,7 @@ export function useMigration(projectId: string): UseMigrationReturn {
 
         // Subscribe to process result updates
         unsubProcessLocal = migrationRepository.subscribeProcessResult(
-          user.uid,
+          effectiveUserId,
           projectId,
           migration.id,
           latest.id,
@@ -188,7 +190,7 @@ export function useMigration(projectId: string): UseMigrationReturn {
       // Subscribe to step results (directly under migration, not under processResults)
       // This should happen regardless of whether there's a process result
       unsubStepsLocal = migrationRepository.subscribeStepResults(
-        user.uid,
+        effectiveUserId,
         projectId,
         migration.id,
         (results) => {
@@ -202,7 +204,7 @@ export function useMigration(projectId: string): UseMigrationReturn {
 
       // Subscribe to tech stack analysis
       unsubTechStackLocal = migrationRepository.subscribeTechStackAnalysis(
-        user.uid,
+        effectiveUserId,
         projectId,
         migration.id,
         (analysis) => {
@@ -223,15 +225,15 @@ export function useMigration(projectId: string): UseMigrationReturn {
       unsubStepsLocal?.();
       unsubTechStackLocal?.();
     };
-  }, [user?.uid, projectId, migration?.id]);
+  }, [effectiveUserId, projectId, migration?.id]);
 
   // Fetch all migrations
   const fetchAllMigrations = useCallback(async () => {
-    if (!user?.uid || !projectId) return [];
+    if (!effectiveUserId || !projectId) return [];
 
     try {
       const migrations = await migrationRepository.getMigrations(
-        user.uid,
+        effectiveUserId,
         projectId,
       );
       setAllMigrations(migrations);
@@ -240,12 +242,12 @@ export function useMigration(projectId: string): UseMigrationReturn {
       console.error("Error fetching migrations:", err);
       return [];
     }
-  }, [user?.uid, projectId]);
+  }, [effectiveUserId, projectId]);
 
   // Auto-initialize: Check for existing migration on mount
   useEffect(() => {
     const initExistingMigration = async () => {
-      if (!user?.uid || !projectId || initializationDone.current) return;
+      if (!effectiveUserId || !projectId || initializationDone.current) return;
 
       initializationDone.current = true;
       setInitializing(true);
@@ -267,7 +269,7 @@ export function useMigration(projectId: string): UseMigrationReturn {
     };
 
     initExistingMigration();
-  }, [user?.uid, projectId, subscribeTo, fetchAllMigrations]);
+  }, [effectiveUserId, projectId, subscribeTo, fetchAllMigrations]);
 
   // Select a specific migration
   const selectMigration = useCallback(
@@ -348,7 +350,7 @@ export function useMigration(projectId: string): UseMigrationReturn {
   // Actions
   const createNewMigration = useCallback(
     async (config?: Partial<MigrationAction>): Promise<string | null> => {
-      if (!user?.uid || !projectId) return null;
+      if (!effectiveUserId || !projectId) return null;
 
       try {
         setLoading(true);
@@ -356,7 +358,7 @@ export function useMigration(projectId: string): UseMigrationReturn {
 
         const migrationData = createMigrationAction(config);
         const migrationId = await migrationRepository.createMigration(
-          user.uid,
+          effectiveUserId,
           projectId,
           migrationData,
         );
@@ -375,14 +377,14 @@ export function useMigration(projectId: string): UseMigrationReturn {
         setLoading(false);
       }
     },
-    [user?.uid, projectId, subscribeTo, fetchAllMigrations],
+    [effectiveUserId, projectId, subscribeTo, fetchAllMigrations],
   );
 
   const updateMigration = useCallback(
     async (data: Partial<MigrationAction>): Promise<void> => {
-      if (!user?.uid || !projectId || !migration?.id) {
+      if (!effectiveUserId || !projectId || !migration?.id) {
         console.log("[useMigration] updateMigration skipped - missing data:", {
-          hasUser: !!user?.uid,
+          hasUser: !!effectiveUserId,
           hasProjectId: !!projectId,
           hasMigrationId: !!migration?.id,
         });
@@ -397,7 +399,7 @@ export function useMigration(projectId: string): UseMigrationReturn {
       try {
         setError(null);
         await migrationRepository.updateMigration(
-          user.uid,
+          effectiveUserId,
           projectId,
           migration.id,
           data,
@@ -410,7 +412,7 @@ export function useMigration(projectId: string): UseMigrationReturn {
         setError(errorMessage);
       }
     },
-    [user?.uid, projectId, migration?.id],
+    [effectiveUserId, projectId, migration?.id],
   );
 
   const startMigration = useCallback(async (): Promise<void> => {
@@ -502,11 +504,11 @@ export function useMigration(projectId: string): UseMigrationReturn {
   const getConfigChatMessages = useCallback(async (): Promise<
     ConfigChatMessage[]
   > => {
-    if (!user?.uid || !projectId || !migration?.id) return [];
+    if (!effectiveUserId || !projectId || !migration?.id) return [];
 
     try {
       return await migrationRepository.getConfigChatMessages(
-        user.uid,
+        effectiveUserId,
         projectId,
         migration.id,
       );
@@ -514,17 +516,17 @@ export function useMigration(projectId: string): UseMigrationReturn {
       console.error("Error getting config chat messages:", err);
       return [];
     }
-  }, [user?.uid, projectId, migration?.id]);
+  }, [effectiveUserId, projectId, migration?.id]);
 
   const addConfigChatMessage = useCallback(
     async (
       message: Omit<ConfigChatMessage, "timestamp">,
     ): Promise<string | null> => {
-      if (!user?.uid || !projectId || !migration?.id) return null;
+      if (!effectiveUserId || !projectId || !migration?.id) return null;
 
       try {
         return await migrationRepository.addConfigChatMessage(
-          user.uid,
+          effectiveUserId,
           projectId,
           migration.id,
           message,
@@ -534,22 +536,22 @@ export function useMigration(projectId: string): UseMigrationReturn {
         return null;
       }
     },
-    [user?.uid, projectId, migration?.id],
+    [effectiveUserId, projectId, migration?.id],
   );
 
   const clearConfigChatMessages = useCallback(async (): Promise<void> => {
-    if (!user?.uid || !projectId || !migration?.id) return;
+    if (!effectiveUserId || !projectId || !migration?.id) return;
 
     try {
       await migrationRepository.clearConfigChatMessages(
-        user.uid,
+        effectiveUserId,
         projectId,
         migration.id,
       );
     } catch (err) {
       console.error("Error clearing config chat messages:", err);
     }
-  }, [user?.uid, projectId, migration?.id]);
+  }, [effectiveUserId, projectId, migration?.id]);
 
   return {
     // State

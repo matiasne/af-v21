@@ -2,7 +2,7 @@ import { Project, ConfigChatMessage, ProjectShare } from "../entities/Project";
 
 export interface ProjectRepository {
   getProjects(userId: string): Promise<Project[]>;
-  getSharedProjects(userId: string): Promise<Project[]>;
+  getSharedProjects(userId: string, userEmail?: string): Promise<Project[]>;
   getProject(userId: string, projectId: string): Promise<Project | null>;
   createProject(
     userId: string,

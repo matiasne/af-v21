@@ -6,6 +6,7 @@ import { Divider } from "@heroui/divider";
 import { Spinner } from "@heroui/spinner";
 
 import { useMigration } from "@/infrastructure/hooks/useMigration";
+import { useProjectChat } from "@/infrastructure/context/ProjectChatContext";
 
 interface FilesCardProps {
   projectId: string;
@@ -13,7 +14,8 @@ interface FilesCardProps {
 }
 
 export function FilesCard({ projectId, onNavigateToFiles }: FilesCardProps) {
-  const { migration, loading } = useMigration(projectId);
+  const { projectOwnerId } = useProjectChat();
+  const { migration, loading } = useMigration(projectId, projectOwnerId);
 
   const ragStoreName = migration?.ragFunctionalAndBusinessStoreName;
   const hasRagStore = !!ragStoreName;

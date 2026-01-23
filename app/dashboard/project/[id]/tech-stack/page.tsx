@@ -22,17 +22,6 @@ export default function TechStackPage() {
 
   const projectId = params.id as string;
 
-  // Get migration for config chat
-  const {
-    migration,
-    hasMigrations,
-    initializing: migrationInitializing,
-    createNewMigration,
-    getConfigChatMessages,
-    addConfigChatMessage,
-    clearConfigChatMessages,
-  } = useMigration(projectId);
-
   // Use project chat context for shared state with layout
   const {
     configChatHistory,
@@ -51,7 +40,19 @@ export default function TechStackPage() {
     setIsConfiguration,
     setMigrationConfigChatFunctions,
     projectContext,
+    projectOwnerId,
   } = useProjectChat();
+
+  // Get migration for config chat
+  const {
+    migration,
+    hasMigrations,
+    initializing: migrationInitializing,
+    createNewMigration,
+    getConfigChatMessages,
+    addConfigChatMessage,
+    clearConfigChatMessages,
+  } = useMigration(projectId, projectOwnerId);
 
   // Create memoized migration config chat functions
   const migrationConfigChatFunctions = useMemo(() => {
