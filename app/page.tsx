@@ -3,15 +3,12 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Link } from "@heroui/link";
-import { Snippet } from "@heroui/snippet";
-import { Code } from "@heroui/code";
 import { button as buttonStyles } from "@heroui/theme";
 import { Spinner } from "@heroui/spinner";
 
-import { siteConfig } from "@/config/site";
 import { title, subtitle } from "@/components/primitives";
-import { GithubIcon } from "@/components/icons";
 import { useAuth } from "@/infrastructure/context/AuthContext";
+import Threads from "@/components/Threads";
 
 export default function Home() {
   const router = useRouter();
@@ -43,47 +40,30 @@ export default function Home() {
   }
 
   return (
-    <section className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
-      <div className="inline-block max-w-xl text-center justify-center">
-        <span className={title()}>Make&nbsp;</span>
-        <span className={title({ color: "violet" })}>beautiful&nbsp;</span>
+    <section className="fixed inset-0 w-screen h-screen flex flex-col items-center justify-center gap-4">
+      <Threads
+        color={[0.5, 0.3, 1]}
+        amplitude={2}
+        distance={0.3}
+        enableMouseInteraction
+      />
+      <div className="relative z-10 inline-block max-w-xl text-center justify-center">
+        <span className={title()}>Agentic&nbsp;</span>
+        <span className={title({ color: "violet" })}>Framework&nbsp;</span>
         <br />
-        <span className={title()}>
-          websites regardless of your design experience.
-        </span>
-        <div className={subtitle({ class: "mt-4" })}>
-          Beautiful, fast and modern React UI library.
-        </div>
       </div>
 
-      <div className="flex gap-3">
+      <div className="relative z-10 flex gap-3">
         <Link
-          isExternal
           className={buttonStyles({
             color: "primary",
             radius: "full",
             variant: "shadow",
           })}
-          href={siteConfig.links.docs}
+          href="/login"
         >
-          Documentation
+          Login
         </Link>
-        <Link
-          isExternal
-          className={buttonStyles({ variant: "bordered", radius: "full" })}
-          href={siteConfig.links.github}
-        >
-          <GithubIcon size={20} />
-          GitHub
-        </Link>
-      </div>
-
-      <div className="mt-8">
-        <Snippet hideCopyButton hideSymbol variant="bordered">
-          <span>
-            Get started by editing <Code color="primary">app/page.tsx</Code>
-          </span>
-        </Snippet>
       </div>
     </section>
   );

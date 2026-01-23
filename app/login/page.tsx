@@ -9,6 +9,7 @@ import { Divider } from "@heroui/divider";
 import { Link } from "@heroui/link";
 
 import { useAuth } from "@/infrastructure/context/AuthContext";
+import Threads from "@/components/Threads";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -48,8 +49,14 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex justify-center items-center min-h-[80vh]">
-      <Card className="w-full max-w-md">
+    <div className="fixed inset-0 w-screen h-screen flex justify-center items-center">
+      <Threads
+        color={[0.5, 0.3, 1]}
+        amplitude={2}
+        distance={0.3}
+        enableMouseInteraction
+      />
+      <Card className="relative z-10 w-full max-w-md">
         <CardHeader className="flex flex-col gap-1 px-6 pt-6">
           <h1 className="text-2xl font-bold">Login</h1>
           <p className="text-default-500">Sign in to your account</p>
