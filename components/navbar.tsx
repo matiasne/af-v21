@@ -25,7 +25,7 @@ import { useRouter } from "next/navigation";
 
 import { siteConfig } from "@/config/site";
 import { ThemeSwitch } from "@/components/theme-switch";
-import { SearchIcon, Logo } from "@/components/icons";
+import { SearchIcon } from "@/components/icons";
 import { useAuth } from "@/infrastructure/context/AuthContext";
 
 interface BreadcrumbItem {
@@ -101,8 +101,7 @@ export const Navbar = ({ pageTitle, projectName, backUrl, breadcrumbs }: NavbarP
               className="flex justify-start items-center gap-1"
               href="/"
             >
-              <Logo />
-              <p className="font-bold text-inherit">ACME</p>
+              <p className="font-bold text-inherit">{siteConfig.name}</p>
             </NextLink>
           </NavbarBrand>
         )}
