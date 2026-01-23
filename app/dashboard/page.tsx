@@ -19,6 +19,7 @@ import { useAuth } from "@/infrastructure/context/AuthContext";
 import { useProjects } from "@/infrastructure/hooks/useProjects";
 import { Project } from "@/domain/entities/Project";
 import { ProjectCard } from "./components/ProjectCard";
+import Threads from "@/components/Threads";
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
@@ -156,12 +157,20 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="">
-      <div className="flex justify-between items-center mb-8">
-        <Button color="primary" onPress={onOpen}>
-          New Project
-        </Button>
-      </div>
+    <div className="relative min-h-screen">
+      <Threads
+        color={[0.5, 0.3, 1]}
+        amplitude={1.5}
+        distance={0.2}
+        enableMouseInteraction
+        className="fixed inset-0 -z-10"
+      />
+      <div className="relative z-10">
+        <div className="flex justify-between items-center mb-8">
+          <Button color="primary" onPress={onOpen}>
+            New Project
+          </Button>
+        </div>
 
       {loading ? (
         <div className="flex justify-center items-center min-h-[40vh]">
@@ -363,6 +372,7 @@ export default function DashboardPage() {
           )}
         </ModalContent>
       </Modal>
+      </div>
     </div>
   );
 }
