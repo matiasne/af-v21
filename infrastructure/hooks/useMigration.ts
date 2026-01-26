@@ -73,7 +73,10 @@ export interface UseMigrationReturn {
   unsubscribe: () => void;
 }
 
-export function useMigration(projectId: string, ownerId?: string | null): UseMigrationReturn {
+export function useMigration(
+  projectId: string,
+  ownerId?: string | null,
+): UseMigrationReturn {
   const { user } = useAuth();
   // Use ownerId if provided (for shared projects), otherwise use current user's ID
   const effectiveUserId = ownerId || user?.uid;
@@ -305,7 +308,7 @@ export function useMigration(projectId: string, ownerId?: string | null): UseMig
 
   const isCompleted = useMemo(() => currentStep === "completed", [currentStep]);
 
-  const isError = useMemo(() => currentStep === "error", [currentStep]);
+  const isError = useMemo(() => migration?.action === "error", [currentStep]);
 
   const totalStepsCount = PROCESSING_STEPS.length;
 

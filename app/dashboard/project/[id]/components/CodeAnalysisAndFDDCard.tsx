@@ -196,7 +196,8 @@ export function CodeAnalysisAndFDDCard({
   const [fddLoading, setFddLoading] = useState(true);
 
   // Migration status logic
-  const hasStarted = !!migration?.action;
+  // Consider analysis started if migration has action OR if code-analysis-module has a status
+  const hasStarted = !!migration?.action || (!!codeAnalysisStatus && codeAnalysisStatus !== "configuration");
   const completedStepsCount = stepResults.filter(
     (r) => r.status === "completed",
   ).length;
@@ -677,13 +678,13 @@ export function CodeAnalysisAndFDDCard({
                               <path
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
-                                d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z"
+                                d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
                               />
                             </svg>
                           )
                         }
                       >
-                        Resume Analysis
+                        Retry
                       </Button>
                     </div>
                   )}
@@ -718,7 +719,8 @@ export function CodeAnalysisAndFDDCard({
           {(!codeAnalysisStatus || codeAnalysisStatus === "configuration") &&
             !isLoading &&
             !isProcessing &&
-            !isCompleted && (
+            !isCompleted &&
+            codeAnalysisStatus !== "error" && (
               <div className="pt-4">
                 <Button
                   color="primary"
