@@ -171,12 +171,13 @@ export default function ProjectDashboardPage() {
   }, [migrationConfigChatFunctions, setMigrationConfigChatFunctions]);
 
   // Create migration if one doesn't exist (needed for config chat storage)
+  // Only create for projects owned by current user to avoid creating duplicates for shared projects
   useEffect(() => {
     const ensureMigrationExists = async () => {
-      if (!user?.uid || !projectId || migrationInitializing) return;
+      if (!user?.uid || !projectId || migrationInitializing || !projectOwnerId) return;
 
-      // Create migration if none exists
-      if (!hasMigrations) {
+      // Only create migration if user owns this project (not for shared projects)
+      if (!hasMigrations && projectOwnerId === user.uid) {
         await createNewMigration();
       }
     };
@@ -188,6 +189,7 @@ export default function ProjectDashboardPage() {
     hasMigrations,
     migrationInitializing,
     createNewMigration,
+    projectOwnerId,
   ]);
 
   const migrationIsStopped = migration?.action === "stop";
@@ -197,11 +199,11 @@ export default function ProjectDashboardPage() {
   const showUITypeModal = project && !project.uiType;
 
   const handleUITypeSelect = async (uiType: UIType) => {
-    if (!projectId) return;
+    if (!projectId || !projectOwnerId) return;
 
     setIsUpdatingUIType(true);
     try {
-      await updateProject(projectId, { uiType });
+      await updateProject(projectId, { uiType }, projectOwnerId);
     } catch (error) {
       console.error("Error updating UIType:", error);
     } finally {
@@ -276,14 +278,14 @@ export default function ProjectDashboardPage() {
         // Update tech stack if returned
         if (data.techStack) {
           setNewTechStack(data.techStack);
-          if (projectId) {
+          if (projectId && projectOwnerId) {
             updateProject(projectId, {
               analysis: {
                 ...project?.analysis,
                 summary: project?.analysis?.summary || "",
                 newTechStack: data.techStack,
               },
-            });
+            }, projectOwnerId);
           }
         }
 
@@ -327,19 +329,20 @@ export default function ProjectDashboardPage() {
     (tech: string) => {
       const updatedStack = currentTechStack.filter((t) => t !== tech);
       setNewTechStack(updatedStack);
-      if (projectId) {
+      if (projectId && projectOwnerId) {
         updateProject(projectId, {
           analysis: {
             ...project?.analysis,
             summary: project?.analysis?.summary || "",
             newTechStack: updatedStack,
           },
-        });
+        }, projectOwnerId);
       }
     },
     [
       currentTechStack,
       projectId,
+      projectOwnerId,
       updateProject,
       project?.analysis,
       setNewTechStack,
@@ -354,17 +357,18 @@ export default function ProjectDashboardPage() {
     setConfigChatHistory([]);
     // Clear chat messages from Firebase
     await clearConfigChatMessages();
-    if (projectId) {
+    if (projectId && projectOwnerId) {
       updateProject(projectId, {
         analysis: {
           ...project?.analysis,
           summary: project?.analysis?.summary || "",
           newTechStack: [],
         },
-      });
+      }, projectOwnerId);
     }
   }, [
     projectId,
+    projectOwnerId,
     updateProject,
     project?.analysis,
     setNewTechStack,
@@ -375,16 +379,16 @@ export default function ProjectDashboardPage() {
   ]);
 
   const handleSaveTechStack = useCallback(async () => {
-    if (projectId && currentTechStack.length > 0) {
+    if (projectId && projectOwnerId && currentTechStack.length > 0) {
       await updateProject(projectId, {
         analysis: {
           ...project?.analysis,
           summary: project?.analysis?.summary || "",
           newTechStack: currentTechStack,
         },
-      });
+      }, projectOwnerId);
     }
-  }, [projectId, updateProject, project?.analysis, currentTechStack]);
+  }, [projectId, projectOwnerId, updateProject, project?.analysis, currentTechStack]);
 
   // Share handlers
   const handleShare = useCallback(
@@ -498,21 +502,21 @@ export default function ProjectDashboardPage() {
   }, []);
 
   const handleSaveProject = useCallback(async () => {
-    if (!projectId || !editedName.trim()) return;
+    if (!projectId || !projectOwnerId || !editedName.trim()) return;
 
     setIsSavingProject(true);
     try {
       await updateProject(projectId, {
         name: editedName.trim(),
         description: editedDescription.trim() || undefined,
-      });
+      }, projectOwnerId);
       setIsEditingProject(false);
     } catch (error) {
       console.error("Error updating project:", error);
     } finally {
       setIsSavingProject(false);
     }
-  }, [projectId, editedName, editedDescription, updateProject]);
+  }, [projectId, projectOwnerId, editedName, editedDescription, updateProject]);
 
   // Sync project context with layout
   useEffect(() => {

@@ -76,13 +76,15 @@ export function useProjects() {
   );
 
   const updateProject = useCallback(
-    async (projectId: string, data: Partial<Project>): Promise<boolean> => {
+    async (projectId: string, data: Partial<Project>, ownerId?: string): Promise<boolean> => {
       if (!user) return false;
 
       setError(null);
 
       try {
-        await projectRepository.updateProject(user.uid, projectId, data);
+        // Use provided ownerId for shared projects, otherwise use current user's ID
+        const effectiveOwnerId = ownerId || user.uid;
+        await projectRepository.updateProject(effectiveOwnerId, projectId, data);
         // Don't show loading spinner during background refresh after update
         await fetchProjects(false);
 
