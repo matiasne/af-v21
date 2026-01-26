@@ -189,13 +189,14 @@ export default function DashboardPage() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {projects.map((project) => (
+          {projects.map((project, index) => (
             <ProjectCard
               key={project.id}
               project={project}
               onEditClick={handleEditClick}
               onDeleteClick={handleDeleteClick}
               formatDate={formatDate}
+              index={index}
             />
           ))}
         </div>

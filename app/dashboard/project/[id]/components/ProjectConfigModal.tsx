@@ -58,9 +58,10 @@ export function ProjectConfigModal({
 }: ProjectConfigModalProps) {
   // For start_from_doc, only show Processor Host, Default AI Agent, and Danger Zone
   const isSimplifiedConfig = uiType === "start_from_doc";
-  const [isLoading, setIsLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // Migration config state
   const [selectedProvider, setSelectedProvider] = useState<
@@ -104,17 +105,16 @@ export function ProjectConfigModal({
   }, [migration]);
 
   const handleProcessorHostChange = useCallback(
-    async (host: string) => {
-      if (!host || !onUpdateMigrationConfig) return;
+    (host: string) => {
+      if (!host) return;
       setProcessorHost(host);
-      await onUpdateMigrationConfig({ processorHost: host });
+      setHasUnsavedChanges(true);
     },
-    [onUpdateMigrationConfig],
+    [],
   );
 
   const handleProviderChange = useCallback(
-    async (provider: AgentProvider) => {
-      if (!onUpdateMigrationConfig) return;
+    (provider: AgentProvider) => {
       setSelectedProvider(provider);
       const defaultModel =
         provider === "openrouter"
@@ -123,37 +123,31 @@ export function ProjectConfigModal({
             ? CLAUDE_MODELS[0].id
             : undefined;
       setSelectedAgentModel(defaultModel || OPENROUTER_MODELS[0].id);
-      await onUpdateMigrationConfig({
-        defaultAgent: { provider, model: defaultModel },
-      });
+      setHasUnsavedChanges(true);
     },
-    [onUpdateMigrationConfig],
+    [],
   );
 
   const handleAgentModelChange = useCallback(
-    async (model: string) => {
-      if (!selectedProvider || !onUpdateMigrationConfig) return;
+    (model: string) => {
+      if (!selectedProvider) return;
       setSelectedAgentModel(model);
-      await onUpdateMigrationConfig({
-        defaultAgent: { provider: selectedProvider, model },
-      });
+      setHasUnsavedChanges(true);
     },
-    [selectedProvider, onUpdateMigrationConfig],
+    [selectedProvider],
   );
 
-  const handleClearStepAgents = useCallback(async () => {
-    if (!onUpdateMigrationConfig) return;
+  const handleClearStepAgents = useCallback(() => {
     setStepAgents({});
-    await onUpdateMigrationConfig({ stepAgents: {} });
-  }, [onUpdateMigrationConfig]);
+    setHasUnsavedChanges(true);
+  }, []);
 
   const handleStepAgentChange = useCallback(
-    async (
+    (
       step: StepStatus,
       provider: AgentProvider | "default",
       model?: string,
     ) => {
-      if (!onUpdateMigrationConfig) return;
       const newStepAgents = { ...stepAgents };
 
       if (provider === "default") {
@@ -169,10 +163,29 @@ export function ProjectConfigModal({
       }
 
       setStepAgents(newStepAgents);
-      await onUpdateMigrationConfig({ stepAgents: newStepAgents });
+      setHasUnsavedChanges(true);
     },
-    [stepAgents, onUpdateMigrationConfig],
+    [stepAgents],
   );
+
+  const handleSaveConfig = useCallback(async () => {
+    if (!onUpdateMigrationConfig) return;
+    setIsSaving(true);
+    try {
+      await onUpdateMigrationConfig({
+        processorHost,
+        defaultAgent: selectedProvider
+          ? { provider: selectedProvider, model: selectedAgentModel }
+          : undefined,
+        stepAgents,
+      });
+      setHasUnsavedChanges(false);
+    } catch (error) {
+      console.error("Error saving configuration:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [onUpdateMigrationConfig, processorHost, selectedProvider, selectedAgentModel, stepAgents]);
 
   const hasCustomStepAgents = Object.keys(stepAgents).length > 0;
 
@@ -224,7 +237,7 @@ export function ProjectConfigModal({
                             handleProcessorHostChange(selected);
                           }
                         }}
-                        isDisabled={isLoading}
+                        isDisabled={isSaving}
                         description={
                           processors.length === 0
                             ? "No processors available. Make sure a processor is running."
@@ -272,7 +285,7 @@ export function ProjectConfigModal({
                           onChange={(e) =>
                             handleProviderChange(e.target.value as AgentProvider)
                           }
-                          isDisabled={isLoading}
+                          isDisabled={isSaving}
                           className="flex-1"
                         >
                           {AGENT_PROVIDERS.map((provider) => (
@@ -297,7 +310,7 @@ export function ProjectConfigModal({
                             onChange={(e) =>
                               handleAgentModelChange(e.target.value)
                             }
-                            isDisabled={isLoading}
+                            isDisabled={isSaving}
                             className="flex-1"
                           >
                             {OPENROUTER_MODELS.map((model) => (
@@ -315,7 +328,7 @@ export function ProjectConfigModal({
                             onChange={(e) =>
                               handleAgentModelChange(e.target.value)
                             }
-                            isDisabled={isLoading}
+                            isDisabled={isSaving}
                             className="flex-1"
                           >
                             {CLAUDE_MODELS.map((model) => (
@@ -350,7 +363,7 @@ export function ProjectConfigModal({
                                 variant="light"
                                 color="warning"
                                 onPress={handleClearStepAgents}
-                                isDisabled={isLoading}
+                                isDisabled={isSaving}
                               >
                                 Clear All
                               </Button>
@@ -402,7 +415,7 @@ export function ProjectConfigModal({
                                           defaultModel,
                                         );
                                       }}
-                                      isDisabled={isLoading}
+                                      isDisabled={isSaving}
                                     >
                                       {[
                                         { id: "default", name: "Default" },
@@ -431,7 +444,7 @@ export function ProjectConfigModal({
                                             e.target.value,
                                           )
                                         }
-                                        isDisabled={isLoading}
+                                        isDisabled={isSaving}
                                       >
                                         {CLAUDE_MODELS.map((model) => (
                                           <SelectItem
@@ -458,7 +471,7 @@ export function ProjectConfigModal({
                                             e.target.value,
                                           )
                                         }
-                                        isDisabled={isLoading}
+                                        isDisabled={isSaving}
                                       >
                                         {OPENROUTER_MODELS.map((model) => (
                                           <SelectItem
@@ -558,8 +571,16 @@ export function ProjectConfigModal({
               </div>
             </ModalBody>
             <ModalFooter>
-              <Button color="primary" onPress={onClose}>
-                Close
+              <Button variant="flat" onPress={onClose}>
+                Cancel
+              </Button>
+              <Button
+                color="primary"
+                onPress={handleSaveConfig}
+                isLoading={isSaving}
+                isDisabled={!hasUnsavedChanges}
+              >
+                Save
               </Button>
             </ModalFooter>
           </>

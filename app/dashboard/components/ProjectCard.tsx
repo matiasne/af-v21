@@ -25,6 +25,7 @@ interface ProjectCardProps {
   onEditClick: (project: Project) => void;
   onDeleteClick: (project: Project) => void;
   formatDate: (timestamp: number) => string;
+  index?: number;
 }
 
 // Helper to normalize status for backward compatibility
@@ -48,6 +49,7 @@ export function ProjectCard({
   onEditClick,
   onDeleteClick,
   formatDate,
+  index = 0,
 }: ProjectCardProps) {
   const router = useRouter();
   const { user } = useAuth();
@@ -55,6 +57,14 @@ export function ProjectCard({
   const [migrationAction, setMigrationAction] =
     useState<MigrationActionType | null>(null);
   const [loadingMigration, setLoadingMigration] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setMounted(true);
+    }, index * 100);
+    return () => clearTimeout(timer);
+  }, [index]);
 
   const isMigrationProject = project.uiType === "migration";
   const projectStep = getProjectStep(project);
@@ -102,8 +112,15 @@ export function ProjectCard({
   }, [isMigrationProject, user?.uid, project.id]);
 
   return (
-    <GradientBorderWrapper isActive={isRunning}>
-      <Card
+    <div
+      className={`transition-all duration-500 ease-out ${
+        mounted
+          ? "opacity-100 translate-y-0 scale-100"
+          : "opacity-0 translate-y-8 scale-95"
+      }`}
+    >
+      <GradientBorderWrapper isActive={isRunning}>
+        <Card
         key={project.id}
         className="h-full w-full cursor-pointer"
         isPressable
@@ -228,7 +245,8 @@ export function ProjectCard({
             Delete
           </Button>
         </CardFooter>
-      </Card>
-    </GradientBorderWrapper>
+        </Card>
+      </GradientBorderWrapper>
+    </div>
   );
 }

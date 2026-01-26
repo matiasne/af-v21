@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
@@ -16,8 +16,21 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [exiting, setExiting] = useState(false);
   const { signInWithEmail, signInWithGoogle } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const navigateWithAnimation = () => {
+    setExiting(true);
+    setTimeout(() => {
+      router.push("/dashboard");
+    }, 500);
+  };
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,10 +39,9 @@ export default function LoginPage() {
 
     try {
       await signInWithEmail(email, password);
-      router.push("/dashboard");
+      navigateWithAnimation();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to sign in");
-    } finally {
       setLoading(false);
     }
   };
@@ -40,10 +52,9 @@ export default function LoginPage() {
 
     try {
       await signInWithGoogle();
-      router.push("/dashboard");
+      navigateWithAnimation();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to sign in with Google");
-    } finally {
       setLoading(false);
     }
   };
@@ -56,7 +67,15 @@ export default function LoginPage() {
         distance={0.3}
         enableMouseInteraction
       />
-      <Card className="relative z-10 w-full max-w-md">
+      <Card
+        className={`relative z-10 w-full max-w-md transition-all duration-500 ease-out ${
+          exiting
+            ? "opacity-0 translate-y-8 scale-95"
+            : mounted
+              ? "opacity-100 translate-y-0 scale-100"
+              : "opacity-0 translate-y-12 scale-95"
+        }`}
+      >
         <CardHeader className="flex flex-col gap-1 px-6 pt-6">
           <h1 className="text-2xl font-bold">Login</h1>
           <p className="text-default-500">Sign in to your account</p>
