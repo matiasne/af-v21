@@ -230,18 +230,20 @@ function KanbanColumn({
           </div>
         ) : (
           <>
-            {visibleTasks.map((task) => (
+            {visibleTasks.map((task) => {
+              const isLocked = task.status === "in_progress" || task.status === "completed";
+              return (
               <div
                 key={task.id}
-                draggable
+                draggable={!isLocked}
                 onDragStart={(e) => onDragStart(e, task.id)}
                 onDragEnd={onDragEnd}
                 className={`${draggedTaskId === task.id ? "opacity-50" : ""}`}
               >
                 <Card
-                  className={`bg-white dark:bg-default-100 shadow-sm hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing ${
-                    task.error ? "border-2 border-red-300 dark:border-red-900" : ""
-                  }`}
+                  className={`bg-white dark:bg-default-100 shadow-sm hover:shadow-md transition-shadow ${
+                    isLocked ? "cursor-not-allowed" : "cursor-grab active:cursor-grabbing"
+                  } ${task.error ? "border-2 border-red-300 dark:border-red-900" : ""}`}
                 >
                   <CardBody className="p-3">
                     <div className="flex flex-col gap-2">
@@ -328,7 +330,8 @@ function KanbanColumn({
                   </CardBody>
                 </Card>
               </div>
-            ))}
+            );
+            })}
             {/* Loader element for intersection observer */}
             {hasMore && (
               <div ref={loaderRef} className="flex justify-center py-2">
@@ -376,6 +379,13 @@ export function KanbanBoard({ tasks, onMoveTask, onMoveAllBacklogToTodo, onMoveA
   }, [tasks]);
 
   const handleDragStart = (e: DragEvent<HTMLDivElement>, taskId: string) => {
+    // Find the task to check its status
+    const task = tasks.find((t) => t.id === taskId);
+    // Prevent dragging tasks from in_progress or completed columns
+    if (task && (task.status === "in_progress" || task.status === "completed")) {
+      e.preventDefault();
+      return;
+    }
     setDraggedTaskId(taskId);
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", taskId);

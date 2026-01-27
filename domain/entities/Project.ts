@@ -244,6 +244,7 @@ export interface Project {
   filesExtensions?: string[];
   files?: LegacyFile[];
   executorModel?: string;
+  processorHost?: string;
   ownerId?: string;
   sharedWith?: ProjectShare[];
   createdAt?: number;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
   Table,
   TableHeader,
@@ -20,6 +20,7 @@ import {
 } from "@heroui/modal";
 import { Select, SelectItem } from "@heroui/select";
 import { Divider } from "@heroui/divider";
+import { Spinner } from "@heroui/spinner";
 
 import {
   ExecutionPlanTask,
@@ -27,6 +28,8 @@ import {
   TaskCategory,
   CleanArchitectureArea,
 } from "@/domain/entities/ExecutionPlan";
+
+const TASKS_PER_PAGE = 20;
 
 interface TaskListProps {
   tasks: ExecutionPlanTask[];
@@ -113,6 +116,54 @@ export function TaskList({ tasks, onUpdateTaskStatus }: TaskListProps) {
     null
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(TASKS_PER_PAGE);
+  const [isLoading, setIsLoading] = useState(false);
+  const loaderRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const visibleTasks = tasks.slice(0, visibleCount);
+  const hasMore = visibleCount < tasks.length;
+
+  // Reset visible count when tasks change
+  useEffect(() => {
+    setVisibleCount(TASKS_PER_PAGE);
+  }, [tasks.length]);
+
+  const loadMore = useCallback(() => {
+    if (isLoading || !hasMore) return;
+
+    setIsLoading(true);
+    // Simulate a small delay for smooth UX
+    setTimeout(() => {
+      setVisibleCount((prev) => Math.min(prev + TASKS_PER_PAGE, tasks.length));
+      setIsLoading(false);
+    }, 200);
+  }, [isLoading, hasMore, tasks.length]);
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    const loader = loaderRef.current;
+    if (!loader) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoading) {
+          loadMore();
+        }
+      },
+      {
+        root: containerRef.current,
+        rootMargin: "100px",
+        threshold: 0.1,
+      }
+    );
+
+    observer.observe(loader);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasMore, isLoading, loadMore]);
 
   const handleViewDetails = (task: ExecutionPlanTask) => {
     setSelectedTask(task);
@@ -125,16 +176,17 @@ export function TaskList({ tasks, onUpdateTaskStatus }: TaskListProps) {
 
   return (
     <>
-      <Table aria-label="Tasks table">
-        <TableHeader>
-          <TableColumn>TITLE</TableColumn>
-          <TableColumn>CATEGORY</TableColumn>
-          <TableColumn>LAYER</TableColumn>
-          <TableColumn>STATUS</TableColumn>
-          <TableColumn>ACTIONS</TableColumn>
-        </TableHeader>
-        <TableBody>
-          {tasks.map((task) => (
+      <div ref={containerRef} className="max-h-[600px] overflow-y-auto">
+        <Table aria-label="Tasks table">
+          <TableHeader>
+            <TableColumn>TITLE</TableColumn>
+            <TableColumn>CATEGORY</TableColumn>
+            <TableColumn>LAYER</TableColumn>
+            <TableColumn>STATUS</TableColumn>
+            <TableColumn>ACTIONS</TableColumn>
+          </TableHeader>
+          <TableBody>
+            {visibleTasks.map((task) => (
             <TableRow
               key={task.id}
               className={task.error ? "bg-red-50 dark:bg-red-950/20" : ""}
@@ -200,6 +252,25 @@ export function TaskList({ tasks, onUpdateTaskStatus }: TaskListProps) {
           ))}
         </TableBody>
       </Table>
+
+        {/* Loader element for intersection observer */}
+        {hasMore && (
+          <div ref={loaderRef} className="flex justify-center py-4">
+            {isLoading ? (
+              <Spinner size="sm" color="primary" />
+            ) : (
+              <span className="text-xs text-default-400">
+                {tasks.length - visibleCount} more tasks
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Task count summary */}
+        <div className="text-center py-2 text-xs text-default-400">
+          Showing {visibleTasks.length} of {tasks.length} tasks
+        </div>
+      </div>
 
       {/* Task Details Modal */}
       <Modal
