@@ -3,6 +3,8 @@ import {
   createUserWithEmailAndPassword,
   signInWithPopup,
   GoogleAuthProvider,
+  EmailAuthProvider,
+  linkWithCredential,
   signOut as firebaseSignOut,
   onAuthStateChanged as firebaseOnAuthStateChanged,
   sendPasswordResetEmail as firebaseSendPasswordResetEmail,
@@ -59,5 +61,26 @@ export class FirebaseAuthRepository implements AuthRepository {
 
   async sendPasswordResetEmail(email: string): Promise<void> {
     await firebaseSendPasswordResetEmail(auth, email);
+  }
+
+  async setPassword(password: string): Promise<void> {
+    const currentUser = auth.currentUser;
+    if (!currentUser || !currentUser.email) {
+      throw new Error("No user is currently signed in or user has no email");
+    }
+
+    const credential = EmailAuthProvider.credential(currentUser.email, password);
+    await linkWithCredential(currentUser, credential);
+  }
+
+  hasPasswordProvider(): boolean {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      return false;
+    }
+
+    return currentUser.providerData.some(
+      (provider) => provider.providerId === "password"
+    );
   }
 }

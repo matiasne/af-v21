@@ -14,6 +14,8 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<User>;
   signOut: () => Promise<void>;
   sendPasswordResetEmail: (email: string) => Promise<void>;
+  setPassword: (password: string) => Promise<void>;
+  hasPasswordProvider: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -72,6 +74,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await authRepository.sendPasswordResetEmail(email);
   };
 
+  const setPassword = async (password: string): Promise<void> => {
+    await authRepository.setPassword(password);
+  };
+
+  const hasPasswordProvider = (): boolean => {
+    return authRepository.hasPasswordProvider();
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -82,6 +92,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signInWithGoogle,
         signOut,
         sendPasswordResetEmail,
+        setPassword,
+        hasPasswordProvider,
       }}
     >
       {children}

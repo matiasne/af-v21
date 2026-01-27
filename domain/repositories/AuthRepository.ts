@@ -8,4 +8,6 @@ export interface AuthRepository {
   getCurrentUser(): User | null;
   onAuthStateChanged(callback: (user: User | null) => void): () => void;
   sendPasswordResetEmail(email: string): Promise<void>;
+  setPassword(password: string): Promise<void>;
+  hasPasswordProvider(): boolean;
 }

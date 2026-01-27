@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Navbar as HeroUINavbar,
   NavbarContent,
@@ -27,6 +28,7 @@ import { siteConfig } from "@/config/site";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { SearchIcon } from "@/components/icons";
 import { useAuth } from "@/infrastructure/context/AuthContext";
+import { SetPasswordModal } from "@/components/SetPasswordModal";
 
 interface BreadcrumbItem {
   label: string;
@@ -42,7 +44,10 @@ interface NavbarProps {
 
 export const Navbar = ({ pageTitle, projectName, backUrl, breadcrumbs }: NavbarProps = {}) => {
   const router = useRouter();
-  const { user, loading, signOut } = useAuth();
+  const { user, loading, signOut, setPassword, hasPasswordProvider } = useAuth();
+  const [isSetPasswordModalOpen, setIsSetPasswordModalOpen] = useState(false);
+
+  const showSetPasswordOption = user && !hasPasswordProvider();
 
   return (
     <HeroUINavbar maxWidth="xl" position="sticky">
@@ -128,15 +133,31 @@ export const Navbar = ({ pageTitle, projectName, backUrl, breadcrumbs }: NavbarP
                   src={user.photoURL || undefined}
                 />
               </DropdownTrigger>
-              <DropdownMenu aria-label="Profile Actions" variant="flat">
-                <DropdownItem key="profile" className="h-14 gap-2">
+              <DropdownMenu
+                aria-label="Profile Actions"
+                variant="flat"
+                onAction={(key) => {
+                  if (key === "set-password") {
+                    setIsSetPasswordModalOpen(true);
+                  } else if (key === "logout") {
+                    signOut();
+                  }
+                }}
+              >
+                <DropdownItem key="profile" className="h-14 gap-2" textValue="Profile">
                   <p className="font-semibold">Signed in as</p>
                   <p className="font-semibold">{user.email}</p>
                 </DropdownItem>
                 <DropdownItem key="dashboard" href="/dashboard" as={NextLink}>
                   Dashboard
                 </DropdownItem>
-                <DropdownItem key="logout" color="danger" onPress={signOut}>
+                <DropdownItem
+                  key="set-password"
+                  className={showSetPasswordOption ? "" : "hidden"}
+                >
+                  Set Password
+                </DropdownItem>
+                <DropdownItem key="logout" color="danger">
                   Log Out
                 </DropdownItem>
               </DropdownMenu>
@@ -186,6 +207,13 @@ export const Navbar = ({ pageTitle, projectName, backUrl, breadcrumbs }: NavbarP
           ))}
         </div>
       </NavbarMenu>
+
+      {/* Set Password Modal */}
+      <SetPasswordModal
+        isOpen={isSetPasswordModalOpen}
+        onOpenChange={setIsSetPasswordModalOpen}
+        onSetPassword={setPassword}
+      />
     </HeroUINavbar>
   );
 };
