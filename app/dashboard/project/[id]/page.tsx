@@ -27,7 +27,6 @@ import {
   TechStackEditModal,
   CodeAnalysisAndFDDCard,
   MigrationPlannerAndKanbanCard,
-  ShareProjectModal,
   ProjectConfigModal,
   ProjectStepper,
   DocumentUploadCard,
@@ -43,13 +42,8 @@ export default function ProjectDashboardPage() {
     projects,
     loading: projectsLoading,
     subscribeToProject,
-    subscribeToProjectByOwner,
-    getProjectByIdFromAnyOwner,
     updateProject,
     deleteProject,
-    shareProject,
-    unshareProject,
-    updateShareRole,
     startCodeAnalysis,
     stopCodeAnalysis,
     resumeCodeAnalysis,
@@ -69,7 +63,6 @@ export default function ProjectDashboardPage() {
     setIsTechStackComplete,
     setProjectContext,
     setCurrentProjectId,
-    setProjectOwnerId: setContextProjectOwnerId,
     setIsConfiguration,
     setMigrationConfigChatFunctions,
     projectContext,
@@ -84,13 +77,6 @@ export default function ProjectDashboardPage() {
     onOpenChange: onTechStackModalOpenChange,
   } = useDisclosure();
 
-  // Share Project modal
-  const {
-    isOpen: isShareModalOpen,
-    onOpen: onShareModalOpen,
-    onOpenChange: onShareModalOpenChange,
-  } = useDisclosure();
-
   // Project Config modal
   const {
     isOpen: isConfigModalOpen,
@@ -99,7 +85,6 @@ export default function ProjectDashboardPage() {
   } = useDisclosure();
 
   const [project, setProject] = useState<Project | null>(null);
-  const [projectOwnerId, setProjectOwnerId] = useState<string | null>(null);
   const [isUpdatingUIType, setIsUpdatingUIType] = useState(false);
   const [codeAnalysisStatus, setCodeAnalysisStatus] = useState<string | undefined>(undefined);
   const [codeAnalysisError, setCodeAnalysisError] = useState<string | undefined>(undefined);
@@ -153,7 +138,7 @@ export default function ProjectDashboardPage() {
     getConfigChatMessages,
     addConfigChatMessage,
     clearConfigChatMessages,
-  } = useMigration(projectId, projectOwnerId);
+  } = useMigration(projectId);
 
   // Create memoized migration config chat functions
   const migrationConfigChatFunctions = useMemo(() => {
@@ -171,13 +156,11 @@ export default function ProjectDashboardPage() {
   }, [migrationConfigChatFunctions, setMigrationConfigChatFunctions]);
 
   // Create migration if one doesn't exist (needed for config chat storage)
-  // Only create for projects owned by current user to avoid creating duplicates for shared projects
   useEffect(() => {
     const ensureMigrationExists = async () => {
-      if (!user?.uid || !projectId || migrationInitializing || !projectOwnerId) return;
+      if (!user?.uid || !projectId || migrationInitializing) return;
 
-      // Only create migration if user owns this project (not for shared projects)
-      if (!hasMigrations && projectOwnerId === user.uid) {
+      if (!hasMigrations) {
         await createNewMigration();
       }
     };
@@ -189,7 +172,6 @@ export default function ProjectDashboardPage() {
     hasMigrations,
     migrationInitializing,
     createNewMigration,
-    projectOwnerId,
   ]);
 
   const migrationIsStopped = migration?.action === "stop";
@@ -199,11 +181,11 @@ export default function ProjectDashboardPage() {
   const showUITypeModal = project && !project.uiType;
 
   const handleUITypeSelect = async (uiType: UIType) => {
-    if (!projectId || !projectOwnerId) return;
+    if (!projectId) return;
 
     setIsUpdatingUIType(true);
     try {
-      await updateProject(projectId, { uiType }, projectOwnerId);
+      await updateProject(projectId, { uiType });
     } catch (error) {
       console.error("Error updating UIType:", error);
     } finally {
@@ -278,14 +260,14 @@ export default function ProjectDashboardPage() {
         // Update tech stack if returned
         if (data.techStack) {
           setNewTechStack(data.techStack);
-          if (projectId && projectOwnerId) {
+          if (projectId) {
             updateProject(projectId, {
               analysis: {
                 ...project?.analysis,
                 summary: project?.analysis?.summary || "",
                 newTechStack: data.techStack,
               },
-            }, projectOwnerId);
+            });
           }
         }
 
@@ -329,20 +311,19 @@ export default function ProjectDashboardPage() {
     (tech: string) => {
       const updatedStack = currentTechStack.filter((t) => t !== tech);
       setNewTechStack(updatedStack);
-      if (projectId && projectOwnerId) {
+      if (projectId) {
         updateProject(projectId, {
           analysis: {
             ...project?.analysis,
             summary: project?.analysis?.summary || "",
             newTechStack: updatedStack,
           },
-        }, projectOwnerId);
+        });
       }
     },
     [
       currentTechStack,
       projectId,
-      projectOwnerId,
       updateProject,
       project?.analysis,
       setNewTechStack,
@@ -357,18 +338,17 @@ export default function ProjectDashboardPage() {
     setConfigChatHistory([]);
     // Clear chat messages from Firebase
     await clearConfigChatMessages();
-    if (projectId && projectOwnerId) {
+    if (projectId) {
       updateProject(projectId, {
         analysis: {
           ...project?.analysis,
           summary: project?.analysis?.summary || "",
           newTechStack: [],
         },
-      }, projectOwnerId);
+      });
     }
   }, [
     projectId,
-    projectOwnerId,
     updateProject,
     project?.analysis,
     setNewTechStack,
@@ -379,41 +359,16 @@ export default function ProjectDashboardPage() {
   ]);
 
   const handleSaveTechStack = useCallback(async () => {
-    if (projectId && projectOwnerId && currentTechStack.length > 0) {
+    if (projectId && currentTechStack.length > 0) {
       await updateProject(projectId, {
         analysis: {
           ...project?.analysis,
           summary: project?.analysis?.summary || "",
           newTechStack: currentTechStack,
         },
-      }, projectOwnerId);
+      });
     }
-  }, [projectId, projectOwnerId, updateProject, project?.analysis, currentTechStack]);
-
-  // Share handlers
-  const handleShare = useCallback(
-    async (email: string, role: "owner" | "editor" | "viewer") => {
-      if (!projectId) return;
-      await shareProject(projectId, email, role);
-    },
-    [projectId, shareProject]
-  );
-
-  const handleUnshare = useCallback(
-    async (userId: string) => {
-      if (!projectId) return;
-      await unshareProject(projectId, userId);
-    },
-    [projectId, unshareProject]
-  );
-
-  const handleUpdateRole = useCallback(
-    async (userId: string, role: "owner" | "editor" | "viewer") => {
-      if (!projectId) return;
-      await updateShareRole(projectId, userId, role);
-    },
-    [projectId, updateShareRole]
-  );
+  }, [projectId, updateProject, project?.analysis, currentTechStack]);
 
   // Start code analysis handler
   const handleStartAnalysis = useCallback(async () => {
@@ -502,21 +457,21 @@ export default function ProjectDashboardPage() {
   }, []);
 
   const handleSaveProject = useCallback(async () => {
-    if (!projectId || !projectOwnerId || !editedName.trim()) return;
+    if (!projectId || !editedName.trim()) return;
 
     setIsSavingProject(true);
     try {
       await updateProject(projectId, {
         name: editedName.trim(),
         description: editedDescription.trim() || undefined,
-      }, projectOwnerId);
+      });
       setIsEditingProject(false);
     } catch (error) {
       console.error("Error updating project:", error);
     } finally {
       setIsSavingProject(false);
     }
-  }, [projectId, projectOwnerId, editedName, editedDescription, updateProject]);
+  }, [projectId, editedName, editedDescription, updateProject]);
 
   // Sync project context with layout
   useEffect(() => {
@@ -530,12 +485,6 @@ export default function ProjectDashboardPage() {
       setCurrentProjectId(project.id || null);
     }
   }, [project, projectState.step, setProjectContext, setCurrentProjectId]);
-
-  // Sync project owner ID with context (for shared project support in subpages)
-  useEffect(() => {
-    setContextProjectOwnerId(projectOwnerId);
-    return () => setContextProjectOwnerId(null);
-  }, [projectOwnerId, setContextProjectOwnerId]);
 
   // Sync configuration mode with layout
   useEffect(() => {
@@ -567,41 +516,28 @@ export default function ProjectDashboardPage() {
     const loadProject = async () => {
       if (!projectId || !user) return;
 
-      // First try to find in the already loaded projects array
+      // Find project in the loaded projects array
       const foundProject = projects.find((p) => p.id === projectId);
 
       if (foundProject) {
         setProject(foundProject);
-        // Set the owner ID - either it's our project or we need to use the ownerId from shared project
-        setProjectOwnerId(foundProject.ownerId || user.uid);
         if (foundProject.analysis?.newTechStack) {
           setNewTechStack(foundProject.analysis.newTechStack);
         }
       } else if (!projectsLoading) {
-        // If not found in projects array and loading is done, try to fetch from any owner
-        const result = await getProjectByIdFromAnyOwner(projectId);
-        if (result) {
-          setProject(result.project);
-          setProjectOwnerId(result.ownerId);
-          if (result.project.analysis?.newTechStack) {
-            setNewTechStack(result.project.analysis.newTechStack);
-          }
-        } else {
-          // Project not found or no access
-          router.push("/dashboard");
-        }
+        // Project not found
+        router.push("/dashboard");
       }
     };
 
     loadProject();
-  }, [projects, projectId, projectsLoading, user, router, getProjectByIdFromAnyOwner, setNewTechStack]);
+  }, [projects, projectId, projectsLoading, user, router, setNewTechStack]);
 
   // Real-time subscription for project updates
   useEffect(() => {
-    if (!projectId || !user || !projectOwnerId) return;
+    if (!projectId || !user) return;
 
-    // Use the owner's ID for subscription (handles both owned and shared projects)
-    const unsubscribe = subscribeToProjectByOwner(projectOwnerId, projectId, (updatedProject) => {
+    const unsubscribe = subscribeToProject(projectId, (updatedProject) => {
       if (updatedProject) {
         setProject(updatedProject);
         if (updatedProject.analysis?.newTechStack) {
@@ -613,16 +549,16 @@ export default function ProjectDashboardPage() {
     });
 
     return () => unsubscribe();
-  }, [projectId, user, projectOwnerId, subscribeToProjectByOwner, router, setNewTechStack]);
+  }, [projectId, user, subscribeToProject, router, setNewTechStack]);
 
   // Real-time subscription for code-analysis-module action
   useEffect(() => {
-    if (!projectId || !projectOwnerId) return;
+    if (!projectId || !user?.uid) return;
 
     const codeAnalysisCol = collection(
       db,
       "users",
-      projectOwnerId,
+      user.uid,
       "projects",
       projectId,
       "code-analysis-module"
@@ -754,30 +690,6 @@ export default function ProjectDashboardPage() {
                 </Button>
               </div>
             )}
-          </div>
-          <div className="flex gap-2">
-            <Button
-              color="primary"
-              variant="flat"
-              onPress={onShareModalOpen}
-              startContent={
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z"
-                  />
-                </svg>
-              }
-            >
-              Share
-            </Button>
           </div>
         </div>
 
@@ -1158,17 +1070,6 @@ export default function ProjectDashboardPage() {
         onRemoveTech={handleRemoveTech}
         onClearAll={handleClearAllTech}
         onSave={handleSaveTechStack}
-      />
-
-      {/* Share Project Modal */}
-      <ShareProjectModal
-        isOpen={isShareModalOpen}
-        onOpenChange={onShareModalOpenChange}
-        projectName={project.name}
-        currentShares={project.sharedWith || []}
-        onShare={handleShare}
-        onUnshare={handleUnshare}
-        onUpdateRole={handleUpdateRole}
       />
 
       {/* Project Configuration Modal */}

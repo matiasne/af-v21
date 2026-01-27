@@ -62,7 +62,7 @@ export default function KanbanPage() {
   const params = useParams();
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const { projects, loading: projectsLoading, updateExecutorModel } = useProjects();
+  const { projects, loading: projectsLoading, updateExecutorModel, subscribeToExecutorModule, startBoilerplate, restartExecutorModule } = useProjects();
   const {
     setProjectContext,
     setCurrentProjectId,
@@ -75,6 +75,10 @@ export default function KanbanPage() {
   const [tasksLoading, setTasksLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("kanban");
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+  const [isBoilerplateModalOpen, setIsBoilerplateModalOpen] = useState(false);
+  const [isStartingBoilerplate, setIsStartingBoilerplate] = useState(false);
+  const [isRestarting, setIsRestarting] = useState(false);
+  const [executorModuleData, setExecutorModuleData] = useState<{ boilerplateDone?: boolean; action?: string } | null>(null);
 
   // Filter states
   const [selectedCategory, setSelectedCategory] = useState<
@@ -90,6 +94,7 @@ export default function KanbanPage() {
   const {
     migration,
     loading: migrationLoading,
+    techStackAnalysis,
   } = useMigration(projectId, projectOwnerId);
 
   const [selectedModel, setSelectedModel] = useState<string>(
@@ -186,6 +191,52 @@ export default function KanbanPage() {
       unsubscribe();
     };
   }, [user?.uid, projectId]);
+
+  // Subscribe to executor module for boilerplate check
+  useEffect(() => {
+    if (!projectId) return;
+
+    const unsubscribe = subscribeToExecutorModule(projectId, (data) => {
+      setExecutorModuleData(data);
+      // Show modal if boilerplateDone is not set or is false (but not during restart or running states)
+      if (!data?.boilerplateDone && data?.action !== "running" && data?.action !== "start" && data?.action !== "restart") {
+        setIsBoilerplateModalOpen(true);
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [projectId, subscribeToExecutorModule]);
+
+  // Check if project is restarting
+  const isProjectRestarting = executorModuleData?.action === "restart";
+
+  // Handle starting boilerplate
+  const handleStartBoilerplate = async () => {
+    setIsStartingBoilerplate(true);
+    try {
+      await startBoilerplate(projectId);
+      setIsBoilerplateModalOpen(false);
+    } catch (error) {
+      console.error("Error starting boilerplate:", error);
+    } finally {
+      setIsStartingBoilerplate(false);
+    }
+  };
+
+  // Handle restart all
+  const handleRestartAll = async () => {
+    setIsRestarting(true);
+    try {
+      await restartExecutorModule(projectId);
+      setIsConfigModalOpen(false);
+    } catch (error) {
+      console.error("Error restarting executor module:", error);
+    } finally {
+      setIsRestarting(false);
+    }
+  };
 
   // Fuzzy search function
   const fuzzyMatch = (text: string, query: string): boolean => {
@@ -555,6 +606,24 @@ export default function KanbanPage() {
                   This model will be used for executing tasks in the migration executor module.
                 </p>
               </div>
+
+              <div className="border-t border-default-200 pt-4">
+                <label className="block text-sm font-medium text-default-700 mb-2">
+                  Danger Zone
+                </label>
+                <Button
+                  color="danger"
+                  variant="flat"
+                  onPress={handleRestartAll}
+                  isLoading={isRestarting}
+                  className="w-full"
+                >
+                  Restart All
+                </Button>
+                <p className="text-xs text-default-500 mt-2">
+                  This will reset the boilerplate process and set the executor module to restart.
+                </p>
+              </div>
             </div>
           </ModalBody>
           <ModalFooter>
@@ -565,6 +634,115 @@ export default function KanbanPage() {
               Done
             </Button>
           </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Boilerplate Modal */}
+      <Modal
+        isOpen={isBoilerplateModalOpen}
+        onClose={() => setIsBoilerplateModalOpen(false)}
+        size="lg"
+        isDismissable={false}
+      >
+        <ModalContent>
+          <ModalHeader>
+            <h2 className="text-xl font-bold">Start Boilerplate Setup</h2>
+          </ModalHeader>
+          <ModalBody>
+            <div className="flex flex-col gap-4">
+              <p className="text-default-700">
+                Before executing tasks, we need to set up the boilerplate for your new application using the defined tech stack.
+              </p>
+
+              {techStackAnalysis && (
+                <div className="bg-default-100 rounded-lg p-4">
+                  <h3 className="text-sm font-semibold text-default-700 mb-3">Target Tech Stack:</h3>
+                  <div className="flex flex-col gap-2">
+                    {techStackAnalysis.languages.length > 0 && (
+                      <div>
+                        <span className="text-xs text-default-500">Languages:</span>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {techStackAnalysis.languages.map((item) => (
+                            <span key={item.name} className="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded">
+                              {item.name}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {techStackAnalysis.frameworks.length > 0 && (
+                      <div>
+                        <span className="text-xs text-default-500">Frameworks:</span>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {techStackAnalysis.frameworks.map((item) => (
+                            <span key={item.name} className="text-xs bg-secondary-100 text-secondary-700 px-2 py-1 rounded">
+                              {item.name}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {techStackAnalysis.databases.length > 0 && (
+                      <div>
+                        <span className="text-xs text-default-500">Databases:</span>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {techStackAnalysis.databases.map((item) => (
+                            <span key={item.name} className="text-xs bg-success-100 text-success-700 px-2 py-1 rounded">
+                              {item.name}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <p className="text-sm text-default-500">
+                Do you want to start the Boilerplate process now?
+              </p>
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              variant="flat"
+              onPress={() => setIsBoilerplateModalOpen(false)}
+            >
+              Later
+            </Button>
+            <Button
+              color="primary"
+              onPress={handleStartBoilerplate}
+              isLoading={isStartingBoilerplate}
+            >
+              Start Boilerplate
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Restart In Progress Modal */}
+      <Modal
+        isOpen={isProjectRestarting}
+        size="md"
+        isDismissable={false}
+        hideCloseButton
+      >
+        <ModalContent>
+          <ModalHeader>
+            <h2 className="text-xl font-bold">Project Restarting</h2>
+          </ModalHeader>
+          <ModalBody>
+            <div className="flex flex-col items-center gap-4 py-4">
+              <Spinner size="lg" color="primary" />
+              <p className="text-default-700 text-center">
+                The project is being restarted. Please wait while the system resets the boilerplate and executor module.
+              </p>
+              <p className="text-sm text-default-500 text-center">
+                This may take a few moments. You will be able to continue once the restart is complete.
+              </p>
+            </div>
+          </ModalBody>
         </ModalContent>
       </Modal>
     </div>

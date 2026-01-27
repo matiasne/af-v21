@@ -1,8 +1,7 @@
-import { Project, ConfigChatMessage, ProjectShare } from "../entities/Project";
+import { Project, ConfigChatMessage } from "../entities/Project";
 
 export interface ProjectRepository {
   getProjects(userId: string): Promise<Project[]>;
-  getSharedProjects(userId: string, userEmail?: string): Promise<Project[]>;
   getProject(userId: string, projectId: string): Promise<Project | null>;
   createProject(
     userId: string,
@@ -14,24 +13,6 @@ export interface ProjectRepository {
     data: Partial<Project>
   ): Promise<void>;
   deleteProject(userId: string, projectId: string): Promise<void>;
-
-  // Sharing methods
-  shareProject(
-    userId: string,
-    projectId: string,
-    share: Omit<ProjectShare, "sharedAt" | "sharedBy">
-  ): Promise<void>;
-  unshareProject(
-    userId: string,
-    projectId: string,
-    sharedUserId: string
-  ): Promise<void>;
-  updateShareRole(
-    userId: string,
-    projectId: string,
-    sharedUserId: string,
-    role: ProjectShare["role"]
-  ): Promise<void>;
 
   // Config chat messages subcollection (for tech stack configuration)
   getConfigChatMessages(

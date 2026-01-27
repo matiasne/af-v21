@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo } from "react";
 
-import { Project, ConfigChatMessage, ProjectShare, ProjectRole } from "@/domain/entities/Project";
+import { Project, ConfigChatMessage } from "@/domain/entities/Project";
 import { FirebaseProjectRepository } from "@/infrastructure/repositories/FirebaseProjectRepository";
 import { useAuth } from "@/infrastructure/context/AuthContext";
 
@@ -27,18 +27,8 @@ export function useProjects() {
     setError(null);
 
     try {
-      // Fetch both owned and shared projects
-      const [ownedProjects, sharedProjects] = await Promise.all([
-        projectRepository.getProjects(user.uid),
-        projectRepository.getSharedProjects(user.uid, user.email || undefined),
-      ]);
-
-      // Combine and sort by updatedAt
-      const allProjects = [...ownedProjects, ...sharedProjects].sort(
-        (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)
-      );
-
-      setProjects(allProjects);
+      const ownedProjects = await projectRepository.getProjects(user.uid);
+      setProjects(ownedProjects);
     } catch (err) {
       setError(err as Error);
     } finally {
@@ -76,15 +66,13 @@ export function useProjects() {
   );
 
   const updateProject = useCallback(
-    async (projectId: string, data: Partial<Project>, ownerId?: string): Promise<boolean> => {
+    async (projectId: string, data: Partial<Project>): Promise<boolean> => {
       if (!user) return false;
 
       setError(null);
 
       try {
-        // Use provided ownerId for shared projects, otherwise use current user's ID
-        const effectiveOwnerId = ownerId || user.uid;
-        await projectRepository.updateProject(effectiveOwnerId, projectId, data);
+        await projectRepository.updateProject(user.uid, projectId, data);
         // Don't show loading spinner during background refresh after update
         await fetchProjects(false);
 
@@ -253,107 +241,6 @@ export function useProjects() {
     [user, projectRepository],
   );
 
-  const subscribeToProjectByOwner = useCallback(
-    (ownerId: string, projectId: string, onUpdate: (project: Project | null) => void) => {
-      return projectRepository.subscribeToProjectByOwner(ownerId, projectId, onUpdate);
-    },
-    [projectRepository],
-  );
-
-  const getProjectByIdFromAnyOwner = useCallback(
-    async (projectId: string): Promise<{ project: Project; ownerId: string } | null> => {
-      if (!user) return null;
-
-      try {
-        return await projectRepository.getProjectByIdFromAnyOwner(
-          projectId,
-          user.uid,
-          user.email || undefined
-        );
-      } catch (err) {
-        setError(err as Error);
-        return null;
-      }
-    },
-    [user, projectRepository],
-  );
-
-  const shareProject = useCallback(
-    async (
-      projectId: string,
-      email: string,
-      role: ProjectRole
-    ): Promise<boolean> => {
-      if (!user) return false;
-
-      setError(null);
-
-      try {
-        // Note: In a real app, you'd want to look up the userId from the email
-        // For now, we'll use a placeholder userId based on email
-        const userId = email.replace(/[@.]/g, "_");
-
-        await projectRepository.shareProject(user.uid, projectId, {
-          userId,
-          email,
-          role,
-        });
-
-        await fetchProjects(false);
-        return true;
-      } catch (err) {
-        setError(err as Error);
-        return false;
-      }
-    },
-    [user, fetchProjects, projectRepository],
-  );
-
-  const unshareProject = useCallback(
-    async (projectId: string, sharedUserId: string): Promise<boolean> => {
-      if (!user) return false;
-
-      setError(null);
-
-      try {
-        await projectRepository.unshareProject(user.uid, projectId, sharedUserId);
-        await fetchProjects(false);
-        return true;
-      } catch (err) {
-        setError(err as Error);
-        return false;
-      }
-    },
-    [user, fetchProjects, projectRepository],
-  );
-
-  const updateShareRole = useCallback(
-    async (
-      projectId: string,
-      sharedUserId: string,
-      role: ProjectRole
-    ): Promise<boolean> => {
-      if (!user) return false;
-
-      setError(null);
-
-      try {
-        await projectRepository.updateShareRole(
-          user.uid,
-          projectId,
-          sharedUserId,
-          role
-        );
-        await fetchProjects(false);
-        return true;
-      } catch (err) {
-        setError(err as Error);
-        return false;
-      }
-    },
-    [user, fetchProjects, projectRepository],
-  );
-
   const startCodeAnalysis = useCallback(
     async (projectId: string, migrationId: string): Promise<boolean> => {
       if (!user) return false;
@@ -409,6 +296,49 @@ export function useProjects() {
     [user, projectRepository],
   );
 
+  const subscribeToExecutorModule = useCallback(
+    (projectId: string, onUpdate: (data: { boilerplateDone?: boolean; action?: string } | null) => void) => {
+      if (!user) return () => {};
+
+      return projectRepository.subscribeToExecutorModule(user.uid, projectId, onUpdate);
+    },
+    [user, projectRepository],
+  );
+
+  const startBoilerplate = useCallback(
+    async (projectId: string): Promise<boolean> => {
+      if (!user) return false;
+
+      setError(null);
+
+      try {
+        await projectRepository.startBoilerplate(user.uid, projectId);
+        return true;
+      } catch (err) {
+        setError(err as Error);
+        return false;
+      }
+    },
+    [user, projectRepository],
+  );
+
+  const restartExecutorModule = useCallback(
+    async (projectId: string): Promise<boolean> => {
+      if (!user) return false;
+
+      setError(null);
+
+      try {
+        await projectRepository.restartExecutorModule(user.uid, projectId);
+        return true;
+      } catch (err) {
+        setError(err as Error);
+        return false;
+      }
+    },
+    [user, projectRepository],
+  );
+
   return {
     projects,
     loading,
@@ -425,13 +355,11 @@ export function useProjects() {
     getLegacyFilesCount,
     updateExecutorModel,
     subscribeToProject,
-    subscribeToProjectByOwner,
-    getProjectByIdFromAnyOwner,
-    shareProject,
-    unshareProject,
-    updateShareRole,
     startCodeAnalysis,
     stopCodeAnalysis,
     resumeCodeAnalysis,
+    subscribeToExecutorModule,
+    startBoilerplate,
+    restartExecutorModule,
   };
 }

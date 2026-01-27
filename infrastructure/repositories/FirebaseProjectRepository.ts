@@ -1,6 +1,5 @@
 import {
   collection,
-  collectionGroup,
   doc,
   getDoc,
   getDocs,
@@ -12,19 +11,15 @@ import {
   writeBatch,
   onSnapshot,
   Unsubscribe,
-  where,
-  arrayUnion,
-  arrayRemove,
 } from "firebase/firestore";
 import {
   ref,
   uploadBytes,
-  getDownloadURL,
   deleteObject,
 } from "firebase/storage";
 
 import { db, storage } from "../firebase/config";
-import { Project, ConfigChatMessage, ProjectShare, ProjectDocument } from "@/domain/entities/Project";
+import { Project, ConfigChatMessage, ProjectDocument } from "@/domain/entities/Project";
 import { ProjectRepository } from "@/domain/repositories/ProjectRepository";
 
 export class FirebaseProjectRepository implements ProjectRepository {
@@ -273,138 +268,6 @@ export class FirebaseProjectRepository implements ProjectRepository {
     }
   }
 
-  async getSharedProjects(userId: string, userEmail?: string): Promise<Project[]> {
-    // Use collectionGroup to query all projects collections across all users
-    const projectsGroup = collectionGroup(db, "projects");
-    const querySnapshot = await getDocs(projectsGroup);
-
-    const sharedProjects: Project[] = [];
-
-    querySnapshot.docs.forEach((docSnapshot) => {
-      const project = { id: docSnapshot.id, ...docSnapshot.data() } as Project;
-      // Check if current user is in sharedWith array by either userId or email
-      const isShared = project.sharedWith?.some(
-        (share) => share.userId === userId || (userEmail && share.email === userEmail)
-      );
-      // Exclude projects owned by the user (they're already fetched by getProjects)
-      if (isShared && project.ownerId !== userId) {
-        sharedProjects.push(project);
-      }
-    });
-
-    // Sort by updatedAt descending
-    return sharedProjects.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
-  }
-
-  async getProjectByIdFromAnyOwner(projectId: string, currentUserId: string, currentUserEmail?: string): Promise<{ project: Project; ownerId: string } | null> {
-    // Use collectionGroup to find the project across all users
-    const projectsGroup = collectionGroup(db, "projects");
-    const querySnapshot = await getDocs(projectsGroup);
-
-    for (const docSnapshot of querySnapshot.docs) {
-      if (docSnapshot.id === projectId) {
-        const project = { id: docSnapshot.id, ...docSnapshot.data() } as Project;
-        // Extract ownerId from the document path: users/{ownerId}/projects/{projectId}
-        const pathParts = docSnapshot.ref.path.split("/");
-        const ownerId = pathParts[1];
-
-        // Check if user has access (is owner or in sharedWith)
-        const isOwner = project.ownerId === currentUserId;
-        const isShared = project.sharedWith?.some(
-          (share) => share.userId === currentUserId || (currentUserEmail && share.email === currentUserEmail)
-        );
-
-        if (isOwner || isShared) {
-          return { project, ownerId };
-        }
-      }
-    }
-
-    return null;
-  }
-
-  subscribeToProjectByOwner(
-    ownerId: string,
-    projectId: string,
-    onUpdate: (project: Project | null) => void
-  ): Unsubscribe {
-    const docRef = this.getProjectDoc(ownerId, projectId);
-
-    return onSnapshot(docRef, (docSnap) => {
-      if (docSnap.exists()) {
-        onUpdate({ id: docSnap.id, ...docSnap.data() } as Project);
-      } else {
-        onUpdate(null);
-      }
-    });
-  }
-
-  async shareProject(
-    userId: string,
-    projectId: string,
-    share: Omit<ProjectShare, "sharedAt" | "sharedBy">
-  ): Promise<void> {
-    const docRef = this.getProjectDoc(userId, projectId);
-
-    const projectShare: ProjectShare = {
-      ...share,
-      sharedAt: Date.now(),
-      sharedBy: userId,
-    };
-
-    await updateDoc(docRef, {
-      sharedWith: arrayUnion(projectShare),
-      updatedAt: Date.now(),
-    });
-  }
-
-  async unshareProject(
-    userId: string,
-    projectId: string,
-    sharedUserId: string
-  ): Promise<void> {
-    const docRef = this.getProjectDoc(userId, projectId);
-    const docSnap = await getDoc(docRef);
-
-    if (!docSnap.exists()) {
-      throw new Error("Project not found");
-    }
-
-    const project = docSnap.data() as Project;
-    const updatedShares = (project.sharedWith || []).filter(
-      share => share.userId !== sharedUserId
-    );
-
-    await updateDoc(docRef, {
-      sharedWith: updatedShares,
-      updatedAt: Date.now(),
-    });
-  }
-
-  async updateShareRole(
-    userId: string,
-    projectId: string,
-    sharedUserId: string,
-    role: ProjectShare["role"]
-  ): Promise<void> {
-    const docRef = this.getProjectDoc(userId, projectId);
-    const docSnap = await getDoc(docRef);
-
-    if (!docSnap.exists()) {
-      throw new Error("Project not found");
-    }
-
-    const project = docSnap.data() as Project;
-    const updatedShares = (project.sharedWith || []).map(share =>
-      share.userId === sharedUserId ? { ...share, role } : share
-    );
-
-    await updateDoc(docRef, {
-      sharedWith: updatedShares,
-      updatedAt: Date.now(),
-    });
-  }
-
   subscribeToProject(
     userId: string,
     projectId: string,
@@ -627,5 +490,90 @@ export class FirebaseProjectRepository implements ProjectRepository {
       );
       onUpdate(documents);
     });
+  }
+
+  private getExecutorModuleCollection(userId: string, projectId: string) {
+    return collection(
+      db,
+      "users",
+      userId,
+      "projects",
+      projectId,
+      "migration-executor-module"
+    );
+  }
+
+  subscribeToExecutorModule(
+    userId: string,
+    projectId: string,
+    onUpdate: (data: { boilerplateDone?: boolean; action?: string } | null) => void
+  ): Unsubscribe {
+    const colRef = this.getExecutorModuleCollection(userId, projectId);
+
+    return onSnapshot(colRef, (querySnapshot) => {
+      if (querySnapshot.empty) {
+        onUpdate(null);
+      } else {
+        const docData = querySnapshot.docs[0].data();
+        onUpdate({
+          boilerplateDone: docData.boilerplateDone,
+          action: docData.action,
+        });
+      }
+    });
+  }
+
+  async startBoilerplate(
+    userId: string,
+    projectId: string
+  ): Promise<void> {
+    const colRef = this.getExecutorModuleCollection(userId, projectId);
+    const querySnapshot = await getDocs(colRef);
+
+    const now = Date.now();
+
+    if (querySnapshot.empty) {
+      // Create new document if none exists
+      await addDoc(colRef, {
+        action: "start",
+        createdAt: now,
+        updatedAt: now,
+      });
+    } else {
+      // Update existing document - set action to "start"
+      const docRef = querySnapshot.docs[0].ref;
+      await updateDoc(docRef, {
+        action: "start",
+        updatedAt: now,
+      });
+    }
+  }
+
+  async restartExecutorModule(
+    userId: string,
+    projectId: string
+  ): Promise<void> {
+    const colRef = this.getExecutorModuleCollection(userId, projectId);
+    const querySnapshot = await getDocs(colRef);
+
+    const now = Date.now();
+
+    if (querySnapshot.empty) {
+      // Create new document if none exists
+      await addDoc(colRef, {
+        action: "restart",
+        boilerplateDone: false,
+        createdAt: now,
+        updatedAt: now,
+      });
+    } else {
+      // Update existing document - set action to "restart" and boilerplateDone to false
+      const docRef = querySnapshot.docs[0].ref;
+      await updateDoc(docRef, {
+        action: "restart",
+        boilerplateDone: false,
+        updatedAt: now,
+      });
+    }
   }
 }

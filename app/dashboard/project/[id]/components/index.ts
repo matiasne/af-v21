@@ -24,7 +24,6 @@ export { MigrationPlannerAndKanbanCard } from "./MigrationPlannerAndKanbanCard";
 export { ExecutionPlanPanel } from "./ExecutionPlanPanel";
 export { FilesCard } from "./FilesCard";
 export { MigrationPlannerCard } from "./MigrationPlannerCard";
-export { ShareProjectModal } from "./ShareProjectModal";
 export { ProjectConfigModal } from "./ProjectConfigModal";
 export { ProjectStepper, type ProjectStep } from "./ProjectStepper";
 export { DocumentUploadCard } from "./DocumentUploadCard";
