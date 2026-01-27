@@ -94,7 +94,6 @@ export default function KanbanPage() {
   const {
     migration,
     loading: migrationLoading,
-    techStackAnalysis,
   } = useMigration(projectId, projectOwnerId);
 
   const [selectedModel, setSelectedModel] = useState<string>(
@@ -696,46 +695,15 @@ export default function KanbanPage() {
                 Before executing tasks, we need to set up the boilerplate for your new application using the defined tech stack.
               </p>
 
-              {techStackAnalysis && (
+              {project?.analysis?.newTechStack && project.analysis.newTechStack.length > 0 && (
                 <div className="bg-default-100 rounded-lg p-4">
                   <h3 className="text-sm font-semibold text-default-700 mb-3">Target Tech Stack:</h3>
-                  <div className="flex flex-col gap-2">
-                    {techStackAnalysis.languages.length > 0 && (
-                      <div>
-                        <span className="text-xs text-default-500">Languages:</span>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {techStackAnalysis.languages.map((item) => (
-                            <span key={item.name} className="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded">
-                              {item.name}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {techStackAnalysis.frameworks.length > 0 && (
-                      <div>
-                        <span className="text-xs text-default-500">Frameworks:</span>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {techStackAnalysis.frameworks.map((item) => (
-                            <span key={item.name} className="text-xs bg-secondary-100 text-secondary-700 px-2 py-1 rounded">
-                              {item.name}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {techStackAnalysis.databases.length > 0 && (
-                      <div>
-                        <span className="text-xs text-default-500">Databases:</span>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {techStackAnalysis.databases.map((item) => (
-                            <span key={item.name} className="text-xs bg-success-100 text-success-700 px-2 py-1 rounded">
-                              {item.name}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                  <div className="flex flex-wrap gap-2">
+                    {project.analysis.newTechStack.map((tech) => (
+                      <span key={tech} className="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded">
+                        {tech}
+                      </span>
+                    ))}
                   </div>
                 </div>
               )}

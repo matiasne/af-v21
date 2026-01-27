@@ -44,6 +44,7 @@ interface ProjectConfigModalProps {
     defaultAgent?: StepAgentConfig;
     stepAgents?: Record<string, StepAgentConfig>;
   }) => Promise<void>;
+  onUpdateProject?: (data: { processorHost?: string }) => Promise<void>;
   onDeleteProject?: () => Promise<void>;
 }
 
@@ -54,6 +55,7 @@ export function ProjectConfigModal({
   uiType = "migration",
   migration,
   onUpdateMigrationConfig,
+  onUpdateProject,
   onDeleteProject,
 }: ProjectConfigModalProps) {
   // For start_from_doc, only show Processor Host, Default AI Agent, and Danger Zone
@@ -179,13 +181,17 @@ export function ProjectConfigModal({
           : undefined,
         stepAgents,
       });
+      // Also update the project document with processorHost
+      if (onUpdateProject && processorHost) {
+        await onUpdateProject({ processorHost });
+      }
       setHasUnsavedChanges(false);
     } catch (error) {
       console.error("Error saving configuration:", error);
     } finally {
       setIsSaving(false);
     }
-  }, [onUpdateMigrationConfig, processorHost, selectedProvider, selectedAgentModel, stepAgents]);
+  }, [onUpdateMigrationConfig, onUpdateProject, processorHost, selectedProvider, selectedAgentModel, stepAgents]);
 
   const hasCustomStepAgents = Object.keys(stepAgents).length > 0;
 

@@ -1080,6 +1080,9 @@ export default function ProjectDashboardPage() {
         uiType={project.uiType}
         migration={migration}
         onUpdateMigrationConfig={handleUpdateMigrationConfig}
+        onUpdateProject={async (data) => {
+          await updateProject(projectId, data);
+        }}
         onDeleteProject={handleDeleteProject}
       />
     </>
