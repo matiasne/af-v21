@@ -7,6 +7,7 @@ import { Input } from "@heroui/input";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Divider } from "@heroui/divider";
 import { Link } from "@heroui/link";
+import Image from "next/image";
 
 import { useAuth } from "@/infrastructure/context/AuthContext";
 import Threads from "@/components/Threads";
@@ -60,13 +61,31 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="fixed inset-0 w-screen h-screen flex justify-center items-center">
+    <div className="fixed inset-0 w-screen h-screen flex flex-col justify-center items-center">
       <Threads
         color={[0.5, 0.3, 1]}
         amplitude={2}
         distance={0.3}
         enableMouseInteraction
       />
+      <div
+        className={`relative z-10 mb-6 transition-all duration-500 ease-out ${
+          exiting
+            ? "opacity-0 translate-y-8"
+            : mounted
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 translate-y-12"
+        }`}
+      >
+        <Image
+          src="/Echo Logo Black H.png"
+          alt="Echo Logo"
+          width={180}
+          height={54}
+          priority
+          className="dark:invert"
+        />
+      </div>
       <Card
         className={`relative z-10 w-full max-w-md transition-all duration-500 ease-out ${
           exiting

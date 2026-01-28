@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Link } from "@heroui/link";
 import { button as buttonStyles } from "@heroui/theme";
 import { Spinner } from "@heroui/spinner";
+import Image from "next/image";
 
 import { title, subtitle } from "@/components/primitives";
 import { useAuth } from "@/infrastructure/context/AuthContext";
@@ -47,6 +48,16 @@ export default function Home() {
         distance={0.3}
         enableMouseInteraction
       />
+      <div className="relative z-10 mb-6">
+        <Image
+          src="/Echo Logo Black H.png"
+          alt="Echo Logo"
+          width={200}
+          height={60}
+          priority
+          className="dark:invert"
+        />
+      </div>
       <div className="relative z-10 inline-block max-w-xl text-center justify-center">
         <span className={title()}>Agentic&nbsp;</span>
         <span className={title({ color: "violet" })}>Framework&nbsp;</span>

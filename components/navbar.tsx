@@ -162,22 +162,7 @@ export const Navbar = ({ pageTitle, projectName, backUrl, breadcrumbs }: NavbarP
                 </DropdownItem>
               </DropdownMenu>
             </Dropdown>
-          ) : (
-            <div className="flex gap-2">
-              <Button as={NextLink} href="/login" variant="flat" size="sm">
-                Login
-              </Button>
-              <Button
-                as={NextLink}
-                href="/signup"
-                color="primary"
-                variant="solid"
-                size="sm"
-              >
-                Sign Up
-              </Button>
-            </div>
-          )}
+          ) : null}
         </NavbarItem>
       </NavbarContent>
 
