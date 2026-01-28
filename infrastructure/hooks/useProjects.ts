@@ -297,7 +297,7 @@ export function useProjects() {
   );
 
   const subscribeToExecutorModule = useCallback(
-    (projectId: string, onUpdate: (data: { boilerplateDone?: boolean; action?: string } | null) => void) => {
+    (projectId: string, onUpdate: (data: { boilerplateDone?: boolean; action?: string; error?: string } | null) => void) => {
       if (!user) return () => {};
 
       return projectRepository.subscribeToExecutorModule(user.uid, projectId, onUpdate);

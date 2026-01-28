@@ -78,7 +78,8 @@ export default function KanbanPage() {
   const [isBoilerplateModalOpen, setIsBoilerplateModalOpen] = useState(false);
   const [isStartingBoilerplate, setIsStartingBoilerplate] = useState(false);
   const [isRestarting, setIsRestarting] = useState(false);
-  const [executorModuleData, setExecutorModuleData] = useState<{ boilerplateDone?: boolean; action?: string } | null>(null);
+  const [executorModuleData, setExecutorModuleData] = useState<{ boilerplateDone?: boolean; action?: string; error?: string } | null>(null);
+  const [isRetryingExecutor, setIsRetryingExecutor] = useState(false);
 
   // Filter states
   const [selectedCategory, setSelectedCategory] = useState<
@@ -197,8 +198,8 @@ export default function KanbanPage() {
 
     const unsubscribe = subscribeToExecutorModule(projectId, (data) => {
       setExecutorModuleData(data);
-      // Show modal if boilerplateDone is not set or is false (but not during restart or running states)
-      if (!data?.boilerplateDone && data?.action !== "running" && data?.action !== "start" && data?.action !== "restart") {
+      // Show modal if boilerplateDone is not set or is false (but not during restart, running, or error states)
+      if (!data?.boilerplateDone && data?.action !== "running" && data?.action !== "start" && data?.action !== "restart" && data?.action !== "error") {
         setIsBoilerplateModalOpen(true);
       }
     });
@@ -210,6 +211,21 @@ export default function KanbanPage() {
 
   // Check if project is restarting
   const isProjectRestarting = executorModuleData?.action === "restart";
+
+  // Check if executor module has an error
+  const isExecutorError = executorModuleData?.action === "error";
+
+  // Handle retry executor module
+  const handleRetryExecutor = async () => {
+    setIsRetryingExecutor(true);
+    try {
+      await startBoilerplate(projectId);
+    } catch (error) {
+      console.error("Error retrying executor module:", error);
+    } finally {
+      setIsRetryingExecutor(false);
+    }
+  };
 
   // Handle download tasks as JSON
   const handleDownloadTasks = () => {
@@ -304,6 +320,46 @@ export default function KanbanPage() {
 
   return (
     <div className="container mx-auto max-w-7xl px-4 py-8">
+      {/* Executor Module Error Banner */}
+      {isExecutorError && (
+        <div className="mb-4 p-4 bg-danger-50 dark:bg-danger-950/20 border border-danger-200 dark:border-danger-900 rounded-lg">
+          <div className="flex items-start gap-3">
+            <svg
+              className="w-5 h-5 text-danger mt-0.5 flex-shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-danger-700 dark:text-danger-400">
+                Migration Executor Error
+              </h3>
+              {executorModuleData?.error && (
+                <p className="text-sm text-danger-600 dark:text-danger-300 mt-1 whitespace-pre-wrap">
+                  {executorModuleData.error}
+                </p>
+              )}
+            </div>
+            <Button
+              color="danger"
+              variant="flat"
+              size="sm"
+              onPress={handleRetryExecutor}
+              isLoading={isRetryingExecutor}
+            >
+              Retry
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* View Toggle and Configuration */}
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">

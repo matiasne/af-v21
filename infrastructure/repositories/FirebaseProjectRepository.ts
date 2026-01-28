@@ -506,7 +506,7 @@ export class FirebaseProjectRepository implements ProjectRepository {
   subscribeToExecutorModule(
     userId: string,
     projectId: string,
-    onUpdate: (data: { boilerplateDone?: boolean; action?: string } | null) => void
+    onUpdate: (data: { boilerplateDone?: boolean; action?: string; error?: string } | null) => void
   ): Unsubscribe {
     const colRef = this.getExecutorModuleCollection(userId, projectId);
 
@@ -518,6 +518,7 @@ export class FirebaseProjectRepository implements ProjectRepository {
         onUpdate({
           boilerplateDone: docData.boilerplateDone,
           action: docData.action,
+          error: docData.error,
         });
       }
     });
