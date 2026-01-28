@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(
         { error: "Messages array is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     if (!apiKey) {
       return NextResponse.json(
         { error: "Gemini API key not configured" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -131,7 +131,7 @@ Always respond with valid JSON only. No additional text before or after the JSON
     if (!lastMessage || lastMessage.role !== "user") {
       return NextResponse.json(
         { error: "Last message must be from user" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -167,9 +167,8 @@ Always respond with valid JSON only. No additional text before or after the JSON
 
     // Ensure we always return the current tech stack if the AI returns an empty array
     const responseTechStack = parsedResponse.techStack || [];
-    const finalTechStack = responseTechStack.length > 0
-      ? responseTechStack
-      : (currentTechStack || []);
+    const finalTechStack =
+      responseTechStack.length > 0 ? responseTechStack : currentTechStack || [];
 
     return NextResponse.json({
       message: {
@@ -182,9 +181,6 @@ Always respond with valid JSON only. No additional text before or after the JSON
     } as DefineTechStackResponse);
   } catch (error) {
     console.error("Define tech stack API error:", error);
-    return NextResponse.json(
-      { error: "Failed to process chat message" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error }, { status: 500 });
   }
 }
