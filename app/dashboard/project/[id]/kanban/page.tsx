@@ -80,6 +80,7 @@ export default function KanbanPage() {
   const [isRestarting, setIsRestarting] = useState(false);
   const [executorModuleData, setExecutorModuleData] = useState<{ boilerplateDone?: boolean; action?: string; error?: string } | null>(null);
   const [isRetryingExecutor, setIsRetryingExecutor] = useState(false);
+  const [isForceResuming, setIsForceResuming] = useState(false);
 
   // Filter states
   const [selectedCategory, setSelectedCategory] = useState<
@@ -264,6 +265,19 @@ export default function KanbanPage() {
       console.error("Error restarting executor module:", error);
     } finally {
       setIsRestarting(false);
+    }
+  };
+
+  // Handle force resume
+  const handleForceResume = async () => {
+    setIsForceResuming(true);
+    try {
+      await startBoilerplate(projectId);
+      setIsConfigModalOpen(false);
+    } catch (error) {
+      console.error("Error forcing resume:", error);
+    } finally {
+      setIsForceResuming(false);
     }
   };
 
@@ -706,20 +720,38 @@ export default function KanbanPage() {
 
               <div className="border-t border-default-200 pt-4">
                 <label className="block text-sm font-medium text-default-700 mb-2">
-                  Danger Zone
+                  Actions
                 </label>
-                <Button
-                  color="danger"
-                  variant="flat"
-                  onPress={handleRestartAll}
-                  isLoading={isRestarting}
-                  className="w-full"
-                >
-                  Restart All
-                </Button>
-                <p className="text-xs text-default-500 mt-2">
-                  This will reset the boilerplate process and set the executor module to restart.
-                </p>
+                <div className="flex flex-col gap-3">
+                  <div>
+                    <Button
+                      color="primary"
+                      variant="flat"
+                      onPress={handleForceResume}
+                      isLoading={isForceResuming}
+                      className="w-full"
+                    >
+                      Force Resume
+                    </Button>
+                    <p className="text-xs text-default-500 mt-1">
+                      Force the executor module to resume processing tasks.
+                    </p>
+                  </div>
+                  <div>
+                    <Button
+                      color="danger"
+                      variant="flat"
+                      onPress={handleRestartAll}
+                      isLoading={isRestarting}
+                      className="w-full"
+                    >
+                      Restart All
+                    </Button>
+                    <p className="text-xs text-default-500 mt-1">
+                      This will reset the boilerplate process and set the executor module to restart.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </ModalBody>

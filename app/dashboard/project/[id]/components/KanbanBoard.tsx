@@ -398,6 +398,11 @@ export function KanbanBoard({ tasks, onMoveTask, onMoveAllBacklogToTodo, onMoveA
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>, columnId: TaskStatus) => {
     e.preventDefault();
+    // Don't allow dropping into in_progress or completed columns
+    if (columnId === "in_progress" || columnId === "completed") {
+      e.dataTransfer.dropEffect = "none";
+      return;
+    }
     e.dataTransfer.dropEffect = "move";
     setDragOverColumn(columnId);
   };
@@ -409,6 +414,13 @@ export function KanbanBoard({ tasks, onMoveTask, onMoveAllBacklogToTodo, onMoveA
   const handleDrop = (e: DragEvent<HTMLDivElement>, targetStatus: TaskStatus) => {
     e.preventDefault();
     const taskId = e.dataTransfer.getData("text/plain");
+
+    // Prevent dropping into in_progress or completed columns
+    if (targetStatus === "in_progress" || targetStatus === "completed") {
+      setDraggedTaskId(null);
+      setDragOverColumn(null);
+      return;
+    }
 
     if (taskId && onMoveTask) {
       onMoveTask(taskId, targetStatus);
