@@ -35,7 +35,7 @@ function ProjectLayoutContent({ children }: { children: ReactNode }) {
   return (
     <>
       {pageTitle && (
-        <div className="fixed top-0 left-0 right-0 z-50">
+        <div className="fixed top-0 left-0 right-0 z-50 bg-background">
           <Navbar
             pageTitle={pageTitle}
             projectName={projectContext?.name}
@@ -44,7 +44,7 @@ function ProjectLayoutContent({ children }: { children: ReactNode }) {
           />
         </div>
       )}
-      <div className={pageTitle ? "" : "pb-24"}>{children}</div>
+      <div className={pageTitle ? "pt-28" : "pb-24"}>{children}</div>
       {projectContext && !isConfiguration && (
         <FloatingInput
           projectContext={projectContext}
