@@ -27,6 +27,7 @@ import {
 } from "@/domain/entities/ExecutionPlan";
 import { executionPlanRepository } from "@/infrastructure/repositories/FirebaseExecutionPlanRepository";
 import { KanbanBoard, TaskList } from "../components";
+import NewTaskModal from "../components/NewTaskModal";
 
 type ViewMode = "kanban" | "list";
 
@@ -81,6 +82,7 @@ export default function KanbanPage() {
   const [executorModuleData, setExecutorModuleData] = useState<{ boilerplateDone?: boolean; action?: string; error?: string } | null>(null);
   const [isRetryingExecutor, setIsRetryingExecutor] = useState(false);
   const [isForceResuming, setIsForceResuming] = useState(false);
+  const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
 
   // Filter states
   const [selectedCategory, setSelectedCategory] = useState<
@@ -278,6 +280,25 @@ export default function KanbanPage() {
       console.error("Error forcing resume:", error);
     } finally {
       setIsForceResuming(false);
+    }
+  };
+
+  // Handle create new task
+  const handleCreateTask = async (taskData: {
+    title: string;
+    description: string;
+    category: TaskCategory;
+    priority: "high" | "medium" | "low";
+    cleanArchitectureArea: CleanArchitectureArea;
+    acceptanceCriteria: string[];
+  }) => {
+    if (!user?.uid || !projectId) return;
+
+    try {
+      await executionPlanRepository.createTask(user.uid, projectId, taskData);
+    } catch (error) {
+      console.error("Error creating task:", error);
+      throw error;
     }
   };
 
@@ -659,6 +680,7 @@ export default function KanbanPage() {
               }
             }
           }}
+          onCreateTask={() => setIsNewTaskModalOpen(true)}
         />
       ) : (
         <TaskList
@@ -843,6 +865,13 @@ export default function KanbanPage() {
           </ModalBody>
         </ModalContent>
       </Modal>
+
+      {/* New Task Modal */}
+      <NewTaskModal
+        isOpen={isNewTaskModalOpen}
+        onClose={() => setIsNewTaskModalOpen(false)}
+        onSubmit={handleCreateTask}
+      />
     </div>
   );
 }

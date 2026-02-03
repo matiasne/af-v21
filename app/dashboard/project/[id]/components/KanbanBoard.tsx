@@ -31,6 +31,7 @@ interface KanbanBoardProps {
   onMoveTask?: (taskId: string, status: TaskStatus) => void;
   onMoveAllBacklogToTodo?: (taskIds: string[]) => void;
   onMoveAllTodoToBacklog?: (taskIds: string[]) => void;
+  onCreateTask?: () => void;
 }
 
 function getColumnColor(status: TaskStatus): "default" | "primary" | "warning" | "success" {
@@ -109,6 +110,7 @@ function KanbanColumn({
   onOpenTaskDetails,
   onMoveAllBacklogToTodo,
   onMoveAllTodoToBacklog,
+  onCreateTask,
   tasksByStatus,
 }: {
   column: { id: TaskStatus; label: string };
@@ -123,6 +125,7 @@ function KanbanColumn({
   onOpenTaskDetails: (task: ExecutionPlanTask) => void;
   onMoveAllBacklogToTodo?: () => void;
   onMoveAllTodoToBacklog?: () => void;
+  onCreateTask?: () => void;
   tasksByStatus: Record<TaskStatus, ExecutionPlanTask[]>;
 }) {
   const [visibleCount, setVisibleCount] = useState(TASKS_PER_PAGE);
@@ -188,17 +191,37 @@ function KanbanColumn({
         <span className="text-sm text-default-400">
           {tasks.length}
         </span>
-        {/* Move all to To Do button for Backlog column */}
-        {column.id === "backlog" && tasksByStatus.backlog.length > 0 && onMoveAllBacklogToTodo && (
-          <Button
-            size="sm"
-            color="primary"
-            variant="flat"
-            className="ml-auto text-xs"
-            onPress={onMoveAllBacklogToTodo}
-          >
-            Move all to To Do
-          </Button>
+        {/* New Task button and Move all to To Do button for Backlog column */}
+        {column.id === "backlog" && (
+          <div className="flex items-center gap-2 ml-auto">
+            {onCreateTask && (
+              <Button
+                size="sm"
+                color="success"
+                variant="flat"
+                className="text-xs"
+                onPress={onCreateTask}
+                startContent={
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                }
+              >
+                New Task
+              </Button>
+            )}
+            {tasksByStatus.backlog.length > 0 && onMoveAllBacklogToTodo && (
+              <Button
+                size="sm"
+                color="primary"
+                variant="flat"
+                className="text-xs"
+                onPress={onMoveAllBacklogToTodo}
+              >
+                Move all to To Do
+              </Button>
+            )}
+          </div>
         )}
         {/* Move all to Backlog button for To Do column */}
         {column.id === "todo" && tasksByStatus.todo.length > 0 && onMoveAllTodoToBacklog && (
@@ -351,7 +374,7 @@ function KanbanColumn({
   );
 }
 
-export function KanbanBoard({ tasks, onMoveTask, onMoveAllBacklogToTodo, onMoveAllTodoToBacklog }: KanbanBoardProps) {
+export function KanbanBoard({ tasks, onMoveTask, onMoveAllBacklogToTodo, onMoveAllTodoToBacklog, onCreateTask }: KanbanBoardProps) {
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<TaskStatus | null>(null);
   const [selectedTask, setSelectedTask] = useState<ExecutionPlanTask | null>(null);
@@ -374,6 +397,9 @@ export function KanbanBoard({ tasks, onMoveTask, onMoveAllBacklogToTodo, onMoveA
         grouped.backlog.push(task);
       }
     });
+
+    // Sort completed tasks by updatedAt descending (most recent first)
+    grouped.completed.sort((a, b) => b.updatedAt - a.updatedAt);
 
     return grouped;
   }, [tasks]);
@@ -472,6 +498,7 @@ export function KanbanBoard({ tasks, onMoveTask, onMoveAllBacklogToTodo, onMoveA
             onOpenTaskDetails={handleOpenTaskDetails}
             onMoveAllBacklogToTodo={onMoveAllBacklogToTodo ? handleMoveAllBacklogToTodo : undefined}
             onMoveAllTodoToBacklog={onMoveAllTodoToBacklog ? handleMoveAllTodoToBacklog : undefined}
+            onCreateTask={onCreateTask}
             tasksByStatus={tasksByStatus}
           />
         ))}
