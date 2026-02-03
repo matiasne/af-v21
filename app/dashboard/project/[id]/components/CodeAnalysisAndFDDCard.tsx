@@ -616,52 +616,59 @@ export function CodeAnalysisAndFDDCard({
 
                   {/* Error Message */}
                   {(isError || codeAnalysisStatus === "error") && (
-                    <div className="bg-danger-50 dark:bg-danger-900/20 rounded-lg p-4 space-y-3">
-                      <div className="flex items-start gap-2">
-                        <svg
-                          className="h-5 w-5 text-danger-500 flex-shrink-0 mt-0.5"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth={2}
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
-                          />
-                        </svg>
+                    <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 space-y-3">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
+                          <svg
+                            className="h-4 w-4 text-amber-600 dark:text-amber-400"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                            />
+                          </svg>
+                        </div>
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-danger-600 dark:text-danger-400">
-                            An error occurred during the analysis
+                          <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                            Connection interrupted
                           </p>
-                          {codeAnalysisCurrentStep && (
-                            <p className="text-xs text-danger-500 mt-1">
-                              Failed at step:{" "}
-                              {getStepLabel(
-                                codeAnalysisCurrentStep as StepStatus,
-                              )}
-                            </p>
-                          )}
-                          {codeAnalysisError && (
-                            <p className="text-sm text-danger-600 dark:text-danger-400 mt-2">
-                              {codeAnalysisError}
-                            </p>
-                          )}
-                          {codeAnalysisErrorDetails && (
+                          <p className="text-sm text-amber-700 dark:text-amber-400 mt-0.5">
+                            The analysis was temporarily interrupted. Your progress is safe.
+                          </p>
+                          {(codeAnalysisCurrentStep || codeAnalysisError || codeAnalysisErrorDetails) && (
                             <details className="mt-2">
-                              <summary className="text-xs text-danger-500 cursor-pointer hover:text-danger-600">
-                                View error details
+                              <summary className="text-xs text-amber-600 dark:text-amber-500 cursor-pointer hover:text-amber-700 dark:hover:text-amber-400">
+                                View technical details
                               </summary>
-                              <pre className="mt-2 text-xs text-danger-600 dark:text-danger-400 bg-danger-100 dark:bg-danger-900/30 p-2 rounded overflow-x-auto whitespace-pre-wrap">
-                                {codeAnalysisErrorDetails}
-                              </pre>
+                              <div className="mt-2 text-xs bg-amber-100 dark:bg-amber-900/30 p-3 rounded-lg space-y-1">
+                                {codeAnalysisCurrentStep && (
+                                  <p className="text-amber-700 dark:text-amber-400">
+                                    <span className="font-medium">Step:</span>{" "}
+                                    {getStepLabel(codeAnalysisCurrentStep as StepStatus)}
+                                  </p>
+                                )}
+                                {codeAnalysisError && (
+                                  <p className="text-amber-700 dark:text-amber-400">
+                                    <span className="font-medium">Error:</span> {codeAnalysisError}
+                                  </p>
+                                )}
+                                {codeAnalysisErrorDetails && (
+                                  <pre className="text-amber-700 dark:text-amber-400 overflow-x-auto whitespace-pre-wrap mt-2">
+                                    {codeAnalysisErrorDetails}
+                                  </pre>
+                                )}
+                              </div>
                             </details>
                           )}
                         </div>
                       </div>
                       <Button
-                        color="danger"
+                        color="warning"
                         variant="flat"
                         fullWidth
                         onPress={handleResumeAnalysis}
