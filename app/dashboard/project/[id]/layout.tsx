@@ -44,7 +44,7 @@ function ProjectLayoutContent({ children }: { children: ReactNode }) {
           />
         </div>
       )}
-      <div className={pageTitle ? "pt-28" : "pb-24"}>{children}</div>
+      <div className={pageTitle ? "pt-1" : "pb-24"}>{children}</div>
       {projectContext && !isConfiguration && (
         <FloatingInput
           projectContext={projectContext}
