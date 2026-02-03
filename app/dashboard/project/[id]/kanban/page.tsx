@@ -397,13 +397,14 @@ export default function KanbanPage() {
 
       {/* View Toggle and Configuration */}
       <div className="mb-4 flex items-center justify-between">
+        {/* Left side: New Task, Export, Configuration */}
         <div className="flex items-center gap-2">
-          <span className="text-sm text-default-600">View:</span>
+          {/* New Task Button */}
           <Button
             size="sm"
-            color={viewMode === "kanban" ? "primary" : "default"}
-            variant={viewMode === "kanban" ? "solid" : "flat"}
-            onPress={() => setViewMode("kanban")}
+            color="primary"
+            variant="solid"
+            onPress={() => setIsNewTaskModalOpen(true)}
             startContent={
               <svg
                 className="w-4 h-4"
@@ -415,39 +416,14 @@ export default function KanbanPage() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"
+                  d="M12 4v16m8-8H4"
                 />
               </svg>
             }
           >
-            Kanban
+            New Task
           </Button>
-          <Button
-            size="sm"
-            color={viewMode === "list" ? "primary" : "default"}
-            variant={viewMode === "list" ? "solid" : "flat"}
-            onPress={() => setViewMode("list")}
-            startContent={
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 10h16M4 14h16M4 18h16"
-                />
-              </svg>
-            }
-          >
-            List
-          </Button>
-        </div>
 
-        <div className="flex items-center gap-2">
           {/* Download Tasks Button */}
           <Button
             size="sm"
@@ -503,6 +479,57 @@ export default function KanbanPage() {
             }
           >
             Configuration
+          </Button>
+        </div>
+
+        {/* Right side: View Toggle */}
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-default-600">View:</span>
+          <Button
+            size="sm"
+            color={viewMode === "kanban" ? "secondary" : "default"}
+            variant={viewMode === "kanban" ? "flat" : "flat"}
+            onPress={() => setViewMode("kanban")}
+            startContent={
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"
+                />
+              </svg>
+            }
+          >
+            Kanban
+          </Button>
+          <Button
+            size="sm"
+            color={viewMode === "list" ? "secondary" : "default"}
+            variant={viewMode === "list" ? "flat" : "flat"}
+            onPress={() => setViewMode("list")}
+            startContent={
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 10h16M4 14h16M4 18h16"
+                />
+              </svg>
+            }
+          >
+            List
           </Button>
         </div>
       </div>
@@ -680,7 +707,6 @@ export default function KanbanPage() {
               }
             }
           }}
-          onCreateTask={() => setIsNewTaskModalOpen(true)}
         />
       ) : (
         <TaskList
@@ -871,6 +897,11 @@ export default function KanbanPage() {
         isOpen={isNewTaskModalOpen}
         onClose={() => setIsNewTaskModalOpen(false)}
         onSubmit={handleCreateTask}
+        projectContext={project ? {
+          name: project.name,
+          description: project.description,
+          techStack: project.analysis?.newTechStack,
+        } : undefined}
       />
     </div>
   );
