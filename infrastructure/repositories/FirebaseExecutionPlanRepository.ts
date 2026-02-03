@@ -8,6 +8,7 @@ import {
   doc,
   updateDoc,
   writeBatch,
+  addDoc,
 } from "firebase/firestore";
 
 import { db } from "../firebase/config";
@@ -275,6 +276,45 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
     });
 
     await batch.commit();
+  }
+
+  async createTask(
+    userId: string,
+    projectId: string,
+    taskData: {
+      title: string;
+      description: string;
+      category: TaskCategory;
+      priority: "high" | "medium" | "low";
+      cleanArchitectureArea: CleanArchitectureArea;
+      acceptanceCriteria?: string[];
+    }
+  ): Promise<string> {
+    const colRef = this.getTasksCollection(userId, projectId);
+    const now = Date.now();
+
+    const newTask = {
+      title: taskData.title,
+      description: taskData.description,
+      category: taskData.category,
+      priority: taskData.priority,
+      cleanArchitectureArea: taskData.cleanArchitectureArea,
+      status: "backlog" as TaskStatus,
+      acceptanceCriteria: taskData.acceptanceCriteria || [],
+      dependencies: [],
+      sourceDocument: "user-created",
+      createdAt: now,
+      updatedAt: now,
+      epicId: "",
+      phaseId: "",
+      effortEstimate: "",
+      deliverables: [],
+      skillsRequired: [],
+      relatedRequirements: [],
+    };
+
+    const docRef = await addDoc(colRef, newTask);
+    return docRef.id;
   }
 }
 
