@@ -23,8 +23,6 @@ function ProjectLayoutContent({ children }: { children: ReactNode }) {
     handleChatHistoryChange,
     isChatLoading,
     setIsChatLoading,
-    pageTitle,
-    breadcrumbs,
     isConfiguration,
     projectOwnerId,
   } = useProjectChat();
@@ -33,16 +31,10 @@ function ProjectLayoutContent({ children }: { children: ReactNode }) {
 
   return (
     <>
-      {pageTitle && (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-background">
-          <Navbar
-            pageTitle={pageTitle}
-            projectName={projectContext?.name}
-            breadcrumbs={breadcrumbs}
-          />
-        </div>
-      )}
-      <div>{children}</div>
+      <div className="fixed top-0 left-0 right-0 z-50 bg-background">
+        <Navbar />
+      </div>
+      <div className="pt-12">{children}</div>
       {projectContext && !isConfiguration && (
         <FloatingInput
           projectContext={projectContext}
