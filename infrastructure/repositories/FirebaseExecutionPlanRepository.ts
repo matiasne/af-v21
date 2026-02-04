@@ -9,6 +9,7 @@ import {
   updateDoc,
   writeBatch,
   addDoc,
+  deleteDoc,
 } from "firebase/firestore";
 
 import { db } from "../firebase/config";
@@ -105,6 +106,7 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
       deliverables: (data.deliverables as string[]) || [],
       skillsRequired: (data.skillsRequired as string[]) || (data.skills_required as string[]) || [],
       relatedRequirements: (data.relatedRequirements as string[]) || (data.related_requirements as string[]) || [],
+      order: (data.order as number) ?? undefined,
     };
   }
 
@@ -315,6 +317,156 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
 
     const docRef = await addDoc(colRef, newTask);
     return docRef.id;
+  }
+
+  async createEpic(
+    userId: string,
+    projectId: string,
+    epicData: {
+      title: string;
+      description: string;
+      priority: "high" | "medium" | "low";
+    }
+  ): Promise<string> {
+    const colRef = this.getEpicsCollection(userId, projectId);
+
+    // Get current epics to determine the next number
+    const existingEpics = await this.getEpics(userId, projectId);
+    const maxNumber = existingEpics.reduce((max, epic) => Math.max(max, epic.number), 0);
+
+    const newEpic = {
+      title: epicData.title,
+      description: epicData.description,
+      priority: epicData.priority,
+      number: maxNumber + 1,
+      relatedRequirements: [],
+    };
+
+    const docRef = await addDoc(colRef, newEpic);
+    return docRef.id;
+  }
+
+  async assignTasksToEpic(
+    userId: string,
+    projectId: string,
+    epicId: string,
+    taskIds: string[]
+  ): Promise<void> {
+    if (taskIds.length === 0) return;
+
+    const batch = writeBatch(db);
+    const updatedAt = Date.now();
+
+    taskIds.forEach((taskId) => {
+      const taskRef = doc(
+        db,
+        "users",
+        userId,
+        "projects",
+        projectId,
+        "execution_plan",
+        taskId
+      );
+      batch.update(taskRef, { epicId, updatedAt });
+    });
+
+    await batch.commit();
+  }
+
+  async updateTasksOrder(
+    userId: string,
+    projectId: string,
+    taskOrders: { taskId: string; order: number }[]
+  ): Promise<void> {
+    if (taskOrders.length === 0) return;
+
+    const batch = writeBatch(db);
+    const updatedAt = Date.now();
+
+    taskOrders.forEach(({ taskId, order }) => {
+      const taskRef = doc(
+        db,
+        "users",
+        userId,
+        "projects",
+        projectId,
+        "execution_plan",
+        taskId
+      );
+      batch.update(taskRef, { order, updatedAt });
+    });
+
+    await batch.commit();
+  }
+
+  async deleteTask(
+    userId: string,
+    projectId: string,
+    taskId: string
+  ): Promise<void> {
+    const taskRef = doc(
+      db,
+      "users",
+      userId,
+      "projects",
+      projectId,
+      "execution_plan",
+      taskId
+    );
+
+    await deleteDoc(taskRef);
+  }
+
+  async deleteEpic(
+    userId: string,
+    projectId: string,
+    epicId: string,
+    deleteTasksToo: boolean = false
+  ): Promise<void> {
+    // First, get all tasks that belong to this epic
+    const tasks = await this.getTasks(userId, projectId);
+    const epicTasks = tasks.filter((task) => task.epicId === epicId);
+
+    if (epicTasks.length > 0) {
+      const batch = writeBatch(db);
+      const updatedAt = Date.now();
+
+      epicTasks.forEach((task) => {
+        const taskRef = doc(
+          db,
+          "users",
+          userId,
+          "projects",
+          projectId,
+          "execution_plan",
+          task.id
+        );
+        if (deleteTasksToo) {
+          // Delete the task
+          batch.delete(taskRef);
+        } else {
+          // Unassign from epic
+          batch.update(taskRef, { epicId: "", updatedAt });
+        }
+      });
+
+      await batch.commit();
+    }
+
+    // Then delete the epic
+    const epicRef = doc(
+      db,
+      "users",
+      userId,
+      "projects",
+      projectId,
+      "execution_plan",
+      "document",
+      "epics",
+      epicId
+    );
+
+    await deleteDoc(epicRef);
   }
 }
 

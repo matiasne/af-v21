@@ -50,4 +50,17 @@ export interface ExecutionPlanRepository {
     taskIds: string[],
     status: TaskStatus
   ): Promise<void>;
+
+  deleteTask(
+    userId: string,
+    projectId: string,
+    taskId: string
+  ): Promise<void>;
+
+  deleteEpic(
+    userId: string,
+    projectId: string,
+    epicId: string,
+    deleteTasksToo?: boolean
+  ): Promise<void>;
 }

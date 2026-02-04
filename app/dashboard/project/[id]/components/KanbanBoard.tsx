@@ -4,18 +4,12 @@ import { useMemo, useState, DragEvent, useRef, useCallback, useEffect } from "re
 import { Card, CardBody } from "@heroui/card";
 import { Chip } from "@heroui/chip";
 import { Button } from "@heroui/button";
-import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  useDisclosure,
-} from "@heroui/modal";
-import { Divider } from "@heroui/divider";
+import { useDisclosure } from "@heroui/modal";
 import { Spinner } from "@heroui/spinner";
+import { addToast } from "@heroui/toast";
 
-import { ExecutionPlanTask, TaskStatus } from "@/domain/entities/ExecutionPlan";
+import { ExecutionPlanTask, TaskStatus, Epic } from "@/domain/entities/ExecutionPlan";
+import { TaskDetailModal } from "./TaskDetailModal";
 
 const KANBAN_COLUMNS: { id: TaskStatus; label: string }[] = [
   { id: "backlog", label: "Backlog" },
@@ -28,10 +22,14 @@ const TASKS_PER_PAGE = 20;
 
 interface KanbanBoardProps {
   tasks: ExecutionPlanTask[];
+  epics?: Epic[];
+  isLocked?: boolean;
+  lockedReason?: string;
   onMoveTask?: (taskId: string, status: TaskStatus) => void;
   onMoveAllBacklogToTodo?: (taskIds: string[]) => void;
   onMoveAllTodoToBacklog?: (taskIds: string[]) => void;
   onCreateTask?: () => void;
+  onUpdateTaskEpic?: (taskId: string, epicId: string) => Promise<void>;
 }
 
 function getColumnColor(status: TaskStatus): "default" | "primary" | "warning" | "success" {
@@ -102,6 +100,7 @@ function KanbanColumn({
   tasks,
   draggedTaskId,
   dragOverColumn,
+  isBoardLocked,
   onDragStart,
   onDragEnd,
   onDragOver,
@@ -117,6 +116,7 @@ function KanbanColumn({
   tasks: ExecutionPlanTask[];
   draggedTaskId: string | null;
   dragOverColumn: TaskStatus | null;
+  isBoardLocked: boolean;
   onDragStart: (e: DragEvent<HTMLDivElement>, taskId: string) => void;
   onDragEnd: () => void;
   onDragOver: (e: DragEvent<HTMLDivElement>, columnId: TaskStatus) => void;
@@ -240,8 +240,8 @@ function KanbanColumn({
       {/* Column Content */}
       <div
         ref={columnRef}
-        className={`flex-1 bg-default-100 dark:bg-default-50/10 rounded-lg p-3 min-h-[300px] max-h-[600px] overflow-y-auto space-y-3 transition-colors ${
-          dragOverColumn === column.id ? "bg-primary-100 dark:bg-primary-900/20 ring-2 ring-primary" : ""
+        className={`flex-1 bg-default-100 dark:bg-default-100/50 rounded-lg p-3 min-h-[300px] max-h-[600px] overflow-y-auto space-y-3 transition-colors ${
+          dragOverColumn === column.id ? "bg-primary-100 dark:bg-primary-900/30 ring-2 ring-primary" : ""
         }`}
         onDragOver={(e) => onDragOver(e, column.id)}
         onDragLeave={onDragLeave}
@@ -254,18 +254,18 @@ function KanbanColumn({
         ) : (
           <>
             {visibleTasks.map((task) => {
-              const isLocked = task.status === "in_progress" || task.status === "completed";
+              const isTaskLocked = isBoardLocked || task.status === "in_progress" || task.status === "completed";
               return (
               <div
                 key={task.id}
-                draggable={!isLocked}
+                draggable={!isTaskLocked}
                 onDragStart={(e) => onDragStart(e, task.id)}
                 onDragEnd={onDragEnd}
                 className={`${draggedTaskId === task.id ? "opacity-50" : ""}`}
               >
                 <Card
                   className={`bg-white dark:bg-default-100 shadow-sm hover:shadow-md transition-shadow ${
-                    isLocked ? "cursor-not-allowed" : "cursor-grab active:cursor-grabbing"
+                    isTaskLocked ? "cursor-not-allowed" : "cursor-grab active:cursor-grabbing"
                   } ${task.error ? "border-2 border-red-300 dark:border-red-900" : ""}`}
                 >
                   <CardBody className="p-3">
@@ -374,7 +374,7 @@ function KanbanColumn({
   );
 }
 
-export function KanbanBoard({ tasks, onMoveTask, onMoveAllBacklogToTodo, onMoveAllTodoToBacklog, onCreateTask }: KanbanBoardProps) {
+export function KanbanBoard({ tasks, epics = [], isLocked = false, lockedReason, onMoveTask, onMoveAllBacklogToTodo, onMoveAllTodoToBacklog, onCreateTask, onUpdateTaskEpic }: KanbanBoardProps) {
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<TaskStatus | null>(null);
   const [selectedTask, setSelectedTask] = useState<ExecutionPlanTask | null>(null);
@@ -405,6 +405,16 @@ export function KanbanBoard({ tasks, onMoveTask, onMoveAllBacklogToTodo, onMoveA
   }, [tasks]);
 
   const handleDragStart = (e: DragEvent<HTMLDivElement>, taskId: string) => {
+    // Prevent dragging when board is locked
+    if (isLocked) {
+      e.preventDefault();
+      addToast({
+        title: "Task movement disabled",
+        description: lockedReason || "Task movement is currently disabled.",
+        color: "warning",
+      });
+      return;
+    }
     // Find the task to check its status
     const task = tasks.find((t) => t.id === taskId);
     // Prevent dragging tasks from in_progress or completed columns
@@ -490,6 +500,7 @@ export function KanbanBoard({ tasks, onMoveTask, onMoveAllBacklogToTodo, onMoveA
             tasks={tasksByStatus[column.id]}
             draggedTaskId={draggedTaskId}
             dragOverColumn={dragOverColumn}
+            isBoardLocked={isLocked}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
             onDragOver={handleDragOver}
@@ -505,179 +516,13 @@ export function KanbanBoard({ tasks, onMoveTask, onMoveAllBacklogToTodo, onMoveA
       </div>
 
       {/* Task Details Modal */}
-      <Modal isOpen={isOpen} onClose={handleCloseModal} size="2xl" scrollBehavior="inside">
-        <ModalContent>
-          {selectedTask && (
-            <>
-              <ModalHeader className="flex flex-col gap-1">
-                <h2 className="text-lg font-semibold">{selectedTask.title}</h2>
-                <div className="flex flex-wrap items-center gap-2 mt-2">
-                  <Chip
-                    size="sm"
-                    color={getColumnColor(selectedTask.status)}
-                    variant="flat"
-                  >
-                    {getStatusLabel(selectedTask.status)}
-                  </Chip>
-                  {selectedTask.category && (
-                    <Chip
-                      size="sm"
-                      color={getCategoryColor(selectedTask.category)}
-                      variant="flat"
-                    >
-                      {selectedTask.category}
-                    </Chip>
-                  )}
-                  {selectedTask.cleanArchitectureArea && (
-                    <Chip
-                      size="sm"
-                      color={getArchitectureAreaColor(selectedTask.cleanArchitectureArea)}
-                      variant="bordered"
-                    >
-                      {selectedTask.cleanArchitectureArea}
-                    </Chip>
-                  )}
-                </div>
-              </ModalHeader>
-              <ModalBody>
-                {/* Description */}
-                {selectedTask.description && (
-                  <div className="mb-4">
-                    <h3 className="text-sm font-semibold text-default-700 mb-2">Description</h3>
-                    <p className="text-sm text-default-600">{selectedTask.description}</p>
-                  </div>
-                )}
-
-                <Divider className="my-4" />
-
-                {/* Acceptance Criteria */}
-                {selectedTask.acceptanceCriteria && selectedTask.acceptanceCriteria.length > 0 && (
-                  <div className="mb-4">
-                    <h3 className="text-sm font-semibold text-default-700 mb-2">
-                      Acceptance Criteria ({selectedTask.acceptanceCriteria.length})
-                    </h3>
-                    <ul className="space-y-2">
-                      {selectedTask.acceptanceCriteria.map((criteria, index) => (
-                        <li key={index} className="flex items-start gap-2 text-sm text-default-600">
-                          <svg
-                            className="w-4 h-4 text-success mt-0.5 flex-shrink-0"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                          </svg>
-                          <span>{criteria}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Dependencies */}
-                {selectedTask.dependencies && selectedTask.dependencies.length > 0 && (
-                  <>
-                    <Divider className="my-4" />
-                    <div className="mb-4">
-                      <h3 className="text-sm font-semibold text-default-700 mb-2">
-                        Dependencies ({selectedTask.dependencies.length})
-                      </h3>
-                      <ul className="space-y-1">
-                        {selectedTask.dependencies.map((dep, index) => (
-                          <li key={index} className="flex items-center gap-2 text-sm text-default-600">
-                            <svg
-                              className="w-4 h-4 text-default-400"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-                              />
-                            </svg>
-                            <span>{dep}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </>
-                )}
-
-                {/* Source Document */}
-                {selectedTask.sourceDocument && (
-                  <>
-                    <Divider className="my-4" />
-                    <div className="mb-4">
-                      <h3 className="text-sm font-semibold text-default-700 mb-2">Source Document</h3>
-                      <p className="text-sm text-default-600">{selectedTask.sourceDocument}</p>
-                    </div>
-                  </>
-                )}
-
-                {/* Completion Summary */}
-                {selectedTask.completionSummary && (
-                  <>
-                    <Divider className="my-4" />
-                    <div className="mb-4">
-                      <h3 className="text-sm font-semibold text-default-700 mb-2">Completion Summary</h3>
-                      <p className="text-sm text-default-600 whitespace-pre-wrap">{selectedTask.completionSummary}</p>
-                    </div>
-                  </>
-                )}
-
-                {/* Error */}
-                {selectedTask.error && (
-                  <>
-                    <Divider className="my-4" />
-                    <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-lg">
-                      <div className="flex items-start gap-2">
-                        <svg
-                          className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                          />
-                        </svg>
-                        <div>
-                          <h3 className="text-sm font-semibold text-red-700 dark:text-red-400 mb-1">Error</h3>
-                          <p className="text-sm text-red-600 dark:text-red-300 whitespace-pre-wrap">{selectedTask.error}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* Metadata */}
-                <Divider className="my-4" />
-                <div className="text-xs text-default-400">
-                  <p>Task ID: {selectedTask.id}</p>
-                  <p>Created: {new Date(selectedTask.createdAt).toLocaleString()}</p>
-                  <p>Updated: {new Date(selectedTask.updatedAt).toLocaleString()}</p>
-                </div>
-              </ModalBody>
-              <ModalFooter>
-                <Button color="primary" variant="light" onPress={handleCloseModal}>
-                  Close
-                </Button>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
+      <TaskDetailModal
+        task={selectedTask}
+        isOpen={isOpen}
+        onClose={handleCloseModal}
+        epics={epics}
+        onUpdateEpic={onUpdateTaskEpic}
+      />
     </>
   );
 }
