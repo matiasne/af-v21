@@ -233,6 +233,13 @@ export interface ProjectShare {
   sharedBy: string;
 }
 
+// User's reference to a project with their role
+export interface UserProjectReference {
+  projectId: string;
+  role: ProjectRole;
+  addedAt: number;
+}
+
 export interface Project {
   id?: string;
   name: string;

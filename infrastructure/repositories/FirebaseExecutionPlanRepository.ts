@@ -24,44 +24,19 @@ import {
 import { ExecutionPlanRepository } from "@/domain/repositories/ExecutionPlanRepository";
 
 export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository {
-  // Path: users/{userId}/projects/{projectId}/execution_plan/document/epics
-  private getEpicsCollection(userId: string, projectId: string) {
-    return collection(
-      db,
-      "users",
-      userId,
-      "projects",
-      projectId,
-      "execution_plan",
-      "document",
-      "epics"
-    );
+  // Path: projects/{projectId}/epics
+  private getEpicsCollection(projectId: string) {
+    return collection(db, "projects", projectId, "epics");
   }
 
-  // Path: users/{userId}/projects/{projectId}/execution_plan/document/phases
-  private getPhasesCollection(userId: string, projectId: string) {
-    return collection(
-      db,
-      "users",
-      userId,
-      "projects",
-      projectId,
-      "execution_plan",
-      "document",
-      "phases"
-    );
+  // Path: projects/{projectId}/phases
+  private getPhasesCollection(projectId: string) {
+    return collection(db, "projects", projectId, "phases");
   }
 
-  // Path: users/{userId}/projects/{projectId}/execution_plan (tasks directly in collection)
-  private getTasksCollection(userId: string, projectId: string) {
-    return collection(
-      db,
-      "users",
-      userId,
-      "projects",
-      projectId,
-      "execution_plan"
-    );
+  // Path: projects/{projectId}/tasks
+  private getTasksCollection(projectId: string) {
+    return collection(db, "projects", projectId, "tasks");
   }
 
   private toEpic(id: string, data: Record<string, unknown>): Epic {
@@ -114,7 +89,7 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
     userId: string,
     projectId: string
   ): Promise<Epic[]> {
-    const q = query(this.getEpicsCollection(userId, projectId));
+    const q = query(this.getEpicsCollection(projectId));
     const querySnapshot = await getDocs(q);
 
     return querySnapshot.docs.map((doc) =>
@@ -127,7 +102,7 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
     projectId: string
   ): Promise<Phase[]> {
     const q = query(
-      this.getPhasesCollection(userId, projectId),
+      this.getPhasesCollection(projectId),
       orderBy("number", "asc")
     );
     const querySnapshot = await getDocs(q);
@@ -141,7 +116,7 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
     userId: string,
     projectId: string
   ): Promise<ExecutionPlanTask[]> {
-    const q = query(this.getTasksCollection(userId, projectId));
+    const q = query(this.getTasksCollection(projectId));
     const querySnapshot = await getDocs(q);
 
     return querySnapshot.docs.map((doc) =>
@@ -155,7 +130,7 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
     onUpdate: (epics: Epic[]) => void,
     onError?: (error: Error) => void
   ): () => void {
-    const q = query(this.getEpicsCollection(userId, projectId));
+    const q = query(this.getEpicsCollection(projectId));
 
     const unsubscribe: Unsubscribe = onSnapshot(
       q,
@@ -183,7 +158,7 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
     onError?: (error: Error) => void
   ): () => void {
     const q = query(
-      this.getPhasesCollection(userId, projectId),
+      this.getPhasesCollection(projectId),
       orderBy("number", "asc")
     );
 
@@ -212,7 +187,7 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
     onUpdate: (tasks: ExecutionPlanTask[]) => void,
     onError?: (error: Error) => void
   ): () => void {
-    const q = query(this.getTasksCollection(userId, projectId));
+    const q = query(this.getTasksCollection(projectId));
 
     const unsubscribe: Unsubscribe = onSnapshot(
       q,
@@ -239,15 +214,7 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
     taskId: string,
     status: TaskStatus
   ): Promise<void> {
-    const taskRef = doc(
-      db,
-      "users",
-      userId,
-      "projects",
-      projectId,
-      "execution_plan",
-      taskId
-    );
+    const taskRef = doc(db, "projects", projectId, "tasks", taskId);
 
     await updateDoc(taskRef, {
       status,
@@ -265,15 +232,7 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
     const updatedAt = Date.now();
 
     taskIds.forEach((taskId) => {
-      const taskRef = doc(
-        db,
-        "users",
-        userId,
-        "projects",
-        projectId,
-        "execution_plan",
-        taskId
-      );
+      const taskRef = doc(db, "projects", projectId, "tasks", taskId);
       batch.update(taskRef, { status, updatedAt });
     });
 
@@ -292,7 +251,7 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
       acceptanceCriteria?: string[];
     }
   ): Promise<string> {
-    const colRef = this.getTasksCollection(userId, projectId);
+    const colRef = this.getTasksCollection(projectId);
     const now = Date.now();
 
     const newTask = {
@@ -328,7 +287,7 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
       priority: "high" | "medium" | "low";
     }
   ): Promise<string> {
-    const colRef = this.getEpicsCollection(userId, projectId);
+    const colRef = this.getEpicsCollection(projectId);
 
     // Get current epics to determine the next number
     const existingEpics = await this.getEpics(userId, projectId);
@@ -358,15 +317,7 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
     const updatedAt = Date.now();
 
     taskIds.forEach((taskId) => {
-      const taskRef = doc(
-        db,
-        "users",
-        userId,
-        "projects",
-        projectId,
-        "execution_plan",
-        taskId
-      );
+      const taskRef = doc(db, "projects", projectId, "tasks", taskId);
       batch.update(taskRef, { epicId, updatedAt });
     });
 
@@ -384,15 +335,7 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
     const updatedAt = Date.now();
 
     taskOrders.forEach(({ taskId, order }) => {
-      const taskRef = doc(
-        db,
-        "users",
-        userId,
-        "projects",
-        projectId,
-        "execution_plan",
-        taskId
-      );
+      const taskRef = doc(db, "projects", projectId, "tasks", taskId);
       batch.update(taskRef, { order, updatedAt });
     });
 
@@ -404,15 +347,7 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
     projectId: string,
     taskId: string
   ): Promise<void> {
-    const taskRef = doc(
-      db,
-      "users",
-      userId,
-      "projects",
-      projectId,
-      "execution_plan",
-      taskId
-    );
+    const taskRef = doc(db, "projects", projectId, "tasks", taskId);
 
     await deleteDoc(taskRef);
   }
@@ -432,15 +367,7 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
       const updatedAt = Date.now();
 
       epicTasks.forEach((task) => {
-        const taskRef = doc(
-          db,
-          "users",
-          userId,
-          "projects",
-          projectId,
-          "execution_plan",
-          task.id
-        );
+        const taskRef = doc(db, "projects", projectId, "tasks", task.id);
         if (deleteTasksToo) {
           // Delete the task
           batch.delete(taskRef);
@@ -454,17 +381,7 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
     }
 
     // Then delete the epic
-    const epicRef = doc(
-      db,
-      "users",
-      userId,
-      "projects",
-      projectId,
-      "execution_plan",
-      "document",
-      "epics",
-      epicId
-    );
+    const epicRef = doc(db, "projects", projectId, "epics", epicId);
 
     await deleteDoc(epicRef);
   }
