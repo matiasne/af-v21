@@ -249,7 +249,6 @@ export default function KanbanPage() {
   // Check if executor module has an error
   const isExecutorError = executorModuleData?.action === "error";
 
-
   // Handle retry executor module
   const handleRetryExecutor = async () => {
     setIsRetryingExecutor(true);
@@ -535,7 +534,7 @@ export default function KanbanPage() {
       {/* Page Title */}
       <div className="flex flex-row gap-2 mb-2">
         <p className="text-sm text-default-500">{project.name}</p>
-        <p className="text-sm font-medium">Task Board</p>
+        <p className="text-sm text-default-500">Task Board</p>
       </div>
 
       {/* Executor Module Error Banner */}
