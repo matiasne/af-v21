@@ -36,7 +36,6 @@ import {
   TaskList,
   TechStackEditModal,
   NewEpicModal,
-  GroomingSessionModal,
 } from "../components";
 import NewTaskModal from "../components/NewTaskModal";
 
@@ -96,7 +95,6 @@ export default function KanbanPage() {
   const [isForceResuming, setIsForceResuming] = useState(false);
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
   const [isNewEpicModalOpen, setIsNewEpicModalOpen] = useState(false);
-  const [isGroomingSessionOpen, setIsGroomingSessionOpen] = useState(false);
   const [isTechStackModalOpen, setIsTechStackModalOpen] = useState(false);
 
   // Filter states
@@ -513,8 +511,8 @@ export default function KanbanPage() {
     priority: "high" | "medium" | "low";
     cleanArchitectureArea: CleanArchitectureArea;
     acceptanceCriteria: string[];
-  }) => {
-    if (!user?.uid || !projectId) return;
+  }): Promise<string> => {
+    if (!user?.uid || !projectId) throw new Error("User or project not available");
 
     try {
       const taskId = await executionPlanRepository.createTask(user.uid, projectId, taskData);
@@ -547,6 +545,8 @@ export default function KanbanPage() {
         console.error("Error storing task in RAG:", ragError);
         // Don't throw - task was created successfully in Firestore
       }
+
+      return taskId;
     } catch (error) {
       console.error("Error creating task:", error);
       throw error;
@@ -584,43 +584,6 @@ export default function KanbanPage() {
       }
     } catch (error) {
       console.error("Error creating epic:", error);
-      throw error;
-    }
-  };
-
-  // Handle approve epic from grooming session (with associated tasks)
-  const handleApproveEpic = async (
-    epicData: {
-      title: string;
-      description: string;
-      priority: "high" | "medium" | "low";
-    },
-    taskIds: string[],
-  ) => {
-    if (!user?.uid || !projectId) return;
-
-    try {
-      const epicId = await executionPlanRepository.createEpic(
-        user.uid,
-        projectId,
-        {
-          title: epicData.title,
-          description: epicData.description,
-          priority: epicData.priority,
-        },
-      );
-
-      // Assign the provided task IDs to the new epic
-      if (taskIds.length > 0) {
-        await executionPlanRepository.assignTasksToEpic(
-          user.uid,
-          projectId,
-          epicId,
-          taskIds,
-        );
-      }
-    } catch (error) {
-      console.error("Error approving epic:", error);
       throw error;
     }
   };
@@ -889,7 +852,7 @@ export default function KanbanPage() {
             size="sm"
             color="secondary"
             variant="flat"
-            onPress={() => setIsGroomingSessionOpen(true)}
+            onPress={() => router.push(`/dashboard/project/${projectId}/grooming`)}
             startContent={
               <svg
                 className="w-4 h-4"
@@ -1520,32 +1483,6 @@ export default function KanbanPage() {
         tasks={tasks}
       />
 
-      {/* Grooming Session Modal */}
-      <GroomingSessionModal
-        isOpen={isGroomingSessionOpen}
-        onClose={() => setIsGroomingSessionOpen(false)}
-        onApproveTask={handleCreateTask}
-        onApproveEpic={handleApproveEpic}
-        projectContext={
-          project
-            ? {
-                name: project.name,
-                description: project.description,
-                techStack: project.analysis?.newTechStack,
-              }
-            : undefined
-        }
-        existingTasks={tasks.map((task) => ({
-          id: task.id,
-          title: task.title,
-          description: task.description,
-          category: task.category,
-          priority: task.priority,
-        }))}
-        userId={user?.uid}
-        projectId={projectId}
-        ragStoreName={migration?.ragFunctionalAndBusinessStoreName}
-      />
     </div>
   );
 }

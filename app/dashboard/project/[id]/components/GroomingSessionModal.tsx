@@ -71,7 +71,7 @@ interface ExistingTask {
 interface GroomingSessionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onApproveTask: (task: Omit<SuggestedTask, "id" | "status" | "epicId">) => Promise<void>;
+  onApproveTask: (task: Omit<SuggestedTask, "id" | "status" | "epicId">) => Promise<string>;
   onApproveEpic: (epic: { title: string; description: string; priority: "high" | "medium" | "low" }, taskIds: string[]) => Promise<void>;
   projectContext?: {
     name: string;
@@ -735,33 +735,29 @@ export default function GroomingSessionModal({
   const handleApproveEpic = async (epic: SuggestedEpic) => {
     setApprovingEpicId(epic.id);
     try {
-      // Get the task IDs that belong to this epic and are pending
-      const epicTaskIds = suggestedTasks
-        .filter((t) => t.epicId === epic.id && t.status === "pending")
-        .map((t) => t.id);
+      // Get the tasks that belong to this epic and are pending
+      const epicTasks = suggestedTasks
+        .filter((t) => t.epicId === epic.id && t.status === "pending");
 
-      // First, create all the tasks that belong to this epic
+      // First, create all the tasks that belong to this epic and collect the real Firestore IDs
       const createdTaskIds: string[] = [];
-      for (const taskId of epicTaskIds) {
-        const task = suggestedTasks.find((t) => t.id === taskId);
-        if (task) {
-          await onApproveTask({
-            title: task.title,
-            description: task.description,
-            category: task.category,
-            priority: task.priority,
-            cleanArchitectureArea: task.cleanArchitectureArea,
-            acceptanceCriteria: task.acceptanceCriteria,
-          });
-          createdTaskIds.push(taskId);
-          // Mark task as approved
-          setSuggestedTasks((prev) =>
-            prev.map((t) => (t.id === taskId ? { ...t, status: "approved" } : t))
-          );
-        }
+      for (const task of epicTasks) {
+        const createdTaskId = await onApproveTask({
+          title: task.title,
+          description: task.description,
+          category: task.category,
+          priority: task.priority,
+          cleanArchitectureArea: task.cleanArchitectureArea,
+          acceptanceCriteria: task.acceptanceCriteria,
+        });
+        createdTaskIds.push(createdTaskId);
+        // Mark task as approved
+        setSuggestedTasks((prev) =>
+          prev.map((t) => (t.id === task.id ? { ...t, status: "approved" } : t))
+        );
       }
 
-      // Create the epic with the task IDs
+      // Create the epic with the actual Firestore task IDs
       await onApproveEpic(
         {
           title: epic.title,
