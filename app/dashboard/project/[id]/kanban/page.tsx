@@ -723,9 +723,9 @@ export default function KanbanPage() {
 
       {/* Executor Module Error Banner */}
       {isExecutorError && (
-        <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl">
+        <div className="mb-4 p-4 bg-amber-50 dark:bg-zinc-800/80 border border-amber-200 dark:border-zinc-700 rounded-xl">
           <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center flex-shrink-0">
               <svg
                 className="w-4 h-4 text-amber-600 dark:text-amber-400"
                 fill="none"
@@ -741,18 +741,18 @@ export default function KanbanPage() {
               </svg>
             </div>
             <div className="flex-1">
-              <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+              <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-400">
                 Connection interrupted
               </h3>
-              <p className="text-sm text-amber-700 dark:text-amber-400 mt-0.5">
+              <p className="text-sm text-amber-700 dark:text-zinc-400 mt-0.5">
                 The process was temporarily interrupted. Your data is safe.
               </p>
               {executorModuleData?.error && (
                 <details className="mt-2">
-                  <summary className="text-xs text-amber-600 dark:text-amber-500 cursor-pointer hover:text-amber-700 dark:hover:text-amber-400">
+                  <summary className="text-xs text-amber-600 dark:text-zinc-500 cursor-pointer hover:text-amber-700 dark:hover:text-zinc-400">
                     View technical details
                   </summary>
-                  <pre className="mt-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 p-2 rounded-lg overflow-x-auto whitespace-pre-wrap">
+                  <pre className="mt-2 text-xs text-amber-700 dark:text-zinc-400 bg-amber-100 dark:bg-zinc-900/50 p-2 rounded-lg overflow-x-auto whitespace-pre-wrap">
                     {executorModuleData.error}
                   </pre>
                 </details>

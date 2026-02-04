@@ -135,11 +135,11 @@ export function MigrationPlannerCard({
           <>
             {/* Status Overview */}
             <div className="space-y-3">
-              <div className={`rounded-lg p-4 ${
+              <div className={`rounded-xl p-4 ${
                 isCompleted
                   ? "bg-success-50 dark:bg-success-900/20"
                   : isError
-                    ? "bg-danger-50 dark:bg-danger-900/20"
+                    ? "bg-amber-50 dark:bg-zinc-800/80 border border-amber-200 dark:border-zinc-700"
                     : isStopped
                       ? "bg-warning-50 dark:bg-warning-900/20"
                       : "bg-primary-50 dark:bg-primary-900/20"
@@ -169,8 +169,8 @@ export function MigrationPlannerCard({
 
                 {/* Error message */}
                 {isError && status.error && (
-                  <div className="bg-danger-100 dark:bg-danger-900/30 rounded p-2 mb-3">
-                    <p className="text-sm text-danger-700 dark:text-danger-300">
+                  <div className="bg-amber-100 dark:bg-zinc-700/50 rounded-lg p-3 mb-3">
+                    <p className="text-sm text-amber-700 dark:text-zinc-300">
                       {status.error}
                     </p>
                   </div>
@@ -183,7 +183,7 @@ export function MigrationPlannerCard({
                       isCompleted
                         ? "text-success-700 dark:text-success-300"
                         : isError
-                          ? "text-danger-700 dark:text-danger-300"
+                          ? "text-amber-700 dark:text-amber-400"
                           : "text-primary-700 dark:text-primary-300"
                     }`}>
                       {status.tasksGenerated}

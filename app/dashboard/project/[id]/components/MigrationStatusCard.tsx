@@ -252,23 +252,25 @@ export function MigrationStatusCard({
 
               {/* Error Message */}
               {isError && (
-                <div className="bg-danger-50 dark:bg-danger-900/20 rounded-lg p-3">
-                  <div className="flex items-center gap-2">
-                    <svg
-                      className="h-5 w-5 text-danger-500"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
-                      />
-                    </svg>
-                    <p className="text-sm text-danger-600 dark:text-danger-400">
-                      An error occurred during migration
+                <div className="bg-amber-50 dark:bg-zinc-800/80 rounded-xl p-3 border border-amber-200 dark:border-zinc-700">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                      <svg
+                        className="h-4 w-4 text-amber-600 dark:text-amber-400"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                        />
+                      </svg>
+                    </div>
+                    <p className="text-sm font-semibold text-amber-800 dark:text-amber-400">
+                      Connection interrupted
                     </p>
                   </div>
                 </div>

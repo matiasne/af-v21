@@ -365,30 +365,32 @@ export function MigrationProgressCard({
 
         {/* Server Stopped Warning */}
         {currentStep && isServerStopped && isInProcessingState && (
-          <div className="bg-danger-50 dark:bg-danger-900/20 rounded-lg p-4 border border-danger-200 dark:border-danger-800">
-            <div className="flex items-center gap-3">
-              <svg
-                className="w-6 h-6 text-danger-600 dark:text-danger-400 flex-shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+          <div className="bg-amber-50 dark:bg-zinc-800/80 rounded-xl p-4 border border-amber-200 dark:border-zinc-700">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                <svg
+                  className="w-4 h-4 text-amber-600 dark:text-amber-400"
+                  fill="none"
+                  stroke="currentColor"
                   strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                />
-              </svg>
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+              </div>
               <div className="flex-1">
-                <p className="font-medium text-danger-600 dark:text-danger-400">
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-400">
                   Server Connection Issue
                 </p>
-                <p className="text-sm text-default-600 mt-1">
+                <p className="text-sm text-amber-700 dark:text-zinc-400 mt-0.5">
                   The server has stopped unexpectedly. The process will continue
                   automatically as soon as the problem is resolved.
                 </p>
-                <p className="text-xs text-default-400 mt-2">
+                <p className="text-xs text-amber-600 dark:text-zinc-500 mt-2">
                   Last step: {getStepLabel(currentStep)}
                 </p>
               </div>
@@ -398,14 +400,14 @@ export function MigrationProgressCard({
 
         {/* Deleting Info */}
         {isDeleting && (
-          <div className="bg-danger-50 dark:bg-danger-900/20 rounded-lg p-4 border border-danger-200 dark:border-danger-800">
+          <div className="bg-amber-50 dark:bg-zinc-800/80 rounded-xl p-4 border border-amber-200 dark:border-zinc-700">
             <div className="flex items-center gap-3">
-              <Spinner size="md" color="danger" />
+              <Spinner size="md" color="warning" />
               <div className="flex-1">
-                <p className="font-medium text-danger-600 dark:text-danger-400">
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-400">
                   Deleting Migration
                 </p>
-                <p className="text-sm text-default-600 mt-1">
+                <p className="text-sm text-amber-700 dark:text-zinc-400 mt-0.5">
                   This migration is being deleted. Please wait...
                 </p>
               </div>
@@ -415,18 +417,44 @@ export function MigrationProgressCard({
 
         {/* Error Info */}
         {isError && processResult?.error && (
-          <div className="bg-danger-50 dark:bg-danger-900/20 rounded-lg p-4">
-            <p className="font-medium text-danger-600 dark:text-danger-400">
-              Error Occurred
-            </p>
-            <p className="text-sm text-default-600 mt-1">
-              {processResult.error}
-            </p>
-            {processResult.errorDetails && (
-              <p className="text-xs text-default-400 mt-2 font-mono whitespace-pre-wrap">
-                {processResult.errorDetails}
-              </p>
-            )}
+          <div className="bg-amber-50 dark:bg-zinc-800/80 rounded-xl p-4 border border-amber-200 dark:border-zinc-700">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                <svg
+                  className="w-4 h-4 text-amber-600 dark:text-amber-400"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-400">
+                  Connection interrupted
+                </p>
+                <p className="text-sm text-amber-700 dark:text-zinc-400 mt-0.5">
+                  {processResult.error}
+                </p>
+                {processResult.errorDetails && (
+                  <details className="mt-2">
+                    <summary className="text-xs text-amber-600 dark:text-zinc-500 cursor-pointer hover:text-amber-700 dark:hover:text-zinc-300">
+                      View technical details
+                    </summary>
+                    <div className="mt-2 text-xs bg-amber-100 dark:bg-zinc-700/50 p-3 rounded-lg">
+                      <pre className="text-amber-700 dark:text-zinc-300 overflow-x-auto whitespace-pre-wrap">
+                        {processResult.errorDetails}
+                      </pre>
+                    </div>
+                  </details>
+                )}
+              </div>
+            </div>
           </div>
         )}
 

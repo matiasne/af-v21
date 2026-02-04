@@ -616,9 +616,9 @@ export function CodeAnalysisAndFDDCard({
 
                   {/* Error Message */}
                   {(isError || codeAnalysisStatus === "error") && (
-                    <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 space-y-3">
+                    <div className="bg-amber-50 dark:bg-zinc-800/80 border border-amber-200 dark:border-zinc-700 rounded-xl p-4 space-y-3">
                       <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center flex-shrink-0">
                           <svg
                             className="h-4 w-4 text-amber-600 dark:text-amber-400"
                             fill="none"
@@ -634,31 +634,31 @@ export function CodeAnalysisAndFDDCard({
                           </svg>
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                          <p className="text-sm font-semibold text-amber-800 dark:text-amber-400">
                             Connection interrupted
                           </p>
-                          <p className="text-sm text-amber-700 dark:text-amber-400 mt-0.5">
+                          <p className="text-sm text-amber-700 dark:text-zinc-400 mt-0.5">
                             The analysis was temporarily interrupted. Your progress is safe.
                           </p>
                           {(codeAnalysisCurrentStep || codeAnalysisError || codeAnalysisErrorDetails) && (
                             <details className="mt-2">
-                              <summary className="text-xs text-amber-600 dark:text-amber-500 cursor-pointer hover:text-amber-700 dark:hover:text-amber-400">
+                              <summary className="text-xs text-amber-600 dark:text-zinc-500 cursor-pointer hover:text-amber-700 dark:hover:text-zinc-300">
                                 View technical details
                               </summary>
-                              <div className="mt-2 text-xs bg-amber-100 dark:bg-amber-900/30 p-3 rounded-lg space-y-1">
+                              <div className="mt-2 text-xs bg-amber-100 dark:bg-zinc-700/50 p-3 rounded-lg space-y-1">
                                 {codeAnalysisCurrentStep && (
-                                  <p className="text-amber-700 dark:text-amber-400">
+                                  <p className="text-amber-700 dark:text-zinc-300">
                                     <span className="font-medium">Step:</span>{" "}
                                     {getStepLabel(codeAnalysisCurrentStep as StepStatus)}
                                   </p>
                                 )}
                                 {codeAnalysisError && (
-                                  <p className="text-amber-700 dark:text-amber-400">
+                                  <p className="text-amber-700 dark:text-zinc-300">
                                     <span className="font-medium">Error:</span> {codeAnalysisError}
                                   </p>
                                 )}
                                 {codeAnalysisErrorDetails && (
-                                  <pre className="text-amber-700 dark:text-amber-400 overflow-x-auto whitespace-pre-wrap mt-2">
+                                  <pre className="text-amber-700 dark:text-zinc-300 overflow-x-auto whitespace-pre-wrap mt-2">
                                     {codeAnalysisErrorDetails}
                                   </pre>
                                 )}

@@ -403,11 +403,11 @@ export function MigrationPlannerAndKanbanCard({
                 {/* Status Overview */}
                 <div className="space-y-3">
                   <div
-                    className={`rounded-lg p-4 ${
+                    className={`rounded-xl p-4 ${
                       isPlannerCompleted
                         ? "bg-success-50 dark:bg-success-900/20"
                         : isPlannerError
-                          ? "bg-danger-50 dark:bg-danger-900/20"
+                          ? "bg-amber-50 dark:bg-zinc-800/80 border border-amber-200 dark:border-zinc-700"
                           : isPlannerStopped
                             ? "bg-warning-50 dark:bg-warning-900/20"
                             : "bg-primary-50 dark:bg-primary-900/20"
@@ -422,8 +422,8 @@ export function MigrationPlannerAndKanbanCard({
 
                     {/* Error message */}
                     {isPlannerError && plannerStatus.error && (
-                      <div className="bg-danger-100 dark:bg-danger-900/30 rounded p-2 mb-3">
-                        <p className="text-sm text-danger-700 dark:text-danger-300">
+                      <div className="bg-amber-100 dark:bg-zinc-700/50 rounded-lg p-3 mb-3">
+                        <p className="text-sm text-amber-700 dark:text-zinc-300">
                           {plannerStatus.error}
                         </p>
                       </div>
@@ -432,7 +432,7 @@ export function MigrationPlannerAndKanbanCard({
                     {/* Retry button for error state */}
                     {isPlannerError && (
                       <Button
-                        color="danger"
+                        color="warning"
                         variant="flat"
                         fullWidth
                         onPress={handleStartPlanning}
