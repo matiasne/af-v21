@@ -374,6 +374,10 @@ export default function GroomingPage() {
         title
       );
       setCurrentSessionId(sessionId);
+
+      // Refresh the sessions list to include the new session
+      await loadPreviousSessions();
+
       return sessionId;
     } catch (error) {
       console.error("Error creating session:", error);
@@ -1064,7 +1068,6 @@ export default function GroomingPage() {
 
   // Start a new session (clear current session and start fresh)
   const handleStartNewSession = () => {
-    setMessages([]);
     setSuggestedTasks([]);
     setSuggestedEpics([]);
     setExpandedTaskId(null);
@@ -1073,6 +1076,13 @@ export default function GroomingPage() {
     setUploadedDocuments([]);
     setSelectedTab("tasks");
     setCurrentSessionId(null);
+
+    // Set the initial greeting message for the new session
+    const greeting: ChatMessage = {
+      role: "assistant",
+      content: `Hello! I'm here to help you with your grooming session${projectContext?.name ? ` for **${projectContext.name}**` : ""}. Tell me about the features, improvements, or bugs you'd like to work on, and I'll help you break them down into actionable tasks and epics.\n\nYou can also upload documents (requirements, specs, user stories) and I'll extract tasks and epics from them.\n\nWhat would you like to discuss today?`,
+    };
+    setMessages([greeting]);
   };
 
   // Format date for display
