@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@heroui/button";
 import { Spinner } from "@heroui/spinner";
@@ -26,7 +26,7 @@ import {
   TaskStatus,
 } from "@/domain/entities/ExecutionPlan";
 import { executionPlanRepository } from "@/infrastructure/repositories/FirebaseExecutionPlanRepository";
-import { KanbanBoard, TaskList } from "../components";
+import { KanbanBoard, TaskList, TechStackEditModal } from "../components";
 import NewTaskModal from "../components/NewTaskModal";
 
 type ViewMode = "kanban" | "list";
@@ -63,13 +63,29 @@ export default function KanbanPage() {
   const params = useParams();
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const { projects, loading: projectsLoading, updateExecutorModel, subscribeToExecutorModule, startBoilerplate, restartExecutorModule } = useProjects();
+  const {
+    projects,
+    loading: projectsLoading,
+    updateExecutorModel,
+    subscribeToExecutorModule,
+    startBoilerplate,
+    restartExecutorModule,
+    updateProject,
+  } = useProjects();
   const {
     setProjectContext,
     setCurrentProjectId,
     setIsConfiguration,
-    setPageTitle,
     projectOwnerId,
+    configChatHistory,
+    setConfigChatHistory,
+    isConfigChatLoading,
+    setIsConfigChatLoading,
+    currentTechStack,
+    setCurrentTechStack: setNewTechStack,
+    suggestions,
+    setSuggestions,
+    handleConfigChatHistoryChange,
   } = useProjectChat();
   const [project, setProject] = useState<Project | null>(null);
   const [tasks, setTasks] = useState<ExecutionPlanTask[]>([]);
@@ -79,10 +95,15 @@ export default function KanbanPage() {
   const [isBoilerplateModalOpen, setIsBoilerplateModalOpen] = useState(false);
   const [isStartingBoilerplate, setIsStartingBoilerplate] = useState(false);
   const [isRestarting, setIsRestarting] = useState(false);
-  const [executorModuleData, setExecutorModuleData] = useState<{ boilerplateDone?: boolean; action?: string; error?: string } | null>(null);
+  const [executorModuleData, setExecutorModuleData] = useState<{
+    boilerplateDone?: boolean;
+    action?: string;
+    error?: string;
+  } | null>(null);
   const [isRetryingExecutor, setIsRetryingExecutor] = useState(false);
   const [isForceResuming, setIsForceResuming] = useState(false);
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
+  const [isTechStackModalOpen, setIsTechStackModalOpen] = useState(false);
 
   // Filter states
   const [selectedCategory, setSelectedCategory] = useState<
@@ -95,13 +116,13 @@ export default function KanbanPage() {
 
   const projectId = params.id as string;
 
-  const {
-    migration,
-    loading: migrationLoading,
-  } = useMigration(projectId, projectOwnerId);
+  const { migration, loading: migrationLoading } = useMigration(
+    projectId,
+    projectOwnerId,
+  );
 
   const [selectedModel, setSelectedModel] = useState<string>(
-    project?.executorModel || "claude-sonnet-4-5"
+    project?.executorModel || "claude-sonnet-4-5",
   );
 
   // Redirect to login if not authenticated
@@ -141,12 +162,6 @@ export default function KanbanPage() {
     setIsConfiguration(false);
   }, [setIsConfiguration]);
 
-  // Set page title for navbar
-  useEffect(() => {
-    setPageTitle("Task Board");
-    return () => setPageTitle(null);
-  }, [setPageTitle]);
-
   // Sync selected model when project changes
   useEffect(() => {
     if (project?.executorModel) {
@@ -163,7 +178,9 @@ export default function KanbanPage() {
       await updateExecutorModel(projectId, model);
       console.log("[KanbanPage] updateExecutorModel completed");
     } else {
-      console.log("[KanbanPage] updateExecutorModel is not available or no projectId");
+      console.log(
+        "[KanbanPage] updateExecutorModel is not available or no projectId",
+      );
     }
   };
 
@@ -201,10 +218,6 @@ export default function KanbanPage() {
 
     const unsubscribe = subscribeToExecutorModule(projectId, (data) => {
       setExecutorModuleData(data);
-      // Show modal if boilerplateDone is not set or is false (but not during restart, running, or error states)
-      if (!data?.boilerplateDone && data?.action !== "running" && data?.action !== "start" && data?.action !== "restart" && data?.action !== "error") {
-        setIsBoilerplateModalOpen(true);
-      }
     });
 
     return () => {
@@ -215,8 +228,27 @@ export default function KanbanPage() {
   // Check if project is restarting
   const isProjectRestarting = executorModuleData?.action === "restart";
 
+  // Check if project has no tech stack configured
+  const hasNoTechStack =
+    !project?.analysis?.newTechStack ||
+    project.analysis.newTechStack.length === 0;
+
+  // Check if boilerplate needs to be started (not done and not running)
+  const needsBoilerplate =
+    !executorModuleData?.boilerplateDone &&
+    executorModuleData?.action !== "running" &&
+    executorModuleData?.action !== "start" &&
+    executorModuleData?.action !== "restart";
+
+  // Check if boilerplate is currently being created
+  const isBoilerplateRunning =
+    !executorModuleData?.boilerplateDone &&
+    (executorModuleData?.action === "running" ||
+      executorModuleData?.action === "start");
+
   // Check if executor module has an error
   const isExecutorError = executorModuleData?.action === "error";
+
 
   // Handle retry executor module
   const handleRetryExecutor = async () => {
@@ -283,6 +315,147 @@ export default function KanbanPage() {
     }
   };
 
+  // Tech stack edit handlers
+  const handleSendMessage = useCallback(
+    async (message: string) => {
+      const userMessage = { role: "user" as const, content: message };
+      const newHistory = [...configChatHistory, userMessage];
+
+      setConfigChatHistory(newHistory);
+      handleConfigChatHistoryChange(newHistory);
+      setIsConfigChatLoading(true);
+
+      try {
+        const response = await fetch("/api/chat/define-tech-stack", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            messages: newHistory,
+            userId: user?.uid,
+            projectId,
+            projectContext: project
+              ? {
+                  name: project.name,
+                  description: project.description,
+                  status: project.status?.step || "configuration",
+                  githubUrl: project.githubUrl,
+                }
+              : null,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to get response");
+        }
+
+        const data = await response.json();
+        const assistantMessage = data.message;
+
+        const updatedHistory = [...newHistory, assistantMessage];
+        setConfigChatHistory(updatedHistory);
+        handleConfigChatHistoryChange(updatedHistory);
+
+        if (data.techStack) {
+          setNewTechStack(data.techStack);
+          if (projectId) {
+            updateProject(projectId, {
+              analysis: {
+                ...project?.analysis,
+                summary: project?.analysis?.summary || "",
+                newTechStack: data.techStack,
+              },
+            });
+          }
+        }
+
+        if (data.suggestions) {
+          setSuggestions(data.suggestions);
+        }
+      } catch (error) {
+        console.error("Chat error:", error);
+        const errorMessage = {
+          role: "assistant" as const,
+          content: "Sorry, I encountered an error. Please try again.",
+        };
+        const errorHistory = [...newHistory, errorMessage];
+        setConfigChatHistory(errorHistory);
+        handleConfigChatHistoryChange(errorHistory);
+      } finally {
+        setIsConfigChatLoading(false);
+      }
+    },
+    [
+      configChatHistory,
+      setConfigChatHistory,
+      handleConfigChatHistoryChange,
+      setIsConfigChatLoading,
+      user?.uid,
+      projectId,
+      project,
+      setNewTechStack,
+      updateProject,
+      setSuggestions,
+    ],
+  );
+
+  const handleRemoveTech = useCallback(
+    (tech: string) => {
+      const updatedStack = currentTechStack.filter((t) => t !== tech);
+      setNewTechStack(updatedStack);
+      if (projectId) {
+        updateProject(projectId, {
+          analysis: {
+            ...project?.analysis,
+            summary: project?.analysis?.summary || "",
+            newTechStack: updatedStack,
+          },
+        });
+      }
+    },
+    [
+      currentTechStack,
+      projectId,
+      updateProject,
+      project?.analysis,
+      setNewTechStack,
+    ],
+  );
+
+  const handleClearAllTech = useCallback(() => {
+    setNewTechStack([]);
+    setSuggestions([]);
+    if (projectId) {
+      updateProject(projectId, {
+        analysis: {
+          ...project?.analysis,
+          summary: project?.analysis?.summary || "",
+          newTechStack: [],
+        },
+      });
+    }
+  }, [
+    projectId,
+    updateProject,
+    project?.analysis,
+    setNewTechStack,
+    setSuggestions,
+  ]);
+
+  const handleSaveTechStack = useCallback(() => {
+    if (projectId && currentTechStack.length > 0) {
+      updateProject(projectId, {
+        analysis: {
+          ...project?.analysis,
+          summary: project?.analysis?.summary || "",
+          newTechStack: currentTechStack,
+        },
+      });
+    }
+    setIsTechStackModalOpen(false);
+  }, [projectId, updateProject, project?.analysis, currentTechStack]);
+
   // Handle create new task
   const handleCreateTask = async (taskData: {
     title: string;
@@ -313,7 +486,11 @@ export default function KanbanPage() {
 
     // Fuzzy matching: check if all characters in query appear in order
     let queryIndex = 0;
-    for (let i = 0; i < lowerText.length && queryIndex < lowerQuery.length; i++) {
+    for (
+      let i = 0;
+      i < lowerText.length && queryIndex < lowerQuery.length;
+      i++
+    ) {
       if (lowerText[i] === lowerQuery[queryIndex]) {
         queryIndex++;
       }
@@ -354,7 +531,13 @@ export default function KanbanPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-7xl px-4 py-8">
+    <div className="container mx-auto max-w-7xl px-4 py-4">
+      {/* Page Title */}
+      <div className="flex flex-row gap-2 mb-2">
+        <p className="text-sm text-default-500">{project.name}</p>
+        <p className="text-sm font-medium">Task Board</p>
+      </div>
+
       {/* Executor Module Error Banner */}
       {isExecutorError && (
         <div className="mb-4 p-4 bg-danger-50 dark:bg-danger-950/20 border border-danger-200 dark:border-danger-900 rounded-lg">
@@ -395,9 +578,103 @@ export default function KanbanPage() {
         </div>
       )}
 
+      {/* No Tech Stack Banner */}
+      {hasNoTechStack && !isExecutorError && (
+        <div className="mb-4 p-4 bg-warning-50 dark:bg-warning-950/20 border border-warning-200 dark:border-warning-900 rounded-lg">
+          <div className="flex items-start gap-3">
+            <svg
+              className="w-5 h-5 text-warning mt-0.5 flex-shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-warning-700 dark:text-warning-400">
+                Tech Stack Not Configured
+              </h3>
+              <p className="text-sm text-warning-600 dark:text-warning-300 mt-1">
+                Please configure the target tech stack before starting the
+                process.
+              </p>
+            </div>
+            <Button
+              color="warning"
+              variant="flat"
+              size="sm"
+              onPress={() => setIsTechStackModalOpen(true)}
+            >
+              Configure Tech Stack
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Boilerplate Running Banner */}
+      {isBoilerplateRunning && !isExecutorError && (
+        <div className="mb-4 p-4 bg-primary-50 dark:bg-primary-950/20 border border-primary-200 dark:border-primary-900 rounded-lg">
+          <div className="flex items-center gap-3">
+            <Spinner size="sm" color="primary" />
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-primary-700 dark:text-primary-400">
+                Creating Boilerplate
+              </h3>
+              <p className="text-sm text-primary-600 dark:text-primary-300 mt-1">
+                Please wait while the boilerplate is being created. Task
+                movement is temporarily disabled.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Needs Boilerplate Banner */}
+      {needsBoilerplate && !hasNoTechStack && !isExecutorError && (
+        <div className="mb-4 p-4 bg-secondary-50 dark:bg-secondary-950/20 border border-secondary-200 dark:border-secondary-900 rounded-lg">
+          <div className="flex items-start gap-3">
+            <svg
+              className="w-5 h-5 text-secondary mt-0.5 flex-shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
+              />
+            </svg>
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-secondary-700 dark:text-secondary-400">
+                Boilerplate Setup Required
+              </h3>
+              <p className="text-sm text-secondary-600 dark:text-secondary-300 mt-1">
+                Start the boilerplate setup to begin task execution.
+              </p>
+            </div>
+            <Button
+              color="secondary"
+              variant="flat"
+              size="sm"
+              onPress={handleStartBoilerplate}
+              isLoading={isStartingBoilerplate}
+            >
+              Start Boilerplate
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* View Toggle and Configuration */}
       <div className="mb-4 flex items-center justify-between">
-        {/* Left side: New Task, Export, Configuration */}
+        {/* Left side: New Task, Configuration */}
         <div className="flex items-center gap-2">
           {/* New Task Button */}
           <Button
@@ -422,32 +699,6 @@ export default function KanbanPage() {
             }
           >
             New Task
-          </Button>
-
-          {/* Download Tasks Button */}
-          <Button
-            size="sm"
-            color="default"
-            variant="flat"
-            onPress={handleDownloadTasks}
-            isDisabled={tasks.length === 0}
-            startContent={
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                />
-              </svg>
-            }
-          >
-            Export Tasks
           </Button>
 
           {/* Configuration Button */}
@@ -482,15 +733,18 @@ export default function KanbanPage() {
           </Button>
         </div>
 
-        {/* Right side: View Toggle */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-default-600">View:</span>
-          <Button
-            size="sm"
-            color={viewMode === "kanban" ? "secondary" : "default"}
-            variant={viewMode === "kanban" ? "flat" : "flat"}
-            onPress={() => setViewMode("kanban")}
-            startContent={
+        {/* Right side: View Tabs and Export */}
+        <div className="flex items-center gap-3">
+          {/* View Tabs */}
+          <div className="flex rounded-lg bg-default-100 p-1">
+            <button
+              onClick={() => setViewMode("kanban")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                viewMode === "kanban"
+                  ? "bg-white dark:bg-default-200 text-foreground shadow-sm"
+                  : "text-default-500 hover:text-foreground"
+              }`}
+            >
               <svg
                 className="w-4 h-4"
                 fill="none"
@@ -504,16 +758,16 @@ export default function KanbanPage() {
                   d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"
                 />
               </svg>
-            }
-          >
-            Kanban
-          </Button>
-          <Button
-            size="sm"
-            color={viewMode === "list" ? "secondary" : "default"}
-            variant={viewMode === "list" ? "flat" : "flat"}
-            onPress={() => setViewMode("list")}
-            startContent={
+              Kanban
+            </button>
+            <button
+              onClick={() => setViewMode("list")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                viewMode === "list"
+                  ? "bg-white dark:bg-default-200 text-foreground shadow-sm"
+                  : "text-default-500 hover:text-foreground"
+              }`}
+            >
               <svg
                 className="w-4 h-4"
                 fill="none"
@@ -527,26 +781,52 @@ export default function KanbanPage() {
                   d="M4 6h16M4 10h16M4 14h16M4 18h16"
                 />
               </svg>
+              List
+            </button>
+          </div>
+
+          {/* Export Tasks Button */}
+          <Button
+            size="sm"
+            color="default"
+            variant="flat"
+            onPress={handleDownloadTasks}
+            isDisabled={tasks.length === 0}
+            startContent={
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                />
+              </svg>
             }
           >
-            List
+            Export
           </Button>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="mb-6 flex flex-wrap items-center gap-4">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
         <Input
           type="text"
-          placeholder="Search tasks..."
+          placeholder="Search..."
           value={searchQuery}
           onValueChange={setSearchQuery}
-          className="max-w-xs"
+          className="w-40"
+          size="sm"
           isClearable
           onClear={() => setSearchQuery("")}
           startContent={
             <svg
-              className="w-4 h-4 text-default-400"
+              className="w-3 h-3 text-default-400"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -561,7 +841,7 @@ export default function KanbanPage() {
           }
         />
         <Select
-          label="Filter by Category"
+          placeholder="Category"
           selectedKeys={new Set([selectedCategory])}
           onSelectionChange={(keys) => {
             const selected = Array.from(keys)[0] as TaskCategory | "all";
@@ -569,7 +849,8 @@ export default function KanbanPage() {
               setSelectedCategory(selected);
             }
           }}
-          className="max-w-xs"
+          className="w-36"
+          size="sm"
         >
           {CATEGORY_OPTIONS.map((option) => (
             <SelectItem key={option.id} textValue={option.label}>
@@ -578,7 +859,7 @@ export default function KanbanPage() {
           ))}
         </Select>
         <Select
-          label="Filter by Architecture Layer"
+          placeholder="Layer"
           selectedKeys={new Set([selectedArchitectureArea])}
           onSelectionChange={(keys) => {
             const selected = Array.from(keys)[0] as
@@ -588,7 +869,8 @@ export default function KanbanPage() {
               setSelectedArchitectureArea(selected);
             }
           }}
-          className="max-w-xs"
+          className="w-36"
+          size="sm"
         >
           {ARCHITECTURE_AREA_OPTIONS.map((option) => (
             <SelectItem key={option.id} textValue={option.label}>
@@ -597,7 +879,9 @@ export default function KanbanPage() {
           ))}
         </Select>
         {/* Clear all filters button */}
-        {(searchQuery || selectedCategory !== "all" || selectedArchitectureArea !== "all") && (
+        {(searchQuery ||
+          selectedCategory !== "all" ||
+          selectedArchitectureArea !== "all") && (
           <Button
             size="sm"
             color="default"
@@ -616,9 +900,7 @@ export default function KanbanPage() {
       {/* Task Count */}
       <div className="mb-4 text-sm text-default-500">
         {filteredTasks.length} task{filteredTasks.length !== 1 ? "s" : ""} found
-        {searchQuery && (
-          <span> matching &quot;{searchQuery}&quot;</span>
-        )}
+        {searchQuery && <span> matching &quot;{searchQuery}&quot;</span>}
         {(selectedCategory !== "all" || selectedArchitectureArea !== "all") && (
           <span>
             {selectedCategory !== "all" && (
@@ -672,7 +954,7 @@ export default function KanbanPage() {
                   user.uid,
                   projectId,
                   taskId,
-                  status
+                  status,
                 );
               } catch (error) {
                 console.error("Error updating task status:", error);
@@ -686,7 +968,7 @@ export default function KanbanPage() {
                   user.uid,
                   projectId,
                   taskIds,
-                  "todo"
+                  "todo",
                 );
               } catch (error) {
                 console.error("Error moving tasks to todo:", error);
@@ -700,7 +982,7 @@ export default function KanbanPage() {
                   user.uid,
                   projectId,
                   taskIds,
-                  "backlog"
+                  "backlog",
                 );
               } catch (error) {
                 console.error("Error moving tasks to backlog:", error);
@@ -718,7 +1000,7 @@ export default function KanbanPage() {
                   user.uid,
                   projectId,
                   taskId,
-                  status
+                  status,
                 );
               } catch (error) {
                 console.error("Error updating task status:", error);
@@ -762,7 +1044,8 @@ export default function KanbanPage() {
                   ))}
                 </Select>
                 <p className="text-xs text-default-500 mt-2">
-                  This model will be used for executing tasks in the migration executor module.
+                  This model will be used for executing tasks in the migration
+                  executor module.
                 </p>
               </div>
 
@@ -796,7 +1079,8 @@ export default function KanbanPage() {
                       Restart All
                     </Button>
                     <p className="text-xs text-default-500 mt-1">
-                      This will reset the boilerplate process and set the executor module to restart.
+                      This will reset the boilerplate process and set the
+                      executor module to restart.
                     </p>
                   </div>
                 </div>
@@ -804,10 +1088,7 @@ export default function KanbanPage() {
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button
-              color="primary"
-              onPress={() => setIsConfigModalOpen(false)}
-            >
+            <Button color="primary" onPress={() => setIsConfigModalOpen(false)}>
               Done
             </Button>
           </ModalFooter>
@@ -828,21 +1109,28 @@ export default function KanbanPage() {
           <ModalBody>
             <div className="flex flex-col gap-4">
               <p className="text-default-700">
-                Before executing tasks, we need to set up the boilerplate for your new application using the defined tech stack.
+                Before executing tasks, we need to set up the boilerplate for
+                your new application using the defined tech stack.
               </p>
 
-              {project?.analysis?.newTechStack && project.analysis.newTechStack.length > 0 && (
-                <div className="bg-default-100 rounded-lg p-4">
-                  <h3 className="text-sm font-semibold text-default-700 mb-3">Target Tech Stack:</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {project.analysis.newTechStack.map((tech) => (
-                      <span key={tech} className="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded">
-                        {tech}
-                      </span>
-                    ))}
+              {project?.analysis?.newTechStack &&
+                project.analysis.newTechStack.length > 0 && (
+                  <div className="bg-default-100 rounded-lg p-4">
+                    <h3 className="text-sm font-semibold text-default-700 mb-3">
+                      Target Tech Stack:
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {project.analysis.newTechStack.map((tech) => (
+                        <span
+                          key={tech}
+                          className="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded"
+                        >
+                          {tech}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
               <p className="text-sm text-default-500">
                 Do you want to start the Boilerplate process now?
@@ -882,10 +1170,12 @@ export default function KanbanPage() {
             <div className="flex flex-col items-center gap-4 py-4">
               <Spinner size="lg" color="primary" />
               <p className="text-default-700 text-center">
-                The project is being restarted. Please wait while the system resets the boilerplate and executor module.
+                The project is being restarted. Please wait while the system
+                resets the boilerplate and executor module.
               </p>
               <p className="text-sm text-default-500 text-center">
-                This may take a few moments. You will be able to continue once the restart is complete.
+                This may take a few moments. You will be able to continue once
+                the restart is complete.
               </p>
             </div>
           </ModalBody>
@@ -897,11 +1187,29 @@ export default function KanbanPage() {
         isOpen={isNewTaskModalOpen}
         onClose={() => setIsNewTaskModalOpen(false)}
         onSubmit={handleCreateTask}
-        projectContext={project ? {
-          name: project.name,
-          description: project.description,
-          techStack: project.analysis?.newTechStack,
-        } : undefined}
+        projectContext={
+          project
+            ? {
+                name: project.name,
+                description: project.description,
+                techStack: project.analysis?.newTechStack,
+              }
+            : undefined
+        }
+      />
+
+      {/* Tech Stack Configuration Modal */}
+      <TechStackEditModal
+        isOpen={isTechStackModalOpen}
+        onOpenChange={setIsTechStackModalOpen}
+        techStack={currentTechStack}
+        messages={configChatHistory}
+        isLoading={isConfigChatLoading}
+        suggestions={suggestions}
+        onSendMessage={handleSendMessage}
+        onRemoveTech={handleRemoveTech}
+        onClearAll={handleClearAllTech}
+        onSave={handleSaveTechStack}
       />
     </div>
   );

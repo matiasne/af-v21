@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Button } from "@heroui/button";
 import { Link } from "@heroui/link";
 import {
   Dropdown,
@@ -11,7 +10,6 @@ import {
 } from "@heroui/dropdown";
 import { Avatar } from "@heroui/avatar";
 import NextLink from "next/link";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useTheme } from "next-themes";
 
@@ -27,12 +25,10 @@ interface BreadcrumbItem {
 interface NavbarProps {
   pageTitle?: string | null;
   projectName?: string | null;
-  backUrl?: string | null;
   breadcrumbs?: BreadcrumbItem[];
 }
 
-export const Navbar = ({ pageTitle, projectName, backUrl, breadcrumbs }: NavbarProps = {}) => {
-  const router = useRouter();
+export const Navbar = ({ pageTitle, projectName, breadcrumbs }: NavbarProps = {}) => {
   const { user, loading, signOut, setPassword, hasPasswordProvider } = useAuth();
   const [isSetPasswordModalOpen, setIsSetPasswordModalOpen] = useState(false);
   const { theme } = useTheme();
@@ -111,18 +107,9 @@ export const Navbar = ({ pageTitle, projectName, backUrl, breadcrumbs }: NavbarP
           </div>
         </div>
 
-        {/* Segunda fila: Back y título del proyecto */}
+        {/* Segunda fila: título del proyecto */}
         {pageTitle && (
           <div className="flex items-center gap-3 pb-3">
-            {backUrl && (
-              <Button
-                variant="light"
-                size="sm"
-                onPress={() => router.push(backUrl)}
-              >
-                ← Back
-              </Button>
-            )}
             <div className="flex items-center gap-2">
               {breadcrumbs && breadcrumbs.length > 0 ? (
                 <>

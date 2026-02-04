@@ -25,7 +25,6 @@ function ProjectLayoutContent({ children }: { children: ReactNode }) {
     setIsChatLoading,
     pageTitle,
     breadcrumbs,
-    backUrl,
     isConfiguration,
     projectOwnerId,
   } = useProjectChat();
@@ -39,12 +38,11 @@ function ProjectLayoutContent({ children }: { children: ReactNode }) {
           <Navbar
             pageTitle={pageTitle}
             projectName={projectContext?.name}
-            backUrl={backUrl || `/dashboard/project/${projectId}`}
             breadcrumbs={breadcrumbs}
           />
         </div>
       )}
-      <div className={pageTitle ? "pt-28" : "pb-24"}>{children}</div>
+      <div>{children}</div>
       {projectContext && !isConfiguration && (
         <FloatingInput
           projectContext={projectContext}

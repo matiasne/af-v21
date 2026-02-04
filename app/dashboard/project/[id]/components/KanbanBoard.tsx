@@ -14,6 +14,7 @@ import {
 } from "@heroui/modal";
 import { Divider } from "@heroui/divider";
 import { Spinner } from "@heroui/spinner";
+import { addToast } from "@heroui/toast";
 
 import { ExecutionPlanTask, TaskStatus } from "@/domain/entities/ExecutionPlan";
 
@@ -28,6 +29,8 @@ const TASKS_PER_PAGE = 20;
 
 interface KanbanBoardProps {
   tasks: ExecutionPlanTask[];
+  isLocked?: boolean;
+  lockedReason?: string;
   onMoveTask?: (taskId: string, status: TaskStatus) => void;
   onMoveAllBacklogToTodo?: (taskIds: string[]) => void;
   onMoveAllTodoToBacklog?: (taskIds: string[]) => void;
@@ -102,6 +105,7 @@ function KanbanColumn({
   tasks,
   draggedTaskId,
   dragOverColumn,
+  isBoardLocked,
   onDragStart,
   onDragEnd,
   onDragOver,
@@ -117,6 +121,7 @@ function KanbanColumn({
   tasks: ExecutionPlanTask[];
   draggedTaskId: string | null;
   dragOverColumn: TaskStatus | null;
+  isBoardLocked: boolean;
   onDragStart: (e: DragEvent<HTMLDivElement>, taskId: string) => void;
   onDragEnd: () => void;
   onDragOver: (e: DragEvent<HTMLDivElement>, columnId: TaskStatus) => void;
@@ -240,8 +245,8 @@ function KanbanColumn({
       {/* Column Content */}
       <div
         ref={columnRef}
-        className={`flex-1 bg-default-100 dark:bg-default-50/10 rounded-lg p-3 min-h-[300px] max-h-[600px] overflow-y-auto space-y-3 transition-colors ${
-          dragOverColumn === column.id ? "bg-primary-100 dark:bg-primary-900/20 ring-2 ring-primary" : ""
+        className={`flex-1 bg-default-100 dark:bg-default-100/50 rounded-lg p-3 min-h-[300px] max-h-[600px] overflow-y-auto space-y-3 transition-colors ${
+          dragOverColumn === column.id ? "bg-primary-100 dark:bg-primary-900/30 ring-2 ring-primary" : ""
         }`}
         onDragOver={(e) => onDragOver(e, column.id)}
         onDragLeave={onDragLeave}
@@ -254,18 +259,18 @@ function KanbanColumn({
         ) : (
           <>
             {visibleTasks.map((task) => {
-              const isLocked = task.status === "in_progress" || task.status === "completed";
+              const isTaskLocked = isBoardLocked || task.status === "in_progress" || task.status === "completed";
               return (
               <div
                 key={task.id}
-                draggable={!isLocked}
+                draggable={!isTaskLocked}
                 onDragStart={(e) => onDragStart(e, task.id)}
                 onDragEnd={onDragEnd}
                 className={`${draggedTaskId === task.id ? "opacity-50" : ""}`}
               >
                 <Card
                   className={`bg-white dark:bg-default-100 shadow-sm hover:shadow-md transition-shadow ${
-                    isLocked ? "cursor-not-allowed" : "cursor-grab active:cursor-grabbing"
+                    isTaskLocked ? "cursor-not-allowed" : "cursor-grab active:cursor-grabbing"
                   } ${task.error ? "border-2 border-red-300 dark:border-red-900" : ""}`}
                 >
                   <CardBody className="p-3">
@@ -374,7 +379,7 @@ function KanbanColumn({
   );
 }
 
-export function KanbanBoard({ tasks, onMoveTask, onMoveAllBacklogToTodo, onMoveAllTodoToBacklog, onCreateTask }: KanbanBoardProps) {
+export function KanbanBoard({ tasks, isLocked = false, lockedReason, onMoveTask, onMoveAllBacklogToTodo, onMoveAllTodoToBacklog, onCreateTask }: KanbanBoardProps) {
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<TaskStatus | null>(null);
   const [selectedTask, setSelectedTask] = useState<ExecutionPlanTask | null>(null);
@@ -405,6 +410,16 @@ export function KanbanBoard({ tasks, onMoveTask, onMoveAllBacklogToTodo, onMoveA
   }, [tasks]);
 
   const handleDragStart = (e: DragEvent<HTMLDivElement>, taskId: string) => {
+    // Prevent dragging when board is locked
+    if (isLocked) {
+      e.preventDefault();
+      addToast({
+        title: "Task movement disabled",
+        description: lockedReason || "Task movement is currently disabled.",
+        color: "warning",
+      });
+      return;
+    }
     // Find the task to check its status
     const task = tasks.find((t) => t.id === taskId);
     // Prevent dragging tasks from in_progress or completed columns
@@ -490,6 +505,7 @@ export function KanbanBoard({ tasks, onMoveTask, onMoveAllBacklogToTodo, onMoveA
             tasks={tasksByStatus[column.id]}
             draggedTaskId={draggedTaskId}
             dragOverColumn={dragOverColumn}
+            isBoardLocked={isLocked}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
             onDragOver={handleDragOver}
