@@ -26,6 +26,7 @@ import {
   TaskStatus,
   Epic,
 } from "@/domain/entities/ExecutionPlan";
+// Note: TaskCategory and CleanArchitectureArea are still needed for handleCreateTask
 import { executionPlanRepository } from "@/infrastructure/repositories/FirebaseExecutionPlanRepository";
 import { processorRepository } from "@/infrastructure/repositories/FirebaseProcessorRepository";
 import { ProcessorInfo } from "@/domain/entities/ProcessorInfo";
@@ -39,26 +40,6 @@ import {
 import NewTaskModal from "../components/NewTaskModal";
 
 type ViewMode = "kanban" | "list";
-
-const CATEGORY_OPTIONS: { id: TaskCategory | "all"; label: string }[] = [
-  { id: "all", label: "All Categories" },
-  { id: "backend", label: "Backend" },
-  { id: "frontend", label: "Frontend" },
-  { id: "database", label: "Database" },
-  { id: "integration", label: "Integration" },
-  { id: "api", label: "API" },
-];
-
-const ARCHITECTURE_AREA_OPTIONS: {
-  id: CleanArchitectureArea | "all";
-  label: string;
-}[] = [
-  { id: "all", label: "All Layers" },
-  { id: "domain", label: "Domain" },
-  { id: "application", label: "Application" },
-  { id: "infrastructure", label: "Infrastructure" },
-  { id: "presentation", label: "Presentation" },
-];
 
 const CLAUDE_MODELS = [
   { id: "claude-sonnet-4-5", label: "Claude Sonnet 4.5 (Recommended)" },
@@ -118,12 +99,6 @@ export default function KanbanPage() {
   const [isTechStackModalOpen, setIsTechStackModalOpen] = useState(false);
 
   // Filter states
-  const [selectedCategory, setSelectedCategory] = useState<
-    TaskCategory | "all"
-  >("all");
-  const [selectedArchitectureArea, setSelectedArchitectureArea] = useState<
-    CleanArchitectureArea | "all"
-  >("all");
   const [selectedEpic, setSelectedEpic] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -643,14 +618,9 @@ export default function KanbanPage() {
     return queryIndex === lowerQuery.length;
   };
 
-  // Filter tasks by selected category, architecture area, epic, and search query
+  // Filter tasks by selected epic and search query
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
-      const matchesCategory =
-        selectedCategory === "all" || task.category === selectedCategory;
-      const matchesArea =
-        selectedArchitectureArea === "all" ||
-        task.cleanArchitectureArea === selectedArchitectureArea;
       const matchesEpic =
         selectedEpic === "all" ||
         (selectedEpic === "unassigned" ? !task.epicId || task.epicId === "" : task.epicId === selectedEpic);
@@ -658,9 +628,9 @@ export default function KanbanPage() {
         !searchQuery ||
         fuzzyMatch(task.title, searchQuery) ||
         fuzzyMatch(task.description || "", searchQuery);
-      return matchesCategory && matchesArea && matchesEpic && matchesSearch;
+      return matchesEpic && matchesSearch;
     });
-  }, [tasks, selectedCategory, selectedArchitectureArea, selectedEpic, searchQuery]);
+  }, [tasks, selectedEpic, searchQuery]);
 
   if (authLoading || projectsLoading || migrationLoading) {
     return (
@@ -1043,44 +1013,6 @@ export default function KanbanPage() {
           }
         />
         <Select
-          placeholder="Category"
-          selectedKeys={new Set([selectedCategory])}
-          onSelectionChange={(keys) => {
-            const selected = Array.from(keys)[0] as TaskCategory | "all";
-            if (selected) {
-              setSelectedCategory(selected);
-            }
-          }}
-          className="w-36"
-          size="sm"
-        >
-          {CATEGORY_OPTIONS.map((option) => (
-            <SelectItem key={option.id} textValue={option.label}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </Select>
-        <Select
-          placeholder="Layer"
-          selectedKeys={new Set([selectedArchitectureArea])}
-          onSelectionChange={(keys) => {
-            const selected = Array.from(keys)[0] as
-              | CleanArchitectureArea
-              | "all";
-            if (selected) {
-              setSelectedArchitectureArea(selected);
-            }
-          }}
-          className="w-36"
-          size="sm"
-        >
-          {ARCHITECTURE_AREA_OPTIONS.map((option) => (
-            <SelectItem key={option.id} textValue={option.label}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </Select>
-        <Select
           placeholder="Epic"
           selectedKeys={new Set([selectedEpic])}
           onSelectionChange={(keys) => {
@@ -1103,18 +1035,13 @@ export default function KanbanPage() {
           ))}
         </Select>
         {/* Clear all filters button */}
-        {(searchQuery ||
-          selectedCategory !== "all" ||
-          selectedArchitectureArea !== "all" ||
-          selectedEpic !== "all") && (
+        {(searchQuery || selectedEpic !== "all") && (
           <Button
             size="sm"
             color="default"
             variant="flat"
             onPress={() => {
               setSearchQuery("");
-              setSelectedCategory("all");
-              setSelectedArchitectureArea("all");
               setSelectedEpic("all");
             }}
           >
@@ -1127,33 +1054,10 @@ export default function KanbanPage() {
       <div className="mb-4 text-sm text-default-500">
         {filteredTasks.length} task{filteredTasks.length !== 1 ? "s" : ""} found
         {searchQuery && <span> matching &quot;{searchQuery}&quot;</span>}
-        {(selectedCategory !== "all" || selectedArchitectureArea !== "all" || selectedEpic !== "all") && (
+        {selectedEpic !== "all" && (
           <span>
-            {selectedCategory !== "all" && (
-              <>
-                {" "}
-                in{" "}
-                {CATEGORY_OPTIONS.find((c) => c.id === selectedCategory)?.label}
-              </>
-            )}
-            {selectedArchitectureArea !== "all" && (
-              <>
-                {" "}
-                (
-                {
-                  ARCHITECTURE_AREA_OPTIONS.find(
-                    (a) => a.id === selectedArchitectureArea,
-                  )?.label
-                }{" "}
-                layer)
-              </>
-            )}
-            {selectedEpic !== "all" && (
-              <>
-                {" "}
-                in epic &quot;{selectedEpic === "unassigned" ? "Unassigned" : epics.find((e) => e.id === selectedEpic)?.title}&quot;
-              </>
-            )}
+            {" "}
+            in epic &quot;{selectedEpic === "unassigned" ? "Unassigned" : epics.find((e) => e.id === selectedEpic)?.title}&quot;
           </span>
         )}
       </div>
