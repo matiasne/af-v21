@@ -35,6 +35,7 @@ export interface GroomingSession {
   createdAt: number;
   updatedAt: number;
   status: "active" | "completed";
+  pinned?: boolean;
   suggestedTasks: SuggestedTask[];
   suggestedEpics: SuggestedEpic[];
 }

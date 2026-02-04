@@ -6,7 +6,6 @@ import {
   ModalContent,
   ModalHeader,
   ModalBody,
-  ModalFooter,
 } from "@heroui/modal";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
@@ -15,6 +14,7 @@ import { Chip } from "@heroui/chip";
 import { Tabs, Tab } from "@heroui/tabs";
 import { ScrollShadow } from "@heroui/scroll-shadow";
 import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@heroui/dropdown";
+import { Tooltip } from "@heroui/tooltip";
 
 import {
   TaskCategory,
@@ -126,11 +126,17 @@ export default function GroomingSessionModal({
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [previousSessions, setPreviousSessions] = useState<GroomingSession[]>([]);
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
-  const [isSessionSelectorOpen, setIsSessionSelectorOpen] = useState(false);
+  const [isHistorySidebarOpen, setIsHistorySidebarOpen] = useState(false);
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [editingSessionTitle, setEditingSessionTitle] = useState("");
+  const [tasksPanelWidth, setTasksPanelWidth] = useState(380);
+  const [isResizing, setIsResizing] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const renameInputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Build task context string for the AI
   const buildTaskContext = (task: SuggestedTask | ExistingTask, isSuggested: boolean = false) => {
@@ -182,7 +188,7 @@ export default function GroomingSessionModal({
   const loadSession = async (session: GroomingSession) => {
     if (!userId || !projectId) return;
     setIsLoading(true);
-    setIsSessionSelectorOpen(false);
+    setIsHistorySidebarOpen(false);
 
     try {
       // Load messages from subcollection
@@ -795,7 +801,7 @@ export default function GroomingSessionModal({
       setUploadedDocuments([]);
       setSelectedTab("tasks");
       setCurrentSessionId(null);
-      setIsSessionSelectorOpen(false);
+      setIsHistorySidebarOpen(false);
       onClose();
     }
   };
@@ -811,7 +817,79 @@ export default function GroomingSessionModal({
     setUploadedDocuments([]);
     setSelectedTab("tasks");
     setCurrentSessionId(null);
-    setIsSessionSelectorOpen(false);
+    setIsHistorySidebarOpen(false);
+  };
+
+  // Delete a session
+  const handleDeleteSession = async (sessionId: string) => {
+    if (!userId || !projectId) return;
+    try {
+      await groomingSessionRepository.deleteSession(userId, projectId, sessionId);
+      // Remove from local state
+      setPreviousSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      // If we deleted the current session, start a new one
+      if (currentSessionId === sessionId) {
+        handleStartNewSession();
+      }
+    } catch (error) {
+      console.error("Error deleting session:", error);
+    }
+  };
+
+  // Start inline rename for a session
+  const handleRenameSession = (session: GroomingSession) => {
+    setEditingSessionId(session.id);
+    setEditingSessionTitle(session.title);
+    // Focus the input after render
+    setTimeout(() => {
+      renameInputRef.current?.focus();
+      renameInputRef.current?.select();
+    }, 50);
+  };
+
+  // Save the renamed session
+  const handleSaveRename = async () => {
+    if (!editingSessionId || !editingSessionTitle.trim() || !userId || !projectId) {
+      setEditingSessionId(null);
+      return;
+    }
+    try {
+      await groomingSessionRepository.updateSession(userId, projectId, editingSessionId, {
+        title: editingSessionTitle.trim()
+      });
+      setPreviousSessions((prev) =>
+        prev.map((s) => (s.id === editingSessionId ? { ...s, title: editingSessionTitle.trim() } : s))
+      );
+    } catch (error) {
+      console.error("Error renaming session:", error);
+    } finally {
+      setEditingSessionId(null);
+    }
+  };
+
+  // Cancel rename
+  const handleCancelRename = () => {
+    setEditingSessionId(null);
+    setEditingSessionTitle("");
+  };
+
+  // Pin/unpin a session
+  const handlePinSession = async (sessionId: string) => {
+    if (!userId || !projectId) return;
+    try {
+      const session = previousSessions.find((s) => s.id === sessionId);
+      const newPinnedValue = !session?.pinned;
+
+      await groomingSessionRepository.updateSession(userId, projectId, sessionId, {
+        pinned: newPinnedValue
+      });
+
+      setPreviousSessions((prev) =>
+        prev.map((s) => (s.id === sessionId ? { ...s, pinned: newPinnedValue } : s))
+      );
+    } catch (error) {
+      console.error("Error pinning session:", error);
+    }
   };
 
   // Format date for display
@@ -840,6 +918,43 @@ export default function GroomingSessionModal({
     return suggestedTasks.filter((t) => t.epicId === epicId);
   };
 
+  // Handle resize of tasks panel
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing || !containerRef.current) return;
+
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const newWidth = containerRect.right - e.clientX;
+
+      // Limit width between 280px and 600px
+      const clampedWidth = Math.min(Math.max(newWidth, 280), 600);
+      setTasksPanelWidth(clampedWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+    }
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [isResizing]);
+
   return (
     <Modal
       isOpen={isOpen}
@@ -849,7 +964,7 @@ export default function GroomingSessionModal({
       hideCloseButton={isLoading || isProcessingDocument}
       scrollBehavior="inside"
     >
-      <ModalContent className="h-[80vh]">
+      <ModalContent className="h-[80vh] overflow-hidden">
         <ModalHeader className="flex flex-col gap-1 border-b border-default-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -873,73 +988,230 @@ export default function GroomingSessionModal({
                 </Chip>
               )}
             </div>
-            {userId && projectId && (
-              <div className="flex items-center gap-2">
-                <Dropdown isOpen={isSessionSelectorOpen} onOpenChange={setIsSessionSelectorOpen}>
-                  <DropdownTrigger>
-                    <Button
-                      size="sm"
-                      variant="flat"
-                      isLoading={isLoadingSessions}
-                      startContent={
-                        !isLoadingSessions && (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        )
-                      }
-                    >
-                      {previousSessions.length > 0 ? `${previousSessions.length} Previous` : "History"}
-                    </Button>
-                  </DropdownTrigger>
-                  <DropdownMenu
-                    aria-label="Session history"
-                    className="max-h-[300px] overflow-y-auto"
-                    emptyContent="No previous sessions"
-                  >
-                    {previousSessions.length > 0 ? (
-                      <>
-                        <DropdownItem
-                          key="new-session"
-                          className="text-primary"
-                          startContent={
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                            </svg>
-                          }
-                          onPress={handleStartNewSession}
-                        >
-                          Start New Session
-                        </DropdownItem>
-                        {previousSessions.map((session) => (
-                          <DropdownItem
-                            key={session.id}
-                            description={formatSessionDate(session.updatedAt)}
-                            onPress={() => loadSession(session)}
-                            className={currentSessionId === session.id ? "bg-primary-100" : ""}
-                          >
-                            <span className="line-clamp-1">{session.title}</span>
-                          </DropdownItem>
-                        ))}
-                      </>
-                    ) : (
-                      <DropdownItem key="empty" isReadOnly>
-                        No previous sessions
-                      </DropdownItem>
-                    )}
-                  </DropdownMenu>
-                </Dropdown>
-              </div>
-            )}
           </div>
           <span className="text-sm text-default-500 font-normal">
             Discuss features, upload documents, and get task & epic suggestions from AI
           </span>
         </ModalHeader>
 
-        <ModalBody className="p-0 flex flex-row gap-0 overflow-hidden">
-          {/* Left side - Chat */}
-          <div className="flex-1 flex flex-col border-r border-default-200 min-w-0">
+        <ModalBody ref={containerRef} className="p-0 flex flex-row gap-0 overflow-hidden">
+          {/* Left side - History Sidebar */}
+          {userId && projectId && (
+            <div
+              className={`flex flex-col border-r border-default-200 bg-default-50 dark:bg-default-100/30 transition-all duration-300 ease-in-out ${
+                isHistorySidebarOpen ? "w-[280px]" : "w-[52px]"
+              }`}
+            >
+              {/* Sidebar Header */}
+              <div className="p-2 border-b border-default-200 flex items-center justify-between">
+                {isHistorySidebarOpen ? (
+                  <>
+                    <span className="text-sm font-semibold text-default-700 pl-2">History</span>
+                    <Tooltip content="Close sidebar" placement="right">
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        onPress={() => setIsHistorySidebarOpen(false)}
+                        className="min-w-8 w-8 h-8"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <rect x="3" y="3" width="18" height="18" rx="2" strokeWidth={2} />
+                          <path strokeWidth={2} d="M9 3v18" />
+                        </svg>
+                      </Button>
+                    </Tooltip>
+                  </>
+                ) : (
+                  <Tooltip content="Open sidebar" placement="right">
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant="light"
+                      onPress={() => setIsHistorySidebarOpen(true)}
+                      className="min-w-8 w-8 h-8 mx-auto"
+                      isLoading={isLoadingSessions}
+                    >
+                      {!isLoadingSessions && (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <rect x="3" y="3" width="18" height="18" rx="2" strokeWidth={2} />
+                          <path strokeWidth={2} d="M9 3v18" />
+                          <path strokeWidth={2} d="M14 9l3 3-3 3" />
+                        </svg>
+                      )}
+                    </Button>
+                  </Tooltip>
+                )}
+              </div>
+
+              {/* Sidebar Content */}
+              {isHistorySidebarOpen && (
+                <div className="flex-1 flex flex-col overflow-hidden">
+                  {/* New Session Button */}
+                  <div className="p-2">
+                    <Button
+                      size="sm"
+                      color="primary"
+                      variant="flat"
+                      className="w-full justify-start"
+                      startContent={
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                      }
+                      onPress={handleStartNewSession}
+                    >
+                      New Session
+                    </Button>
+                  </div>
+
+                  {/* Sessions List */}
+                  <ScrollShadow className="flex-1 overflow-y-auto px-2 pb-2">
+                    {isLoadingSessions ? (
+                      <div className="flex justify-center py-4">
+                        <Spinner size="sm" />
+                      </div>
+                    ) : previousSessions.length > 0 ? (
+                      <div className="space-y-1">
+                        {/* Sort sessions: pinned first, then by updatedAt */}
+                        {[...previousSessions]
+                          .sort((a, b) => {
+                            if (a.pinned && !b.pinned) return -1;
+                            if (!a.pinned && b.pinned) return 1;
+                            return b.updatedAt - a.updatedAt;
+                          })
+                          .map((session) => (
+                          <div
+                            key={session.id}
+                            className={`group relative w-full text-left p-2 rounded-lg transition-colors ${
+                              editingSessionId === session.id
+                                ? "bg-default-100 dark:bg-default-200/50"
+                                : currentSessionId === session.id
+                                  ? "bg-primary-100 dark:bg-primary-900/30 cursor-pointer"
+                                  : "hover:bg-default-100 dark:hover:bg-default-200/50 cursor-pointer"
+                            }`}
+                            onClick={() => {
+                              if (editingSessionId !== session.id) {
+                                loadSession(session);
+                              }
+                            }}
+                          >
+                            <div className="flex items-start justify-between gap-1">
+                              <div className="flex-1 min-w-0">
+                                {/* Inline edit mode */}
+                                {editingSessionId === session.id ? (
+                                  <input
+                                    ref={renameInputRef}
+                                    type="text"
+                                    value={editingSessionTitle}
+                                    onChange={(e) => setEditingSessionTitle(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        handleSaveRename();
+                                      } else if (e.key === "Escape") {
+                                        handleCancelRename();
+                                      }
+                                    }}
+                                    onBlur={handleSaveRename}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="w-full text-sm font-medium bg-white dark:bg-default-100 border border-primary-300 rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-primary-400"
+                                  />
+                                ) : (
+                                  <div className="flex items-center gap-1.5">
+                                    <p className="text-sm font-medium text-default-800 line-clamp-1 flex-1">
+                                      {session.title}
+                                    </p>
+                                    {session.pinned && (
+                                      <svg className="w-3.5 h-3.5 text-default-400 flex-shrink-0" fill="currentColor" viewBox="0 0 16 16">
+                                        <path d="M9.828.722a.5.5 0 0 1 .354.146l4.95 4.95a.5.5 0 0 1 0 .707c-.48.48-1.072.588-1.503.588-.177 0-.335-.018-.46-.039l-3.134 3.134a5.927 5.927 0 0 1 .16 1.013c.046.702-.032 1.687-.72 2.375a.5.5 0 0 1-.707 0l-2.829-2.828-3.182 3.182c-.195.195-1.219.902-1.414.707-.195-.195.512-1.22.707-1.414l3.182-3.182-2.828-2.829a.5.5 0 0 1 0-.707c.688-.688 1.673-.767 2.375-.72a5.922 5.922 0 0 1 1.013.16l3.134-3.133a2.772 2.772 0 0 1-.04-.461c0-.43.108-1.022.589-1.503a.5.5 0 0 1 .353-.146z"/>
+                                      </svg>
+                                    )}
+                                  </div>
+                                )}
+                                <p className="text-xs text-default-400 mt-0.5">
+                                  {formatSessionDate(session.updatedAt)}
+                                </p>
+                              </div>
+                              {/* 3-dot menu - appears on hover, hidden during edit */}
+                              {editingSessionId !== session.id && (
+                                <Dropdown>
+                                  <DropdownTrigger>
+                                    <button
+                                      className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-default-200 dark:hover:bg-default-300/50 transition-opacity"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <svg className="w-4 h-4 text-default-500" fill="currentColor" viewBox="0 0 24 24">
+                                        <circle cx="12" cy="6" r="1.5" />
+                                        <circle cx="12" cy="12" r="1.5" />
+                                        <circle cx="12" cy="18" r="1.5" />
+                                      </svg>
+                                    </button>
+                                  </DropdownTrigger>
+                                  <DropdownMenu
+                                    aria-label="Session options"
+                                    onAction={(key) => {
+                                      if (key === "delete") {
+                                        handleDeleteSession(session.id);
+                                      } else if (key === "rename") {
+                                        handleRenameSession(session);
+                                      } else if (key === "pin") {
+                                        handlePinSession(session.id);
+                                      }
+                                    }}
+                                  >
+                                    <DropdownItem
+                                      key="pin"
+                                      startContent={
+                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
+                                          <path d="M9.828.722a.5.5 0 0 1 .354.146l4.95 4.95a.5.5 0 0 1 0 .707c-.48.48-1.072.588-1.503.588-.177 0-.335-.018-.46-.039l-3.134 3.134a5.927 5.927 0 0 1 .16 1.013c.046.702-.032 1.687-.72 2.375a.5.5 0 0 1-.707 0l-2.829-2.828-3.182 3.182c-.195.195-1.219.902-1.414.707-.195-.195.512-1.22.707-1.414l3.182-3.182-2.828-2.829a.5.5 0 0 1 0-.707c.688-.688 1.673-.767 2.375-.72a5.922 5.922 0 0 1 1.013.16l3.134-3.133a2.772 2.772 0 0 1-.04-.461c0-.43.108-1.022.589-1.503a.5.5 0 0 1 .353-.146z"/>
+                                        </svg>
+                                      }
+                                    >
+                                      {session.pinned ? "Unpin" : "Pin"}
+                                    </DropdownItem>
+                                    <DropdownItem
+                                      key="rename"
+                                      startContent={
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                      }
+                                    >
+                                      Rename
+                                    </DropdownItem>
+                                    <DropdownItem
+                                      key="delete"
+                                      className="text-danger"
+                                      color="danger"
+                                      startContent={
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                      }
+                                    >
+                                      Delete
+                                    </DropdownItem>
+                                  </DropdownMenu>
+                                </Dropdown>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-4">
+                        <p className="text-xs text-default-400">No previous sessions</p>
+                      </div>
+                    )}
+                  </ScrollShadow>
+                </div>
+              )}
+
+            </div>
+          )}
+
+          {/* Middle - Chat */}
+          <div className="flex-1 flex flex-col min-w-0">
             {/* Uploaded documents bar */}
             {uploadedDocuments.length > 0 && (
               <div className="px-4 py-2 border-b border-default-200 bg-default-50 dark:bg-default-100/30">
@@ -1073,7 +1345,7 @@ export default function GroomingSessionModal({
                   isDisabled={!inputValue.trim() || isLoading || isProcessingDocument}
                 >
                   <svg
-                    className="w-5 h-5"
+                    className="w-5 h-5 rotate-90"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -1093,8 +1365,19 @@ export default function GroomingSessionModal({
             </div>
           </div>
 
+          {/* Resizable divider */}
+          <div
+            className="w-1 hover:w-1 bg-transparent hover:bg-primary-300 cursor-col-resize transition-colors flex-shrink-0 relative group"
+            onMouseDown={handleMouseDown}
+          >
+            <div className="absolute inset-y-0 -left-1 -right-1 group-hover:bg-primary-200/30" />
+          </div>
+
           {/* Right side - Suggested Tasks & Epics */}
-          <div className="w-[380px] flex flex-col bg-default-50 dark:bg-default-100/30">
+          <div
+            className="flex flex-col bg-default-50 dark:bg-default-100/30 flex-shrink-0"
+            style={{ width: tasksPanelWidth }}
+          >
             <div className="p-3 border-b border-default-200">
               <Tabs
                 selectedKey={selectedTab}
@@ -1228,12 +1511,6 @@ export default function GroomingSessionModal({
             </div>
           </div>
         </ModalBody>
-
-        <ModalFooter className="border-t border-default-200">
-          <Button variant="flat" onPress={handleClose} isDisabled={isLoading || isProcessingDocument}>
-            Close Session
-          </Button>
-        </ModalFooter>
       </ModalContent>
 
       {/* Task Selector Modal */}
