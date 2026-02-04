@@ -24,9 +24,18 @@ import {
   TaskCategory,
   CleanArchitectureArea,
   TaskStatus,
+  Epic,
 } from "@/domain/entities/ExecutionPlan";
 import { executionPlanRepository } from "@/infrastructure/repositories/FirebaseExecutionPlanRepository";
-import { KanbanBoard, TaskList, TechStackEditModal } from "../components";
+import { processorRepository } from "@/infrastructure/repositories/FirebaseProcessorRepository";
+import { ProcessorInfo } from "@/domain/entities/ProcessorInfo";
+import {
+  KanbanBoard,
+  TaskList,
+  TechStackEditModal,
+  NewEpicModal,
+  GroomingSessionModal,
+} from "../components";
 import NewTaskModal from "../components/NewTaskModal";
 
 type ViewMode = "kanban" | "list";
@@ -89,6 +98,7 @@ export default function KanbanPage() {
   } = useProjectChat();
   const [project, setProject] = useState<Project | null>(null);
   const [tasks, setTasks] = useState<ExecutionPlanTask[]>([]);
+  const [epics, setEpics] = useState<Epic[]>([]);
   const [tasksLoading, setTasksLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("kanban");
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
@@ -103,6 +113,8 @@ export default function KanbanPage() {
   const [isRetryingExecutor, setIsRetryingExecutor] = useState(false);
   const [isForceResuming, setIsForceResuming] = useState(false);
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
+  const [isNewEpicModalOpen, setIsNewEpicModalOpen] = useState(false);
+  const [isGroomingSessionOpen, setIsGroomingSessionOpen] = useState(false);
   const [isTechStackModalOpen, setIsTechStackModalOpen] = useState(false);
 
   // Filter states
@@ -112,6 +124,7 @@ export default function KanbanPage() {
   const [selectedArchitectureArea, setSelectedArchitectureArea] = useState<
     CleanArchitectureArea | "all"
   >("all");
+  const [selectedEpic, setSelectedEpic] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
   const projectId = params.id as string;
@@ -123,6 +136,12 @@ export default function KanbanPage() {
 
   const [selectedModel, setSelectedModel] = useState<string>(
     project?.executorModel || "claude-sonnet-4-5",
+  );
+
+  // Processor state
+  const [processors, setProcessors] = useState<ProcessorInfo[]>([]);
+  const [selectedProcessorHost, setSelectedProcessorHost] = useState<string>(
+    project?.processorHost || "",
   );
 
   // Redirect to login if not authenticated
@@ -169,6 +188,27 @@ export default function KanbanPage() {
     }
   }, [project?.executorModel]);
 
+  // Sync selected processor host when project changes
+  useEffect(() => {
+    if (project?.processorHost) {
+      setSelectedProcessorHost(project.processorHost);
+    }
+  }, [project?.processorHost]);
+
+  // Subscribe to processors
+  useEffect(() => {
+    const unsubscribe = processorRepository.subscribeProcessors(
+      (updatedProcessors) => {
+        setProcessors(updatedProcessors);
+      },
+      (error) => {
+        console.error("Error fetching processors:", error);
+      },
+    );
+
+    return () => unsubscribe();
+  }, []);
+
   // Handle model change
   const handleModelChange = async (model: string) => {
     console.log("[KanbanPage] handleModelChange called:", model);
@@ -181,6 +221,17 @@ export default function KanbanPage() {
       console.log(
         "[KanbanPage] updateExecutorModel is not available or no projectId",
       );
+    }
+  };
+
+  // Handle processor host change
+  const handleProcessorHostChange = async (host: string) => {
+    if (!host || !projectId) return;
+    setSelectedProcessorHost(host);
+    try {
+      await updateProject(projectId, { processorHost: host });
+    } catch (error) {
+      console.error("Error updating processor host:", error);
     }
   };
 
@@ -204,6 +255,29 @@ export default function KanbanPage() {
       (error) => {
         console.error("Error subscribing to execution plan tasks:", error);
         setTasksLoading(false);
+      },
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [user?.uid, projectId]);
+
+  // Subscribe to epics
+  useEffect(() => {
+    if (!user?.uid || !projectId) {
+      setEpics([]);
+      return;
+    }
+
+    const unsubscribe = executionPlanRepository.subscribeEpics(
+      user.uid,
+      projectId,
+      (updatedEpics) => {
+        setEpics(updatedEpics);
+      },
+      (error) => {
+        console.error("Error subscribing to epics:", error);
       },
     );
 
@@ -474,6 +548,78 @@ export default function KanbanPage() {
     }
   };
 
+  // Handle create new epic
+  const handleCreateEpic = async (epicData: {
+    title: string;
+    description: string;
+    priority: "high" | "medium" | "low";
+    taskIds: string[];
+  }) => {
+    if (!user?.uid || !projectId) return;
+
+    try {
+      const epicId = await executionPlanRepository.createEpic(
+        user.uid,
+        projectId,
+        {
+          title: epicData.title,
+          description: epicData.description,
+          priority: epicData.priority,
+        },
+      );
+
+      // Assign selected tasks to the new epic
+      if (epicData.taskIds.length > 0) {
+        await executionPlanRepository.assignTasksToEpic(
+          user.uid,
+          projectId,
+          epicId,
+          epicData.taskIds,
+        );
+      }
+    } catch (error) {
+      console.error("Error creating epic:", error);
+      throw error;
+    }
+  };
+
+  // Handle approve epic from grooming session (with associated tasks)
+  const handleApproveEpic = async (
+    epicData: {
+      title: string;
+      description: string;
+      priority: "high" | "medium" | "low";
+    },
+    taskIds: string[],
+  ) => {
+    if (!user?.uid || !projectId) return;
+
+    try {
+      const epicId = await executionPlanRepository.createEpic(
+        user.uid,
+        projectId,
+        {
+          title: epicData.title,
+          description: epicData.description,
+          priority: epicData.priority,
+        },
+      );
+
+      // Assign the provided task IDs to the new epic
+      if (taskIds.length > 0) {
+        await executionPlanRepository.assignTasksToEpic(
+          user.uid,
+          projectId,
+          epicId,
+          taskIds,
+        );
+      }
+    } catch (error) {
+      console.error("Error approving epic:", error);
+      throw error;
+    }
+  };
+
   // Fuzzy search function
   const fuzzyMatch = (text: string, query: string): boolean => {
     if (!query) return true;
@@ -497,7 +643,7 @@ export default function KanbanPage() {
     return queryIndex === lowerQuery.length;
   };
 
-  // Filter tasks by selected category, architecture area, and search query
+  // Filter tasks by selected category, architecture area, epic, and search query
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
       const matchesCategory =
@@ -505,13 +651,16 @@ export default function KanbanPage() {
       const matchesArea =
         selectedArchitectureArea === "all" ||
         task.cleanArchitectureArea === selectedArchitectureArea;
+      const matchesEpic =
+        selectedEpic === "all" ||
+        (selectedEpic === "unassigned" ? !task.epicId || task.epicId === "" : task.epicId === selectedEpic);
       const matchesSearch =
         !searchQuery ||
         fuzzyMatch(task.title, searchQuery) ||
         fuzzyMatch(task.description || "", searchQuery);
-      return matchesCategory && matchesArea && matchesSearch;
+      return matchesCategory && matchesArea && matchesEpic && matchesSearch;
     });
-  }, [tasks, selectedCategory, selectedArchitectureArea, searchQuery]);
+  }, [tasks, selectedCategory, selectedArchitectureArea, selectedEpic, searchQuery]);
 
   if (authLoading || projectsLoading || migrationLoading) {
     return (
@@ -532,9 +681,44 @@ export default function KanbanPage() {
   return (
     <div className="container mx-auto max-w-7xl px-4 py-4">
       {/* Page Title */}
-      <div className="flex flex-row gap-2 mb-2">
-        <p className="text-sm text-default-500">{project.name}</p>
-        <p className="text-sm text-default-500">Task Board</p>
+      <div className="flex flex-row gap-2 mb-2 justify-between">
+        <div className="flex flex-row gap-2">
+          <p className="text-sm text-default-500">{project.name}</p>
+          <p className="text-sm text-default-500">Task Board</p>
+        </div>
+
+        <div className="flex gap-2">
+          {/* Configuration Button */}
+          <Button
+            size="sm"
+            color="default"
+            variant="flat"
+            onPress={() => setIsConfigModalOpen(true)}
+            startContent={
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+              </svg>
+            }
+          >
+            Configuration
+          </Button>
+        </div>
       </div>
 
       {/* Executor Module Error Banner */}
@@ -675,6 +859,56 @@ export default function KanbanPage() {
       <div className="mb-4 flex items-center justify-between">
         {/* Left side: New Task, Configuration */}
         <div className="flex items-center gap-2">
+          {/* New Epic Button */}
+          <Button
+            size="sm"
+            color="secondary"
+            variant="flat"
+            onPress={() => setIsNewEpicModalOpen(true)}
+            startContent={
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                />
+              </svg>
+            }
+          >
+            New Epic
+          </Button>
+
+          {/* Grooming Session Button */}
+          <Button
+            size="sm"
+            color="secondary"
+            variant="flat"
+            onPress={() => setIsGroomingSessionOpen(true)}
+            startContent={
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                />
+              </svg>
+            }
+          >
+            Start Grooming
+          </Button>
+
           {/* New Task Button */}
           <Button
             size="sm"
@@ -698,37 +932,6 @@ export default function KanbanPage() {
             }
           >
             New Task
-          </Button>
-
-          {/* Configuration Button */}
-          <Button
-            size="sm"
-            color="default"
-            variant="flat"
-            onPress={() => setIsConfigModalOpen(true)}
-            startContent={
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                />
-              </svg>
-            }
-          >
-            Configuration
           </Button>
         </div>
 
@@ -877,10 +1080,33 @@ export default function KanbanPage() {
             </SelectItem>
           ))}
         </Select>
+        <Select
+          placeholder="Epic"
+          selectedKeys={new Set([selectedEpic])}
+          onSelectionChange={(keys) => {
+            const selected = Array.from(keys)[0] as string;
+            if (selected) {
+              setSelectedEpic(selected);
+            }
+          }}
+          className="w-40"
+          size="sm"
+        >
+          {[
+            { id: "all", title: "All Epics" },
+            { id: "unassigned", title: "Unassigned" },
+            ...epics,
+          ].map((option) => (
+            <SelectItem key={option.id} textValue={option.title}>
+              {option.title}
+            </SelectItem>
+          ))}
+        </Select>
         {/* Clear all filters button */}
         {(searchQuery ||
           selectedCategory !== "all" ||
-          selectedArchitectureArea !== "all") && (
+          selectedArchitectureArea !== "all" ||
+          selectedEpic !== "all") && (
           <Button
             size="sm"
             color="default"
@@ -889,6 +1115,7 @@ export default function KanbanPage() {
               setSearchQuery("");
               setSelectedCategory("all");
               setSelectedArchitectureArea("all");
+              setSelectedEpic("all");
             }}
           >
             Clear filters
@@ -900,7 +1127,7 @@ export default function KanbanPage() {
       <div className="mb-4 text-sm text-default-500">
         {filteredTasks.length} task{filteredTasks.length !== 1 ? "s" : ""} found
         {searchQuery && <span> matching &quot;{searchQuery}&quot;</span>}
-        {(selectedCategory !== "all" || selectedArchitectureArea !== "all") && (
+        {(selectedCategory !== "all" || selectedArchitectureArea !== "all" || selectedEpic !== "all") && (
           <span>
             {selectedCategory !== "all" && (
               <>
@@ -919,6 +1146,12 @@ export default function KanbanPage() {
                   )?.label
                 }{" "}
                 layer)
+              </>
+            )}
+            {selectedEpic !== "all" && (
+              <>
+                {" "}
+                in epic &quot;{selectedEpic === "unassigned" ? "Unassigned" : epics.find((e) => e.id === selectedEpic)?.title}&quot;
               </>
             )}
           </span>
@@ -946,6 +1179,7 @@ export default function KanbanPage() {
       ) : viewMode === "kanban" ? (
         <KanbanBoard
           tasks={filteredTasks}
+          epics={epics}
           onMoveTask={async (taskId: string, status: TaskStatus) => {
             if (user?.uid && projectId) {
               try {
@@ -988,10 +1222,25 @@ export default function KanbanPage() {
               }
             }
           }}
+          onUpdateTaskEpic={async (taskId: string, epicId: string) => {
+            if (user?.uid && projectId) {
+              try {
+                await executionPlanRepository.assignTasksToEpic(
+                  user.uid,
+                  projectId,
+                  epicId,
+                  [taskId],
+                );
+              } catch (error) {
+                console.error("Error updating task epic:", error);
+              }
+            }
+          }}
         />
       ) : (
         <TaskList
           tasks={filteredTasks}
+          epics={epics}
           onUpdateTaskStatus={async (taskId: string, status: TaskStatus) => {
             if (user?.uid && projectId) {
               try {
@@ -1003,6 +1252,60 @@ export default function KanbanPage() {
                 );
               } catch (error) {
                 console.error("Error updating task status:", error);
+              }
+            }
+          }}
+          onUpdateTaskEpic={async (taskId: string, epicId: string) => {
+            if (user?.uid && projectId) {
+              try {
+                await executionPlanRepository.assignTasksToEpic(
+                  user.uid,
+                  projectId,
+                  epicId,
+                  [taskId],
+                );
+              } catch (error) {
+                console.error("Error updating task epic:", error);
+              }
+            }
+          }}
+          onReorderTasks={async (taskOrders) => {
+            if (user?.uid && projectId) {
+              try {
+                await executionPlanRepository.updateTasksOrder(
+                  user.uid,
+                  projectId,
+                  taskOrders,
+                );
+              } catch (error) {
+                console.error("Error reordering tasks:", error);
+              }
+            }
+          }}
+          onDeleteTask={async (taskId: string) => {
+            if (user?.uid && projectId) {
+              try {
+                await executionPlanRepository.deleteTask(
+                  user.uid,
+                  projectId,
+                  taskId,
+                );
+              } catch (error) {
+                console.error("Error deleting task:", error);
+              }
+            }
+          }}
+          onDeleteEpic={async (epicId: string, deleteTasksToo: boolean) => {
+            if (user?.uid && projectId) {
+              try {
+                await executionPlanRepository.deleteEpic(
+                  user.uid,
+                  projectId,
+                  epicId,
+                  deleteTasksToo,
+                );
+              } catch (error) {
+                console.error("Error deleting epic:", error);
               }
             }
           }}
@@ -1021,7 +1324,55 @@ export default function KanbanPage() {
           </ModalHeader>
           <ModalBody>
             <div className="flex flex-col gap-4">
+              {/* Processor Host Selection */}
               <div>
+                <label className="block text-sm font-medium text-default-700 mb-2">
+                  Processor Host
+                </label>
+                <Select
+                  label="Select Processor"
+                  placeholder="Select a processor"
+                  selectedKeys={
+                    selectedProcessorHost
+                      ? new Set([selectedProcessorHost])
+                      : new Set()
+                  }
+                  onSelectionChange={(keys) => {
+                    const selected = Array.from(keys)[0] as string;
+                    if (selected) {
+                      handleProcessorHostChange(selected);
+                    }
+                  }}
+                  className="w-full"
+                  description={
+                    processors.filter((p) => p.status === "running").length ===
+                    0
+                      ? "No processors available. Make sure a processor is running."
+                      : "Select the processor server that will handle task execution"
+                  }
+                >
+                  {processors
+                    .filter((p) => p.status === "running")
+                    .map((processor) => (
+                      <SelectItem
+                        key={processor.hostname}
+                        textValue={processor.hostname}
+                      >
+                        <div className="flex flex-col">
+                          <span className="font-medium">
+                            {processor.hostname}
+                          </span>
+                          <span className="text-xs text-default-400">
+                            {processor.ipAddress} - PID: {processor.pid}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                </Select>
+              </div>
+
+              {/* Claude Model Selection */}
+              <div className="border-t border-default-200 pt-4">
                 <label className="block text-sm font-medium text-default-700 mb-2">
                   Claude Model for Task Execution
                 </label>
@@ -1048,6 +1399,7 @@ export default function KanbanPage() {
                 </p>
               </div>
 
+              {/* Actions */}
               <div className="border-t border-default-200 pt-4">
                 <label className="block text-sm font-medium text-default-700 mb-2">
                   Actions
@@ -1209,6 +1561,38 @@ export default function KanbanPage() {
         onRemoveTech={handleRemoveTech}
         onClearAll={handleClearAllTech}
         onSave={handleSaveTechStack}
+      />
+
+      {/* New Epic Modal */}
+      <NewEpicModal
+        isOpen={isNewEpicModalOpen}
+        onClose={() => setIsNewEpicModalOpen(false)}
+        onSubmit={handleCreateEpic}
+        tasks={tasks}
+      />
+
+      {/* Grooming Session Modal */}
+      <GroomingSessionModal
+        isOpen={isGroomingSessionOpen}
+        onClose={() => setIsGroomingSessionOpen(false)}
+        onApproveTask={handleCreateTask}
+        onApproveEpic={handleApproveEpic}
+        projectContext={
+          project
+            ? {
+                name: project.name,
+                description: project.description,
+                techStack: project.analysis?.newTechStack,
+              }
+            : undefined
+        }
+        existingTasks={tasks.map((task) => ({
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          category: task.category,
+          priority: task.priority,
+        }))}
       />
     </div>
   );
