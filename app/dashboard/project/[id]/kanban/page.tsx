@@ -1241,20 +1241,6 @@ export default function KanbanPage() {
         <TaskList
           tasks={filteredTasks}
           epics={epics}
-          onUpdateTaskStatus={async (taskId: string, status: TaskStatus) => {
-            if (user?.uid && projectId) {
-              try {
-                await executionPlanRepository.updateTaskStatus(
-                  user.uid,
-                  projectId,
-                  taskId,
-                  status,
-                );
-              } catch (error) {
-                console.error("Error updating task status:", error);
-              }
-            }
-          }}
           onUpdateTaskEpic={async (taskId: string, epicId: string) => {
             if (user?.uid && projectId) {
               try {
@@ -1593,6 +1579,8 @@ export default function KanbanPage() {
           category: task.category,
           priority: task.priority,
         }))}
+        userId={user?.uid}
+        projectId={projectId}
       />
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
   Modal,
   ModalContent,
@@ -14,11 +14,19 @@ import { Spinner } from "@heroui/spinner";
 import { Chip } from "@heroui/chip";
 import { Tabs, Tab } from "@heroui/tabs";
 import { ScrollShadow } from "@heroui/scroll-shadow";
+import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@heroui/dropdown";
 
 import {
   TaskCategory,
   CleanArchitectureArea,
 } from "@/domain/entities/ExecutionPlan";
+import {
+  GroomingSession,
+  GroomingSessionMessage,
+  SuggestedTask as DomainSuggestedTask,
+  SuggestedEpic as DomainSuggestedEpic,
+} from "@/domain/entities/GroomingSession";
+import { groomingSessionRepository } from "@/infrastructure/repositories/FirebaseGroomingSessionRepository";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -71,6 +79,8 @@ interface GroomingSessionModalProps {
     techStack?: string[];
   };
   existingTasks?: ExistingTask[];
+  userId?: string;
+  projectId?: string;
 }
 
 const CATEGORY_COLORS: Record<TaskCategory, "primary" | "secondary" | "success" | "warning" | "danger"> = {
@@ -94,6 +104,8 @@ export default function GroomingSessionModal({
   onApproveEpic,
   projectContext,
   existingTasks = [],
+  userId,
+  projectId,
 }: GroomingSessionModalProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
@@ -109,6 +121,13 @@ export default function GroomingSessionModal({
   const [selectedTab, setSelectedTab] = useState<"tasks" | "epics">("tasks");
   const [isTaskSelectorModalOpen, setIsTaskSelectorModalOpen] = useState(false);
   const [taskSearchQuery, setTaskSearchQuery] = useState("");
+
+  // Session persistence state
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [previousSessions, setPreviousSessions] = useState<GroomingSession[]>([]);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+  const [isSessionSelectorOpen, setIsSessionSelectorOpen] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -145,6 +164,159 @@ export default function GroomingSessionModal({
     return lines.join("\n");
   };
 
+  // Load previous sessions when modal opens
+  const loadPreviousSessions = useCallback(async () => {
+    if (!userId || !projectId) return;
+    setIsLoadingSessions(true);
+    try {
+      const sessions = await groomingSessionRepository.getSessions(userId, projectId);
+      setPreviousSessions(sessions);
+    } catch (error) {
+      console.error("Error loading previous sessions:", error);
+    } finally {
+      setIsLoadingSessions(false);
+    }
+  }, [userId, projectId]);
+
+  // Load a specific session
+  const loadSession = async (session: GroomingSession) => {
+    if (!userId || !projectId) return;
+    setIsLoading(true);
+    setIsSessionSelectorOpen(false);
+
+    try {
+      // Load messages from subcollection
+      const sessionMessages = await groomingSessionRepository.getMessages(userId, projectId, session.id);
+
+      // Convert to ChatMessage format
+      const chatMessages: ChatMessage[] = sessionMessages.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+      }));
+
+      // If session has no messages, add the greeting as the first message
+      if (chatMessages.length === 0) {
+        const greeting: ChatMessage = {
+          role: "assistant",
+          content: `Hello! I'm here to help you with your grooming session${projectContext?.name ? ` for **${projectContext.name}**` : ""}. Tell me about the features, improvements, or bugs you'd like to work on, and I'll help you break them down into actionable tasks and epics.\n\nYou can also upload documents (requirements, specs, user stories) and I'll extract tasks and epics from them.\n\nWhat would you like to discuss today?`,
+        };
+        chatMessages.push(greeting);
+      }
+
+      // Clear existing state first
+      setSuggestedTasks([]);
+      setSuggestedEpics([]);
+      setExpandedTaskId(null);
+      setExpandedEpicId(null);
+
+      // Set the session ID and messages
+      setCurrentSessionId(session.id);
+      setMessages(chatMessages);
+
+      // Load suggested tasks and epics from the session
+      if (session.suggestedTasks && session.suggestedTasks.length > 0) {
+        setSuggestedTasks(session.suggestedTasks.map(t => ({
+          id: t.id,
+          title: t.title,
+          description: t.description,
+          category: t.category,
+          priority: t.priority,
+          cleanArchitectureArea: t.cleanArchitectureArea,
+          acceptanceCriteria: t.acceptanceCriteria,
+          status: t.status,
+          epicId: t.epicId,
+        })));
+      }
+
+      if (session.suggestedEpics && session.suggestedEpics.length > 0) {
+        setSuggestedEpics(session.suggestedEpics.map(e => ({
+          id: e.id,
+          title: e.title,
+          description: e.description,
+          priority: e.priority,
+          status: e.status,
+          taskIds: e.taskIds,
+        })));
+      }
+    } catch (error) {
+      console.error("Error loading session:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Create a new session
+  const createSession = async (firstMessageContent: string): Promise<string | null> => {
+    if (!userId || !projectId) return null;
+    try {
+      // Create a title from the first message (truncate if too long)
+      const title = firstMessageContent.length > 50
+        ? firstMessageContent.substring(0, 47) + "..."
+        : firstMessageContent;
+
+      const sessionId = await groomingSessionRepository.createSession(userId, projectId, title);
+      setCurrentSessionId(sessionId);
+      return sessionId;
+    } catch (error) {
+      console.error("Error creating session:", error);
+      return null;
+    }
+  };
+
+  // Save a message to the current session
+  const saveMessage = async (message: Omit<GroomingSessionMessage, "timestamp">, sessionId?: string | null) => {
+    const targetSessionId = sessionId ?? currentSessionId;
+    if (!userId || !projectId || !targetSessionId) return;
+    try {
+      await groomingSessionRepository.addMessage(userId, projectId, targetSessionId, message);
+    } catch (error) {
+      console.error("Error saving message:", error);
+    }
+  };
+
+  // Save suggested tasks and epics to the session
+  const saveSuggestionsToSession = async (tasks: SuggestedTask[], epics: SuggestedEpic[], sessionId?: string | null) => {
+    const targetSessionId = sessionId ?? currentSessionId;
+    if (!userId || !projectId || !targetSessionId) return;
+    try {
+      // Convert to domain format
+      const domainTasks: DomainSuggestedTask[] = tasks.map(t => ({
+        id: t.id,
+        title: t.title,
+        description: t.description,
+        category: t.category,
+        priority: t.priority,
+        cleanArchitectureArea: t.cleanArchitectureArea,
+        acceptanceCriteria: t.acceptanceCriteria,
+        status: t.status,
+        epicId: t.epicId,
+      }));
+
+      const domainEpics: DomainSuggestedEpic[] = epics.map(e => ({
+        id: e.id,
+        title: e.title,
+        description: e.description,
+        priority: e.priority,
+        status: e.status,
+        taskIds: e.taskIds,
+      }));
+
+      await groomingSessionRepository.updateSession(userId, projectId, targetSessionId, {
+        suggestedTasks: domainTasks,
+        suggestedEpics: domainEpics,
+      });
+    } catch (error) {
+      console.error("Error saving suggestions:", error);
+    }
+  };
+
+  // Load sessions when modal opens
+  useEffect(() => {
+    if (isOpen && userId && projectId) {
+      loadPreviousSessions();
+    }
+  }, [isOpen, userId, projectId, loadPreviousSessions]);
+
   // Send a message directly (used for discuss buttons)
   const sendMessageDirectly = async (messageContent: string) => {
     if (isLoading) return;
@@ -153,6 +325,17 @@ export default function GroomingSessionModal({
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
     setIsLoading(true);
+
+    // Create session if this is the first user message
+    let sessionId = currentSessionId;
+    if (!sessionId && userId && projectId) {
+      sessionId = await createSession(messageContent);
+    }
+
+    // Save user message to session
+    if (sessionId) {
+      await saveMessage({ role: "user", content: messageContent }, sessionId);
+    }
 
     try {
       const documentContext = uploadedDocuments.length > 0
@@ -180,26 +363,40 @@ export default function GroomingSessionModal({
       // Add assistant message
       setMessages([...newMessages, data.message]);
 
+      // Save assistant message to session
+      if (sessionId) {
+        await saveMessage({ role: "assistant", content: data.message.content }, sessionId);
+      }
+
       // Update suggested tasks
+      let updatedTasks = suggestedTasks;
       if (data.suggestedTasks && data.suggestedTasks.length > 0) {
         setSuggestedTasks((prev) => {
           const existingIds = new Set(prev.map((t) => t.id));
           const newTasks = data.suggestedTasks
             .filter((t: SuggestedTask) => !existingIds.has(t.id))
             .map((t: Omit<SuggestedTask, "status">) => ({ ...t, status: "pending" as const }));
-          return [...prev, ...newTasks];
+          updatedTasks = [...prev, ...newTasks];
+          return updatedTasks;
         });
       }
 
       // Update suggested epics
+      let updatedEpics = suggestedEpics;
       if (data.suggestedEpics && data.suggestedEpics.length > 0) {
         setSuggestedEpics((prev) => {
           const existingIds = new Set(prev.map((e) => e.id));
           const newEpics = data.suggestedEpics
             .filter((e: SuggestedEpic) => !existingIds.has(e.id))
             .map((e: Omit<SuggestedEpic, "status">) => ({ ...e, status: "pending" as const }));
-          return [...prev, ...newEpics];
+          updatedEpics = [...prev, ...newEpics];
+          return updatedEpics;
         });
+      }
+
+      // Save suggestions to session
+      if (sessionId) {
+        await saveSuggestionsToSession(updatedTasks, updatedEpics, sessionId);
       }
     } catch (error) {
       console.error("Error sending message:", error);
@@ -270,16 +467,16 @@ export default function GroomingSessionModal({
     scrollToBottom();
   }, [messages]);
 
-  // Send initial greeting when modal opens
+  // Send initial greeting when modal opens (only for new sessions, not loaded ones)
   useEffect(() => {
-    if (isOpen && messages.length === 0) {
+    if (isOpen && messages.length === 0 && !currentSessionId && !isLoading) {
       const greeting: ChatMessage = {
         role: "assistant",
         content: `Hello! I'm here to help you with your grooming session${projectContext?.name ? ` for **${projectContext.name}**` : ""}. Tell me about the features, improvements, or bugs you'd like to work on, and I'll help you break them down into actionable tasks and epics.\n\nYou can also upload documents (requirements, specs, user stories) and I'll extract tasks and epics from them.\n\nWhat would you like to discuss today?`,
       };
       setMessages([greeting]);
     }
-  }, [isOpen, messages.length, projectContext?.name]);
+  }, [isOpen, messages.length, projectContext?.name, currentSessionId, isLoading]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -407,11 +604,23 @@ export default function GroomingSessionModal({
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading) return;
 
-    const userMessage: ChatMessage = { role: "user", content: inputValue.trim() };
+    const messageContent = inputValue.trim();
+    const userMessage: ChatMessage = { role: "user", content: messageContent };
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
     setInputValue("");
     setIsLoading(true);
+
+    // Create session if this is the first user message
+    let sessionId = currentSessionId;
+    if (!sessionId && userId && projectId) {
+      sessionId = await createSession(messageContent);
+    }
+
+    // Save user message to session
+    if (sessionId) {
+      await saveMessage({ role: "user", content: messageContent }, sessionId);
+    }
 
     try {
       // Include document contents in context if any
@@ -440,26 +649,40 @@ export default function GroomingSessionModal({
       // Add assistant message
       setMessages([...newMessages, data.message]);
 
+      // Save assistant message to session
+      if (sessionId) {
+        await saveMessage({ role: "assistant", content: data.message.content }, sessionId);
+      }
+
       // Update suggested tasks
+      let updatedTasks = suggestedTasks;
       if (data.suggestedTasks && data.suggestedTasks.length > 0) {
         setSuggestedTasks((prev) => {
           const existingIds = new Set(prev.map((t) => t.id));
           const newTasks = data.suggestedTasks
             .filter((t: SuggestedTask) => !existingIds.has(t.id))
             .map((t: Omit<SuggestedTask, "status">) => ({ ...t, status: "pending" as const }));
-          return [...prev, ...newTasks];
+          updatedTasks = [...prev, ...newTasks];
+          return updatedTasks;
         });
       }
 
       // Update suggested epics
+      let updatedEpics = suggestedEpics;
       if (data.suggestedEpics && data.suggestedEpics.length > 0) {
         setSuggestedEpics((prev) => {
           const existingIds = new Set(prev.map((e) => e.id));
           const newEpics = data.suggestedEpics
             .filter((e: SuggestedEpic) => !existingIds.has(e.id))
             .map((e: Omit<SuggestedEpic, "status">) => ({ ...e, status: "pending" as const }));
-          return [...prev, ...newEpics];
+          updatedEpics = [...prev, ...newEpics];
+          return updatedEpics;
         });
+      }
+
+      // Save suggestions to session
+      if (sessionId) {
+        await saveSuggestionsToSession(updatedTasks, updatedEpics, sessionId);
       }
     } catch (error) {
       console.error("Error sending message:", error);
@@ -571,8 +794,40 @@ export default function GroomingSessionModal({
       setInputValue("");
       setUploadedDocuments([]);
       setSelectedTab("tasks");
+      setCurrentSessionId(null);
+      setIsSessionSelectorOpen(false);
       onClose();
     }
+  };
+
+  // Start a new session (clear current session and start fresh)
+  const handleStartNewSession = () => {
+    setMessages([]);
+    setSuggestedTasks([]);
+    setSuggestedEpics([]);
+    setExpandedTaskId(null);
+    setExpandedEpicId(null);
+    setInputValue("");
+    setUploadedDocuments([]);
+    setSelectedTab("tasks");
+    setCurrentSessionId(null);
+    setIsSessionSelectorOpen(false);
+  };
+
+  // Format date for display
+  const formatSessionDate = (timestamp: number) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+    return date.toLocaleDateString();
   };
 
   const pendingTasks = suggestedTasks.filter((t) => t.status === "pending");
@@ -596,21 +851,86 @@ export default function GroomingSessionModal({
     >
       <ModalContent className="h-[80vh]">
         <ModalHeader className="flex flex-col gap-1 border-b border-default-200">
-          <div className="flex items-center gap-2">
-            <svg
-              className="w-5 h-5 text-primary"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-              />
-            </svg>
-            <span className="text-lg font-semibold">Grooming Session</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <svg
+                className="w-5 h-5 text-primary"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                />
+              </svg>
+              <span className="text-lg font-semibold">Grooming Session</span>
+              {currentSessionId && (
+                <Chip size="sm" variant="flat" color="primary" classNames={{ base: "h-5", content: "text-xs" }}>
+                  Session saved
+                </Chip>
+              )}
+            </div>
+            {userId && projectId && (
+              <div className="flex items-center gap-2">
+                <Dropdown isOpen={isSessionSelectorOpen} onOpenChange={setIsSessionSelectorOpen}>
+                  <DropdownTrigger>
+                    <Button
+                      size="sm"
+                      variant="flat"
+                      isLoading={isLoadingSessions}
+                      startContent={
+                        !isLoadingSessions && (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        )
+                      }
+                    >
+                      {previousSessions.length > 0 ? `${previousSessions.length} Previous` : "History"}
+                    </Button>
+                  </DropdownTrigger>
+                  <DropdownMenu
+                    aria-label="Session history"
+                    className="max-h-[300px] overflow-y-auto"
+                    emptyContent="No previous sessions"
+                  >
+                    {previousSessions.length > 0 ? (
+                      <>
+                        <DropdownItem
+                          key="new-session"
+                          className="text-primary"
+                          startContent={
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                          }
+                          onPress={handleStartNewSession}
+                        >
+                          Start New Session
+                        </DropdownItem>
+                        {previousSessions.map((session) => (
+                          <DropdownItem
+                            key={session.id}
+                            description={formatSessionDate(session.updatedAt)}
+                            onPress={() => loadSession(session)}
+                            className={currentSessionId === session.id ? "bg-primary-100" : ""}
+                          >
+                            <span className="line-clamp-1">{session.title}</span>
+                          </DropdownItem>
+                        ))}
+                      </>
+                    ) : (
+                      <DropdownItem key="empty" isReadOnly>
+                        No previous sessions
+                      </DropdownItem>
+                    )}
+                  </DropdownMenu>
+                </Dropdown>
+              </div>
+            )}
           </div>
           <span className="text-sm text-default-500 font-normal">
             Discuss features, upload documents, and get task & epic suggestions from AI

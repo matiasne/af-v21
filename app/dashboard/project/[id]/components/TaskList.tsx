@@ -11,7 +11,6 @@ import {
 } from "@heroui/table";
 import { Chip } from "@heroui/chip";
 import { Button } from "@heroui/button";
-import { Select, SelectItem } from "@heroui/select";
 import { Spinner } from "@heroui/spinner";
 import {
   Modal,
@@ -36,7 +35,6 @@ const TASKS_PER_PAGE = 20;
 interface TaskListProps {
   tasks: ExecutionPlanTask[];
   epics: Epic[];
-  onUpdateTaskStatus: (taskId: string, status: TaskStatus) => Promise<void>;
   onUpdateTaskEpic: (taskId: string, epicId: string) => Promise<void>;
   onReorderTasks?: (taskOrders: { taskId: string; order: number }[]) => Promise<void>;
   onDeleteTask?: (taskId: string) => Promise<void>;
@@ -86,7 +84,24 @@ const getArchitectureAreaColor = (
   }
 };
 
-export function TaskList({ tasks, epics, onUpdateTaskStatus, onUpdateTaskEpic, onReorderTasks, onDeleteTask, onDeleteEpic }: TaskListProps) {
+const getStatusColor = (
+  status: TaskStatus
+): "default" | "primary" | "warning" | "success" => {
+  switch (status) {
+    case "backlog":
+      return "default";
+    case "todo":
+      return "primary";
+    case "in_progress":
+      return "warning";
+    case "completed":
+      return "success";
+    default:
+      return "default";
+  }
+};
+
+export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDeleteTask, onDeleteEpic }: TaskListProps) {
   const [selectedTask, setSelectedTask] = useState<ExecutionPlanTask | null>(
     null
   );
@@ -186,10 +201,6 @@ export function TaskList({ tasks, epics, onUpdateTaskStatus, onUpdateTaskEpic, o
   const handleViewDetails = (task: ExecutionPlanTask) => {
     setSelectedTask(task);
     setIsModalOpen(true);
-  };
-
-  const handleStatusChange = async (taskId: string, newStatus: TaskStatus) => {
-    await onUpdateTaskStatus(taskId, newStatus);
   };
 
   const handleDeleteClick = (task: ExecutionPlanTask) => {
@@ -448,24 +459,13 @@ export function TaskList({ tasks, epics, onUpdateTaskStatus, onUpdateTaskEpic, o
           </Chip>
         </TableCell>
         <TableCell>
-          <Select
+          <Chip
             size="sm"
-            selectedKeys={new Set([task.status])}
-            onSelectionChange={(keys) => {
-              const newStatus = Array.from(keys)[0] as TaskStatus;
-              if (newStatus && newStatus !== task.status) {
-                handleStatusChange(task.id, newStatus);
-              }
-            }}
-            className="max-w-xs"
-            aria-label="Task status"
+            color={getStatusColor(task.status)}
+            variant="flat"
           >
-            {STATUS_OPTIONS.map((option) => (
-              <SelectItem key={option.id} textValue={option.label}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </Select>
+            {STATUS_OPTIONS.find((s) => s.id === task.status)?.label || task.status}
+          </Chip>
         </TableCell>
         <TableCell>
           <div className="flex items-center gap-2">
