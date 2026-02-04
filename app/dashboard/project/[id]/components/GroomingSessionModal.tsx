@@ -81,6 +81,7 @@ interface GroomingSessionModalProps {
   existingTasks?: ExistingTask[];
   userId?: string;
   projectId?: string;
+  ragStoreName?: string;
 }
 
 const CATEGORY_COLORS: Record<TaskCategory, "primary" | "secondary" | "success" | "warning" | "danger"> = {
@@ -106,6 +107,7 @@ export default function GroomingSessionModal({
   existingTasks = [],
   userId,
   projectId,
+  ragStoreName,
 }: GroomingSessionModalProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
@@ -351,6 +353,7 @@ export default function GroomingSessionModal({
           existingTasks: suggestedTasks.filter((t) => t.status !== "rejected"),
           existingEpics: suggestedEpics.filter((e) => e.status !== "rejected"),
           documentContext,
+          ragStoreName,
         }),
       });
 
@@ -516,6 +519,7 @@ export default function GroomingSessionModal({
             existingEpics: suggestedEpics.filter((e) => e.status !== "rejected"),
             documentContent: content,
             documentName: file.name,
+            ragStoreName,
           }),
         });
 
@@ -637,6 +641,7 @@ export default function GroomingSessionModal({
           existingTasks: suggestedTasks.filter((t) => t.status !== "rejected"),
           existingEpics: suggestedEpics.filter((e) => e.status !== "rejected"),
           documentContext,
+          ragStoreName,
         }),
       });
 

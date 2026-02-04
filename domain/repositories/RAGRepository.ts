@@ -23,4 +23,26 @@ export interface RAGRepository {
    * List all documents in a corpus
    */
   listDocuments(corpusName: string): Promise<RAGFile[]>;
+
+  /**
+   * Delete a document from the corpus by its display name
+   */
+  deleteDocumentByDisplayName(
+    corpusName: string,
+    displayName: string
+  ): Promise<boolean>;
+
+  /**
+   * Create a new corpus if it doesn't exist, or return existing one
+   */
+  getOrCreateCorpus(corpusDisplayName: string): Promise<RAGCorpus | null>;
+
+  /**
+   * Upload a document to the corpus
+   */
+  uploadDocument(
+    corpusName: string,
+    displayName: string,
+    content: string
+  ): Promise<RAGFile | null>;
 }

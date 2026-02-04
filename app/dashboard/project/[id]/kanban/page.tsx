@@ -29,6 +29,7 @@ import {
 // Note: TaskCategory and CleanArchitectureArea are still needed for handleCreateTask
 import { executionPlanRepository } from "@/infrastructure/repositories/FirebaseExecutionPlanRepository";
 import { processorRepository } from "@/infrastructure/repositories/FirebaseProcessorRepository";
+import { ragRepository } from "@/infrastructure/repositories/FirebaseRAGRepository";
 import { ProcessorInfo } from "@/domain/entities/ProcessorInfo";
 import {
   KanbanBoard,
@@ -516,7 +517,36 @@ export default function KanbanPage() {
     if (!user?.uid || !projectId) return;
 
     try {
-      await executionPlanRepository.createTask(user.uid, projectId, taskData);
+      const taskId = await executionPlanRepository.createTask(user.uid, projectId, taskData);
+
+      // Store task in RAG for semantic search
+      const ragStoreName = project?.taskRAGStore || `${projectId}-tasks-rag`;
+      try {
+        // Get or create the corpus
+        const corpus = await ragRepository.getOrCreateCorpus(ragStoreName);
+        if (corpus) {
+          // Format task content for RAG
+          const taskContent = [
+            `Task: ${taskData.title}`,
+            `Description: ${taskData.description}`,
+            `Category: ${taskData.category}`,
+            `Priority: ${taskData.priority}`,
+            `Architecture Layer: ${taskData.cleanArchitectureArea}`,
+            taskData.acceptanceCriteria.length > 0
+              ? `Acceptance Criteria:\n${taskData.acceptanceCriteria.map(c => `- ${c}`).join("\n")}`
+              : "",
+          ].filter(Boolean).join("\n\n");
+
+          await ragRepository.uploadDocument(
+            corpus.name,
+            `task-${taskId}`,
+            taskContent
+          );
+        }
+      } catch (ragError) {
+        console.error("Error storing task in RAG:", ragError);
+        // Don't throw - task was created successfully in Firestore
+      }
     } catch (error) {
       console.error("Error creating task:", error);
       throw error;
@@ -1175,11 +1205,25 @@ export default function KanbanPage() {
           onDeleteTask={async (taskId: string) => {
             if (user?.uid && projectId) {
               try {
+                // Delete from Firestore
                 await executionPlanRepository.deleteTask(
                   user.uid,
                   projectId,
                   taskId,
                 );
+
+                // Also delete from RAG if storage name is available
+                if (migration?.ragFunctionalAndBusinessStoreName) {
+                  try {
+                    await ragRepository.deleteDocumentByDisplayName(
+                      migration.ragFunctionalAndBusinessStoreName,
+                      `task-${taskId}`,
+                    );
+                  } catch (ragError) {
+                    console.error("Error deleting task from RAG:", ragError);
+                    // Don't throw - task is already deleted from Firestore
+                  }
+                }
               } catch (error) {
                 console.error("Error deleting task:", error);
               }
@@ -1188,6 +1232,21 @@ export default function KanbanPage() {
           onDeleteEpic={async (epicId: string, deleteTasksToo: boolean) => {
             if (user?.uid && projectId) {
               try {
+                // If deleting tasks too and RAG storage is available, delete tasks from RAG first
+                if (deleteTasksToo && migration?.ragFunctionalAndBusinessStoreName) {
+                  const epicTasks = tasks.filter((task) => task.epicId === epicId);
+                  for (const task of epicTasks) {
+                    try {
+                      await ragRepository.deleteDocumentByDisplayName(
+                        migration.ragFunctionalAndBusinessStoreName,
+                        `task-${task.id}`,
+                      );
+                    } catch (ragError) {
+                      console.error(`Error deleting task ${task.id} from RAG:`, ragError);
+                    }
+                  }
+                }
+
                 await executionPlanRepository.deleteEpic(
                   user.uid,
                   projectId,
@@ -1485,6 +1544,7 @@ export default function KanbanPage() {
         }))}
         userId={user?.uid}
         projectId={projectId}
+        ragStoreName={migration?.ragFunctionalAndBusinessStoreName}
       />
     </div>
   );

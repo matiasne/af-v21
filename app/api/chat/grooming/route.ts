@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { FirebaseRAGRepository } from "@/infrastructure/repositories/FirebaseRAGRepository";
 
 export interface ChatMessage {
   role: "user" | "assistant";
@@ -33,7 +34,7 @@ export interface GroomingResponse {
 
 export async function POST(request: NextRequest) {
   try {
-    const { messages, projectContext, existingTasks, documentContent, documentName, documentContext } = await request.json();
+    const { messages, projectContext, existingTasks, documentContent, documentName, documentContext, ragStoreName } = await request.json();
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(
@@ -53,6 +54,36 @@ export async function POST(request: NextRequest) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+    // Search for similar tasks in RAG if storage name is provided
+    let ragSearchResults = "";
+    if (ragStoreName) {
+      try {
+        const ragRepository = new FirebaseRAGRepository(apiKey);
+        const lastMessage = messages[messages.length - 1];
+        if (lastMessage && lastMessage.role === "user") {
+          const searchResults = await ragRepository.searchFiles(lastMessage.content, ragStoreName);
+          if (searchResults.length > 0) {
+            ragSearchResults = `
+SIMILAR EXISTING TASKS/CONTEXT FOUND IN PROJECT (from RAG search):
+---
+${searchResults.map((result, index) => `[Result ${index + 1}] (relevance: ${(result.relevanceScore * 100).toFixed(1)}%)
+${result.content}`).join("\n\n")}
+---
+
+IMPORTANT: Review the above search results to check if similar tasks already exist in the project. If you find existing tasks that are similar to what the user is asking for:
+1. Mention to the user that similar tasks may already exist
+2. Explain what you found and how it relates to their request
+3. Only suggest NEW tasks that are genuinely different from existing ones
+4. If the user's request is already covered by existing tasks, let them know instead of creating duplicates
+`;
+          }
+        }
+      } catch (error) {
+        console.error("Error searching RAG:", error);
+        // Continue without RAG results if search fails
+      }
+    }
 
     // Build document context section
     let documentSection = "";
@@ -86,6 +117,7 @@ ${
 - Tech Stack: ${projectContext.techStack?.join(", ") || "Not specified"}`
     : ""
 }
+${ragSearchResults}
 ${documentSection}
 ${
   existingTasks && existingTasks.length > 0

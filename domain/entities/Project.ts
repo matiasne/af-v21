@@ -254,6 +254,7 @@ export interface Project {
   processorHost?: string;
   ownerId?: string;
   sharedWith?: ProjectShare[];
+  taskRAGStore?: string;
   createdAt?: number;
   updatedAt?: number;
 }

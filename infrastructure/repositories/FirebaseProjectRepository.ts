@@ -133,6 +133,11 @@ export class FirebaseProjectRepository implements ProjectRepository {
       updatedAt: now,
     });
 
+    // Update with taskRAGStore using the project ID
+    await updateDoc(docRef, {
+      taskRAGStore: `${docRef.id}-tasks-rag`,
+    });
+
     // Add project reference to user document with owner role
     const userDocRef = this.getUserDoc(userId);
     const userDocSnap = await getDoc(userDocRef);

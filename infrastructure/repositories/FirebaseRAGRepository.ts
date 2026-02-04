@@ -165,6 +165,197 @@ export class FirebaseRAGRepository implements RAGRepository {
       return [];
     }
   }
+
+  async deleteDocumentByDisplayName(
+    corpusName: string,
+    displayName: string
+  ): Promise<boolean> {
+    try {
+      console.log(`[RAG Repository] Deleting document with displayName: ${displayName} from corpus: ${corpusName}`);
+
+      // First, list documents to find the one with matching displayName
+      const documents = await this.listDocuments(corpusName);
+      const documentToDelete = documents.find(doc => doc.displayName === displayName);
+
+      if (!documentToDelete) {
+        console.log(`[RAG Repository] Document with displayName "${displayName}" not found`);
+        return false;
+      }
+
+      console.log(`[RAG Repository] Found document: ${documentToDelete.name}`);
+
+      // Delete the document using its full name
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/${documentToDelete.name}?key=${this.apiKey}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[RAG Repository] Delete document error:", errorText);
+        return false;
+      }
+
+      console.log(`[RAG Repository] Document deleted successfully`);
+      return true;
+    } catch (error) {
+      console.error("[RAG Repository] Error deleting document:", error);
+      return false;
+    }
+  }
+
+  async getOrCreateCorpus(corpusDisplayName: string): Promise<RAGCorpus | null> {
+    try {
+      console.log(`[RAG Repository] Getting or creating corpus: ${corpusDisplayName}`);
+
+      // First, try to list all corpora to find one with matching display name
+      const listResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/corpora?key=${this.apiKey}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (listResponse.ok) {
+        const listData = await listResponse.json();
+        if (listData.corpora && Array.isArray(listData.corpora)) {
+          const existingCorpus = listData.corpora.find(
+            (c: { displayName?: string }) => c.displayName === corpusDisplayName
+          );
+          if (existingCorpus) {
+            console.log(`[RAG Repository] Found existing corpus: ${existingCorpus.name}`);
+            return {
+              name: existingCorpus.name,
+              displayName: existingCorpus.displayName || corpusDisplayName,
+              createTime: existingCorpus.createTime,
+              updateTime: existingCorpus.updateTime,
+            };
+          }
+        }
+      }
+
+      // Corpus doesn't exist, create it
+      console.log(`[RAG Repository] Creating new corpus: ${corpusDisplayName}`);
+      const createResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/corpora?key=${this.apiKey}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            displayName: corpusDisplayName,
+          }),
+        }
+      );
+
+      if (!createResponse.ok) {
+        const errorText = await createResponse.text();
+        console.error("[RAG Repository] Create corpus error:", errorText);
+        return null;
+      }
+
+      const createData = await createResponse.json();
+      console.log(`[RAG Repository] Created corpus: ${createData.name}`);
+
+      return {
+        name: createData.name,
+        displayName: createData.displayName || corpusDisplayName,
+        createTime: createData.createTime,
+        updateTime: createData.updateTime,
+      };
+    } catch (error) {
+      console.error("[RAG Repository] Error getting or creating corpus:", error);
+      return null;
+    }
+  }
+
+  async uploadDocument(
+    corpusName: string,
+    displayName: string,
+    content: string
+  ): Promise<RAGFile | null> {
+    try {
+      console.log(`[RAG Repository] Uploading document "${displayName}" to corpus: ${corpusName}`);
+
+      // First check if document already exists and delete it
+      const existingDocs = await this.listDocuments(corpusName);
+      const existingDoc = existingDocs.find(doc => doc.displayName === displayName);
+      if (existingDoc) {
+        console.log(`[RAG Repository] Document already exists, deleting first`);
+        await this.deleteDocumentByDisplayName(corpusName, displayName);
+      }
+
+      // Create the document with inline content
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/${corpusName}/documents?key=${this.apiKey}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            displayName: displayName,
+            customMetadata: [
+              { key: "type", stringValue: "task" },
+              { key: "createdAt", stringValue: new Date().toISOString() },
+            ],
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[RAG Repository] Create document error:", errorText);
+        return null;
+      }
+
+      const docData = await response.json();
+      console.log(`[RAG Repository] Created document: ${docData.name}`);
+
+      // Now create a chunk with the content
+      const chunkResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/${docData.name}/chunks?key=${this.apiKey}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            data: {
+              stringValue: content,
+            },
+          }),
+        }
+      );
+
+      if (!chunkResponse.ok) {
+        const errorText = await chunkResponse.text();
+        console.error("[RAG Repository] Create chunk error:", errorText);
+        // Document was created but chunk failed - still return the document
+      } else {
+        console.log(`[RAG Repository] Created chunk for document`);
+      }
+
+      return {
+        name: docData.name,
+        displayName: docData.displayName || displayName,
+        createTime: docData.createTime,
+        updateTime: docData.updateTime,
+      };
+    } catch (error) {
+      console.error("[RAG Repository] Error uploading document:", error);
+      return null;
+    }
+  }
 }
 
 export const ragRepository = new FirebaseRAGRepository();
