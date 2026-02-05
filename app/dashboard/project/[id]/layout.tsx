@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode } from "react";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 
 import {
   ProjectChatProvider,
@@ -14,6 +14,7 @@ import { FloatingInput } from "./components";
 
 function ProjectLayoutContent({ children }: { children: ReactNode }) {
   const params = useParams();
+  const pathname = usePathname();
   const projectId = params.id as string;
   const { user } = useAuth();
 
@@ -29,13 +30,16 @@ function ProjectLayoutContent({ children }: { children: ReactNode }) {
 
   const { migration } = useMigration(projectId, projectOwnerId);
 
+  // Hide FloatingInput on grooming page (it has its own chat)
+  const isGroomingPage = pathname?.includes("/grooming");
+
   return (
     <>
       <div className="fixed top-0 left-0 right-0 z-50 bg-background">
         <Navbar />
       </div>
       <div className="pt-12">{children}</div>
-      {projectContext && !isConfiguration && (
+      {projectContext && !isConfiguration && !isGroomingPage && (
         <FloatingInput
           projectContext={projectContext}
           projectId={projectId}

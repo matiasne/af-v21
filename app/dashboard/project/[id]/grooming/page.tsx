@@ -13,7 +13,15 @@ import {
   ModalContent,
   ModalHeader,
   ModalBody,
+  ModalFooter,
 } from "@heroui/modal";
+import {
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+} from "@heroui/dropdown";
+import { Tooltip } from "@heroui/tooltip";
 
 import { useAuth } from "@/infrastructure/context/AuthContext";
 import { useProjects } from "@/infrastructure/hooks/useProjects";
@@ -132,11 +140,21 @@ export default function GroomingPage() {
 
   // Session persistence state
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [currentSessionTitle, setCurrentSessionTitle] = useState<string | null>(null);
   const [previousSessions, setPreviousSessions] = useState<GroomingSession[]>(
     []
   );
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
   const [isSessionSidebarCollapsed, setIsSessionSidebarCollapsed] = useState(false);
+
+  // Session management states (pin, rename, delete)
+  const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
+  const [renameSessionId, setRenameSessionId] = useState<string | null>(null);
+  const [renameSessionTitle, setRenameSessionTitle] = useState("");
+
+  // Resizable Suggestions panel state
+  const [suggestionsPanelWidth, setSuggestionsPanelWidth] = useState(400);
+  const [isResizingSuggestions, setIsResizingSuggestions] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -282,6 +300,130 @@ export default function GroomingPage() {
     }
   }, [user?.uid, projectId]);
 
+  // Sort sessions: pinned first, then by updatedAt
+  const sortedSessions = [...previousSessions].sort((a, b) => {
+    if (a.pinned && !b.pinned) return -1;
+    if (!a.pinned && b.pinned) return 1;
+    return b.updatedAt - a.updatedAt;
+  });
+
+  // Handle pin/unpin session
+  const handlePinSession = async (sessionId: string) => {
+    if (!user?.uid || !projectId) return;
+
+    const session = previousSessions.find((s) => s.id === sessionId);
+    if (!session) return;
+
+    try {
+      await groomingSessionRepository.updateSession(
+        user.uid,
+        projectId,
+        sessionId,
+        { pinned: !session.pinned }
+      );
+      setPreviousSessions((prev) =>
+        prev.map((s) =>
+          s.id === sessionId ? { ...s, pinned: !s.pinned } : s
+        )
+      );
+    } catch (error) {
+      console.error("Error pinning session:", error);
+    }
+  };
+
+  // Handle rename session
+  const handleRenameSession = async () => {
+    if (!user?.uid || !projectId || !renameSessionId || !renameSessionTitle.trim()) return;
+
+    try {
+      await groomingSessionRepository.updateSession(
+        user.uid,
+        projectId,
+        renameSessionId,
+        { title: renameSessionTitle.trim() }
+      );
+      setPreviousSessions((prev) =>
+        prev.map((s) =>
+          s.id === renameSessionId ? { ...s, title: renameSessionTitle.trim() } : s
+        )
+      );
+      setIsRenameModalOpen(false);
+      setRenameSessionId(null);
+      setRenameSessionTitle("");
+    } catch (error) {
+      console.error("Error renaming session:", error);
+    }
+  };
+
+  // Handle delete session
+  const handleDeleteSession = async (sessionId: string) => {
+    if (!user?.uid || !projectId) return;
+
+    try {
+      await groomingSessionRepository.deleteSession(
+        user.uid,
+        projectId,
+        sessionId
+      );
+      setPreviousSessions((prev) => prev.filter((s) => s.id !== sessionId));
+
+      // If deleted session was current, clear the state
+      if (currentSessionId === sessionId) {
+        handleStartNewSession();
+      }
+    } catch (error) {
+      console.error("Error deleting session:", error);
+    }
+  };
+
+  // Open rename modal
+  const openRenameModal = (session: GroomingSession) => {
+    setRenameSessionId(session.id);
+    setRenameSessionTitle(session.title);
+    setIsRenameModalOpen(true);
+  };
+
+  // Close rename modal
+  const closeRenameModal = () => {
+    setIsRenameModalOpen(false);
+    setRenameSessionId(null);
+    setRenameSessionTitle("");
+  };
+
+  // Handle resize start
+  // Handle resize for Suggestions panel
+  const handleSuggestionsResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizingSuggestions(true);
+  }, []);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizingSuggestions) return;
+      const newWidth = window.innerWidth - e.clientX;
+      const clampedWidth = Math.max(280, Math.min(600, newWidth));
+      setSuggestionsPanelWidth(clampedWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingSuggestions(false);
+    };
+
+    if (isResizingSuggestions) {
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+    }
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [isResizingSuggestions]);
+
   // Load a specific session
   const loadSession = async (session: GroomingSession) => {
     if (!user?.uid || !projectId) return;
@@ -316,8 +458,9 @@ export default function GroomingPage() {
       setExpandedTaskId(null);
       setExpandedEpicId(null);
 
-      // Set the session ID and messages
+      // Set the session ID, title and messages
       setCurrentSessionId(session.id);
+      setCurrentSessionTitle(session.title);
       setMessages(chatMessages);
 
       // Load suggested tasks and epics from the session
@@ -1076,6 +1219,7 @@ export default function GroomingPage() {
     setUploadedDocuments([]);
     setSelectedTab("tasks");
     setCurrentSessionId(null);
+    setCurrentSessionTitle(null);
 
     // Set the initial greeting message for the new session
     const greeting: ChatMessage = {
@@ -1129,135 +1273,106 @@ export default function GroomingPage() {
   }
 
   return (
-    <div className="w-full px-6 py-4 h-[calc(100vh-80px)] flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="light"
-            isIconOnly
-            size="sm"
-            onPress={() => router.push(`/dashboard/project/${projectId}/kanban`)}
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-          </Button>
-          <div className="flex items-center gap-2">
-            <svg
-              className="w-5 h-5 text-primary"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-              />
-            </svg>
-            <h1 className="text-lg font-semibold">Grooming Session</h1>
-            {currentSessionId && (
-              <Chip
-                size="sm"
-                variant="flat"
-                color="primary"
-                classNames={{ base: "h-5", content: "text-xs" }}
-              >
-                Session saved
-              </Chip>
-            )}
-          </div>
-        </div>
-
-      </div>
-
-      <p className="text-sm text-default-500 mb-4">
-        Discuss features, upload documents, and get task & epic suggestions from
-        AI
-      </p>
-
-      {/* Main content */}
-      <div className="flex-1 flex gap-4 overflow-hidden">
-        {/* Left side - Session History (Collapsible) */}
+    <div className="flex flex-col h-[calc(100vh-48px)]">
+      {/* Main content - CSS Grid 3 columns: sidebar | chat | suggestions */}
+      <div
+        className="flex-1 overflow-hidden px-4 py-3"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: isSessionSidebarCollapsed
+            ? `52px 1fr ${suggestionsPanelWidth}px`
+            : `280px 1fr ${suggestionsPanelWidth}px`,
+          gap: '12px',
+          height: '100%',
+        }}
+      >
+        {/* Left sidebar - Session History */}
         <div
-          className={`flex flex-col border border-default-200 rounded-lg overflow-hidden bg-default-50 dark:bg-default-100/30 transition-all duration-300 ${
-            isSessionSidebarCollapsed ? "w-[48px]" : "w-[240px]"
-          }`}
+          className="flex flex-col border border-default-200 bg-default-50/50 dark:bg-default-100/20 transition-all duration-300 overflow-hidden rounded-xl"
         >
-          <div className="p-2 border-b border-default-200">
-            <div className={`flex items-center ${isSessionSidebarCollapsed ? "justify-center" : "justify-between"}`}>
-              {!isSessionSidebarCollapsed && (
-                <h3 className="text-sm font-semibold text-default-700">Sessions</h3>
-              )}
-              <div className={`flex items-center ${isSessionSidebarCollapsed ? "" : "gap-1"}`}>
-                {!isSessionSidebarCollapsed && (
+          {/* Toggle Sidebar Button */}
+          <div className={`p-3 pb-0 ${isSessionSidebarCollapsed ? "flex justify-center" : ""}`}>
+            <Tooltip content={isSessionSidebarCollapsed ? "Open sidebar" : "Close sidebar"} placement="right">
+              <Button
+                variant="light"
+                isIconOnly
+                className="h-10 w-10 text-default-700 hover:bg-default-100"
+                onPress={() => setIsSessionSidebarCollapsed(!isSessionSidebarCollapsed)}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
+                </svg>
+              </Button>
+            </Tooltip>
+          </div>
+
+          {/* Back to Task Board & New Chat Buttons */}
+          <div className={`p-3 space-y-1 ${isSessionSidebarCollapsed ? "flex flex-col items-center" : "mt-2"}`}>
+            {!isSessionSidebarCollapsed ? (
+              <>
+                <Button
+                  variant="light"
+                  className="w-full justify-start gap-2 h-9 px-3 text-default-600 hover:bg-default-100 rounded-xl"
+                  onPress={() => router.push(`/dashboard/project/${projectId}/kanban`)}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  <span className="text-sm">Back to Task Board</span>
+                </Button>
+                <Button
+                  variant="light"
+                  className="w-full justify-start gap-2 h-9 px-3 text-default-600 hover:bg-default-100 rounded-xl"
+                  onPress={handleStartNewSession}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                  </svg>
+                  <span className="text-sm">New chat</span>
+                </Button>
+              </>
+            ) : (
+              <>
+                <Tooltip content="Back to Task Board" placement="right">
                   <Button
-                    size="sm"
-                    variant="flat"
-                    color="primary"
+                    variant="light"
                     isIconOnly
-                    onPress={handleStartNewSession}
-                    title="New Session"
+                    className="w-full h-9 text-default-600 hover:bg-default-100 rounded-xl"
+                    onPress={() => router.push(`/dashboard/project/${projectId}/kanban`)}
                   >
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 4v16m8-8H4"
-                      />
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
                   </Button>
-                )}
-                <Button
-                  size="sm"
-                  variant="light"
-                  isIconOnly
-                  onPress={() => setIsSessionSidebarCollapsed(!isSessionSidebarCollapsed)}
-                  title={isSessionSidebarCollapsed ? "Expand sessions" : "Collapse sessions"}
-                >
-                  <svg
-                    className={`w-4 h-4 transition-transform ${isSessionSidebarCollapsed ? "rotate-180" : ""}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+                </Tooltip>
+                <Tooltip content="New chat" placement="right">
+                  <Button
+                    variant="light"
+                    isIconOnly
+                    className="w-full h-9 text-default-600 hover:bg-default-100 rounded-xl"
+                    onPress={handleStartNewSession}
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
-                    />
-                  </svg>
-                </Button>
-              </div>
-            </div>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                    </svg>
+                  </Button>
+                </Tooltip>
+              </>
+            )}
           </div>
 
           {!isSessionSidebarCollapsed ? (
-            <div className="flex-1 overflow-y-auto p-2">
+            <div className="flex-1 overflow-y-auto px-3 py-2">
+              {/* Your chats title */}
+              <p className="text-xs font-medium text-default-500 uppercase tracking-wider mb-3">
+                Your chats
+              </p>
+
               {isLoadingSessions ? (
                 <div className="flex items-center justify-center py-8">
                   <Spinner size="sm" color="primary" />
                 </div>
-              ) : previousSessions.length === 0 ? (
+              ) : sortedSessions.length === 0 ? (
                 <div className="text-center py-8">
                   <svg
                     className="w-10 h-10 mx-auto text-default-300 mb-2"
@@ -1278,97 +1393,383 @@ export default function GroomingPage() {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-1">
-                  {previousSessions.map((session) => (
-                    <button
+                <div className="space-y-0.5">
+                  {sortedSessions.map((session) => (
+                    <div
                       key={session.id}
                       onClick={() => loadSession(session)}
-                      className={`w-full text-left p-2 rounded-lg transition-all ${
+                      className={`group relative w-full text-left px-3 py-2 rounded-xl transition-all cursor-pointer ${
                         currentSessionId === session.id
-                          ? "bg-primary-100 dark:bg-primary-900/30 border border-primary-300"
-                          : "hover:bg-default-100 dark:hover:bg-default-200/50 border border-transparent"
+                          ? "bg-default-100 dark:bg-default-200/50"
+                          : "hover:bg-default-100 dark:hover:bg-default-200/30"
                       }`}
                     >
-                      <p
-                        className={`text-sm font-medium line-clamp-2 ${
-                          currentSessionId === session.id
-                            ? "text-primary-700 dark:text-primary-300"
-                            : "text-default-700"
-                        }`}
-                      >
-                        {session.title}
-                      </p>
-                      <p className="text-xs text-default-400 mt-1">
-                        {formatSessionDate(session.updatedAt)}
-                      </p>
-                      {(session.suggestedTasks?.length ?? 0) > 0 ||
-                      (session.suggestedEpics?.length ?? 0) > 0 ? (
-                        <div className="flex items-center gap-2 mt-1">
-                          {(session.suggestedTasks?.length ?? 0) > 0 && (
-                            <span className="text-xs text-default-400">
-                              {session.suggestedTasks?.length} tasks
-                            </span>
-                          )}
-                          {(session.suggestedEpics?.length ?? 0) > 0 && (
-                            <span className="text-xs text-default-400">
-                              {session.suggestedEpics?.length} epics
-                            </span>
-                          )}
-                        </div>
-                      ) : null}
-                    </button>
+                      {/* 3-dot menu */}
+                      <div className="absolute right-1 top-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        <Dropdown>
+                          <DropdownTrigger>
+                            <button
+                              onClick={(e) => e.stopPropagation()}
+                              className="p-1 rounded hover:bg-default-200 dark:hover:bg-default-300/50"
+                            >
+                              <svg
+                                className="w-4 h-4 text-default-500"
+                                fill="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <circle cx="12" cy="5" r="2" />
+                                <circle cx="12" cy="12" r="2" />
+                                <circle cx="12" cy="19" r="2" />
+                              </svg>
+                            </button>
+                          </DropdownTrigger>
+                          <DropdownMenu aria-label="Session actions">
+                            <DropdownItem
+                              key="pin"
+                              startContent={
+                                <svg
+                                  className="w-4 h-4"
+                                  fill={session.pinned ? "currentColor" : "none"}
+                                  stroke="currentColor"
+                                  viewBox="0 0 16 16"
+                                >
+                                  <path d="M9.828.722a.5.5 0 0 1 .354.146l4.95 4.95a.5.5 0 0 1 0 .707c-.48.48-1.072.588-1.503.588-.177 0-.335-.018-.46-.039l-3.134 3.134a5.927 5.927 0 0 1 .16 1.013c.046.702-.032 1.687-.72 2.375a.5.5 0 0 1-.707 0l-2.829-2.828-3.182 3.182c-.195.195-1.219.902-1.414.707-.195-.195.512-1.22.707-1.414l3.182-3.182-2.828-2.829a.5.5 0 0 1 0-.707c.688-.688 1.673-.767 2.375-.72a5.922 5.922 0 0 1 1.013.16l3.134-3.133a2.772 2.772 0 0 1-.04-.461c0-.43.108-1.022.589-1.503a.5.5 0 0 1 .353-.146z" />
+                                </svg>
+                              }
+                              onPress={() => handlePinSession(session.id)}
+                            >
+                              {session.pinned ? "Unpin" : "Pin"}
+                            </DropdownItem>
+                            <DropdownItem
+                              key="rename"
+                              startContent={
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                  />
+                                </svg>
+                              }
+                              onPress={() => openRenameModal(session)}
+                            >
+                              Rename
+                            </DropdownItem>
+                            <DropdownItem
+                              key="delete"
+                              className="text-danger"
+                              color="danger"
+                              startContent={
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  />
+                                </svg>
+                              }
+                              onPress={() => handleDeleteSession(session.id)}
+                            >
+                              Delete
+                            </DropdownItem>
+                          </DropdownMenu>
+                        </Dropdown>
+                      </div>
+
+                      {/* Session content - ChatGPT style (just title) */}
+                      <div className="flex items-center gap-2 pr-6">
+                        {session.pinned && (
+                          <svg
+                            className="w-3.5 h-3.5 text-default-500 flex-shrink-0"
+                            fill="currentColor"
+                            viewBox="0 0 16 16"
+                          >
+                            <path d="M9.828.722a.5.5 0 0 1 .354.146l4.95 4.95a.5.5 0 0 1 0 .707c-.48.48-1.072.588-1.503.588-.177 0-.335-.018-.46-.039l-3.134 3.134a5.927 5.927 0 0 1 .16 1.013c.046.702-.032 1.687-.72 2.375a.5.5 0 0 1-.707 0l-2.829-2.828-3.182 3.182c-.195.195-1.219.902-1.414.707-.195-.195.512-1.22.707-1.414l3.182-3.182-2.828-2.829a.5.5 0 0 1 0-.707c.688-.688 1.673-.767 2.375-.72a5.922 5.922 0 0 1 1.013.16l3.134-3.133a2.772 2.772 0 0 1-.04-.461c0-.43.108-1.022.589-1.503a.5.5 0 0 1 .353-.146z" />
+                          </svg>
+                        )}
+                        <p className="text-sm text-default-700 truncate">
+                          {session.title}
+                        </p>
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}
             </div>
           ) : (
-            <div className="flex-1 overflow-y-auto p-1">
+            <div className="flex-1 overflow-y-auto px-1 py-2">
               {isLoadingSessions ? (
                 <div className="flex items-center justify-center py-4">
                   <Spinner size="sm" color="primary" />
                 </div>
               ) : (
                 <div className="space-y-1">
-                  <Button
-                    size="sm"
-                    variant="flat"
-                    color="primary"
-                    isIconOnly
-                    onPress={handleStartNewSession}
-                    title="New Session"
-                    className="w-full"
-                  >
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 4v16m8-8H4"
-                      />
-                    </svg>
-                  </Button>
-                  {previousSessions.map((session) => (
+                  {sortedSessions.map((session) => (
+                    <Tooltip key={session.id} content={session.title} placement="right">
+                      <button
+                        onClick={() => loadSession(session)}
+                        className={`w-full p-2 rounded-lg transition-all flex items-center justify-center ${
+                          currentSessionId === session.id
+                            ? "bg-default-100 dark:bg-default-200/50"
+                            : "hover:bg-default-100/50 dark:hover:bg-default-200/30"
+                        }`}
+                      >
+                        {session.pinned ? (
+                          <svg
+                            className="w-4 h-4 text-default-500"
+                            fill="currentColor"
+                            viewBox="0 0 16 16"
+                          >
+                            <path d="M9.828.722a.5.5 0 0 1 .354.146l4.95 4.95a.5.5 0 0 1 0 .707c-.48.48-1.072.588-1.503.588-.177 0-.335-.018-.46-.039l-3.134 3.134a5.927 5.927 0 0 1 .16 1.013c.046.702-.032 1.687-.72 2.375a.5.5 0 0 1-.707 0l-2.829-2.828-3.182 3.182c-.195.195-1.219.902-1.414.707-.195-.195.512-1.22.707-1.414l3.182-3.182-2.828-2.829a.5.5 0 0 1 0-.707c.688-.688 1.673-.767 2.375-.72a5.922 5.922 0 0 1 1.013.16l3.134-3.133a2.772 2.772 0 0 1-.04-.461c0-.43.108-1.022.589-1.503a.5.5 0 0 1 .353-.146z" />
+                          </svg>
+                        ) : (
+                          <svg
+                            className="w-4 h-4 text-default-500"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                            />
+                          </svg>
+                        )}
+                      </button>
+                    </Tooltip>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Center - Chat area (fills all available space) */}
+        <div className="flex flex-col bg-background rounded-xl border border-default-200 overflow-hidden">
+          {/* Chat header - same style as Suggestions */}
+          <div className="px-4 pt-4 pb-3 border-b border-default-200 bg-default-100/50 dark:bg-default-200/20">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-secondary-100 dark:bg-secondary-500/20 rounded-lg">
+                <svg
+                  className="w-5 h-5 text-secondary-600 dark:text-secondary-300"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                  />
+                </svg>
+              </div>
+              <span className="font-semibold text-base text-default-700">
+                {currentSessionTitle || "Grooming Session"}
+              </span>
+            </div>
+          </div>
+
+          {/* Hidden file input - always present */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            accept=".txt,.md,.json,.csv,.xml,.html"
+            multiple
+            className="hidden"
+          />
+
+          {/* Check if this is a new chat (only greeting message, no user messages) */}
+          {messages.length <= 1 && !messages.some(m => m.role === "user") ? (
+            /* New chat welcome screen - centered layout */
+            <div className="flex-1 flex flex-col items-center justify-center px-8 overflow-hidden">
+              {/* Welcome content */}
+              <div className="text-center mb-4">
+                {/* Icon */}
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-400 to-secondary-400 dark:from-primary-500 dark:to-secondary-500 mb-4">
+                  <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+                  </svg>
+                </div>
+
+                {/* Title */}
+                <h2 className="text-2xl font-semibold text-default-800 mb-2">
+                  What are you working on?
+                </h2>
+
+                {/* Subtitle */}
+                <p className="text-default-500 text-sm max-w-md">
+                  Describe features, improvements, or bugs and I&apos;ll help break them into tasks and epics
+                  {projectContext?.name && (
+                    <span className="block mt-1 text-primary-500 font-medium">
+                      for {projectContext.name}
+                    </span>
+                  )}
+                </p>
+              </div>
+
+              {/* Centered input */}
+              <div className="w-full max-w-xl">
+                <div className="border border-default-300 rounded-2xl overflow-hidden focus-within:border-primary-400 focus-within:shadow-lg transition-all bg-white dark:bg-default-50/5">
+                  {/* Input row */}
+                  <div className="flex items-center px-4 py-3">
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      placeholder="Describe a feature or ask about the documents..."
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendMessage();
+                        }
+                      }}
+                      disabled={isLoading || isProcessingDocument}
+                      className="flex-1 bg-transparent outline-none text-sm text-default-700 placeholder:text-default-400"
+                    />
                     <button
-                      key={session.id}
-                      onClick={() => loadSession(session)}
-                      className={`w-full p-2 rounded-lg transition-all flex items-center justify-center ${
-                        currentSessionId === session.id
-                          ? "bg-primary-100 dark:bg-primary-900/30 border border-primary-300"
-                          : "hover:bg-default-100 dark:hover:bg-default-200/50 border border-transparent"
-                      }`}
-                      title={session.title}
+                      onClick={handleSendMessage}
+                      disabled={!inputValue.trim() || isLoading || isProcessingDocument}
+                      className="p-2 bg-primary-500 hover:bg-primary-600 text-white rounded-xl disabled:opacity-40 disabled:hover:bg-primary-500 transition-colors ml-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Actions row */}
+                  <div className="flex items-center gap-1 px-3 py-2 border-t border-default-200 bg-default-50/50">
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isLoading || isProcessingDocument}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-default-500 hover:text-default-700 hover:bg-default-100 rounded-lg transition-colors disabled:opacity-40"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                      </svg>
+                      Attach
+                    </button>
+                  </div>
+                </div>
+
+                {/* Uploaded documents bar */}
+                {uploadedDocuments.length > 0 && (
+                  <div className="flex items-center gap-2 flex-wrap mt-3 p-3 bg-default-50 dark:bg-default-100/30 rounded-lg">
+                    <span className="text-xs text-default-500">Documents:</span>
+                    {uploadedDocuments.map((doc) => (
+                      <Chip
+                        key={doc.name}
+                        size="sm"
+                        variant="flat"
+                        onClose={() => removeDocument(doc.name)}
+                        classNames={{ base: "h-6", content: "text-xs" }}
+                      >
+                        {doc.name}
+                      </Chip>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            /* Regular chat view with messages */
+            <>
+              {/* Messages area - scrollable */}
+              <div className="flex-1 overflow-y-auto">
+                <div className="px-8 py-6 space-y-6">
+                  {/* Uploaded documents bar */}
+                  {uploadedDocuments.length > 0 && (
+                    <div className="flex items-center gap-2 flex-wrap mb-4 p-3 bg-default-50 dark:bg-default-100/30 rounded-lg">
+                      <span className="text-xs text-default-500">Documents:</span>
+                      {uploadedDocuments.map((doc) => (
+                        <Chip
+                          key={doc.name}
+                          size="sm"
+                          variant="flat"
+                          onClose={() => removeDocument(doc.name)}
+                          classNames={{ base: "h-6", content: "text-xs" }}
+                        >
+                          {doc.name}
+                        </Chip>
+                      ))}
+                    </div>
+                  )}
+                  {messages.map((msg, idx) => (
+                    <div
+                      key={idx}
+                      className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                    >
+                      <div
+                        className={`max-w-[85%] rounded-2xl px-5 py-4 ${
+                          msg.role === "user"
+                            ? "bg-primary text-white"
+                            : "bg-default-100 text-default-800"
+                        }`}
+                      >
+                        <p className="text-base whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {(isLoading || isProcessingDocument) && (
+                    <div className="flex justify-start">
+                      <div className="bg-default-100 rounded-xl px-4 py-3 flex items-center gap-2">
+                        <Spinner size="sm" color="primary" />
+                        {isProcessingDocument && (
+                          <span className="text-sm text-default-500">
+                            Processing document...
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+              </div>
+
+              {/* Input area - Notion style */}
+              <div className="px-8 py-3">
+                <div className="border border-default-300 rounded-xl overflow-hidden focus-within:border-primary-400 transition-colors">
+                  {/* Input row */}
+                  <div className="flex items-center px-3 py-2">
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      placeholder="Describe a feature or ask about the documents..."
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendMessage();
+                        }
+                      }}
+                      disabled={isLoading || isProcessingDocument}
+                      className="flex-1 bg-transparent outline-none text-sm text-default-700 placeholder:text-default-400"
+                    />
+                    <button
+                      onClick={handleSendMessage}
+                      disabled={!inputValue.trim() || isLoading || isProcessingDocument}
+                      className="p-1.5 text-default-400 hover:text-primary-500 disabled:opacity-40 disabled:hover:text-default-400 transition-colors"
                     >
                       <svg
-                        className={`w-4 h-4 ${
-                          currentSessionId === session.id
-                            ? "text-primary-700 dark:text-primary-300"
-                            : "text-default-500"
-                        }`}
+                        className="w-5 h-5"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -1376,186 +1777,78 @@ export default function GroomingPage() {
                         <path
                           strokeLinecap="round"
                           strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                          strokeWidth={1.5}
+                          d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"
                         />
                       </svg>
                     </button>
-                  ))}
+                  </div>
+
+                  {/* Actions row */}
+                  <div className="flex items-center gap-1 px-2 py-1.5 border-t border-default-200 bg-default-50">
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isLoading || isProcessingDocument}
+                      className="flex items-center gap-1.5 px-2 py-1 text-xs text-default-500 hover:text-default-700 hover:bg-default-100 rounded-md transition-colors disabled:opacity-40"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                      </svg>
+                      Attach
+                    </button>
+
+                    <button
+                      onClick={() => setIsTaskSelectorModalOpen(true)}
+                      disabled={isLoading || isProcessingDocument || (suggestedTasks.length === 0 && suggestedEpics.length === 0 && existingTasks.length === 0)}
+                      className="flex items-center gap-1.5 px-2 py-1 text-xs text-default-500 hover:text-default-700 hover:bg-default-100 rounded-md transition-colors disabled:opacity-40"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z" />
+                      </svg>
+                      Discuss Task
+                    </button>
+                  </div>
                 </div>
-              )}
-            </div>
+              </div>
+            </>
           )}
         </div>
 
-        {/* Center - Chat */}
-        <div className="flex-1 flex flex-col border border-default-200 rounded-lg overflow-hidden bg-background">
-          {/* Uploaded documents bar */}
-          {uploadedDocuments.length > 0 && (
-            <div className="px-4 py-2 border-b border-default-200 bg-default-50 dark:bg-default-100/30">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs text-default-500">Documents:</span>
-                {uploadedDocuments.map((doc) => (
-                  <Chip
-                    key={doc.name}
-                    size="sm"
-                    variant="flat"
-                    onClose={() => removeDocument(doc.name)}
-                    classNames={{ base: "h-6", content: "text-xs" }}
-                  >
-                    {doc.name}
-                  </Chip>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Messages area */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.map((msg, idx) => (
-              <div
-                key={idx}
-                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-              >
-                <div
-                  className={`max-w-[80%] rounded-xl px-4 py-2.5 ${
-                    msg.role === "user"
-                      ? "bg-primary text-white"
-                      : "bg-default-100 text-default-800"
-                  }`}
+        {/* Right panel - Suggestions (resizable) */}
+        <div className="flex flex-col bg-default-50 dark:bg-default-100/30 overflow-hidden relative rounded-xl border border-default-200">
+          {/* Resize handle */}
+          <div
+            onMouseDown={handleSuggestionsResizeStart}
+            className={`absolute left-0 top-0 bottom-0 cursor-col-resize transition-all z-10 rounded-l-xl ${
+              isResizingSuggestions
+                ? "w-1 bg-primary-400"
+                : "w-px bg-transparent hover:w-1 hover:bg-primary-400"
+            }`}
+          />
+          {/* Panel header */}
+          <div className="px-4 pt-4 pb-3 border-b border-default-200 bg-default-100/50 dark:bg-default-200/20">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary-100 dark:bg-primary-500/20 rounded-lg">
+                <svg
+                  className="w-5 h-5 text-primary-600 dark:text-primary-300"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
-                  <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                </div>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                  />
+                </svg>
               </div>
-            ))}
-            {(isLoading || isProcessingDocument) && (
-              <div className="flex justify-start">
-                <div className="bg-default-100 rounded-xl px-4 py-3 flex items-center gap-2">
-                  <Spinner size="sm" color="primary" />
-                  {isProcessingDocument && (
-                    <span className="text-sm text-default-500">
-                      Processing document...
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
+              <span className="font-semibold text-base text-default-700">Suggestions</span>
+            </div>
           </div>
 
-          {/* Input area */}
-          <div className="p-4 border-t border-default-200">
-            <div className="flex gap-2">
-              {/* Hidden file input */}
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileUpload}
-                accept=".txt,.md,.json,.csv,.xml,.html"
-                multiple
-                className="hidden"
-              />
-
-              {/* Upload button */}
-              <Button
-                isIconOnly
-                variant="flat"
-                onPress={() => fileInputRef.current?.click()}
-                isDisabled={isLoading || isProcessingDocument}
-                title="Upload document"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
-                  />
-                </svg>
-              </Button>
-
-              {/* Discuss task/epic button - opens modal */}
-              <Button
-                isIconOnly
-                variant="flat"
-                isDisabled={
-                  isLoading ||
-                  isProcessingDocument ||
-                  (suggestedTasks.length === 0 &&
-                    suggestedEpics.length === 0 &&
-                    existingTasks.length === 0)
-                }
-                title="Discuss a task or epic"
-                onPress={() => setIsTaskSelectorModalOpen(true)}
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"
-                  />
-                </svg>
-              </Button>
-
-              <Input
-                ref={inputRef}
-                placeholder="Describe a feature or ask about the documents..."
-                value={inputValue}
-                onValueChange={setInputValue}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }
-                }}
-                isDisabled={isLoading || isProcessingDocument}
-                classNames={{
-                  inputWrapper: "bg-default-100",
-                }}
-              />
-              <Button
-                color="primary"
-                isIconOnly
-                onPress={handleSendMessage}
-                isDisabled={
-                  !inputValue.trim() || isLoading || isProcessingDocument
-                }
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-                  />
-                </svg>
-              </Button>
-            </div>
-            <p className="text-xs text-default-400 mt-2">
-              Supports .txt, .md, .json, .csv, .xml, .html files
-            </p>
-          </div>
-        </div>
-
-        {/* Right side - Suggested Tasks & Epics */}
-        <div className="w-[380px] flex flex-col border border-default-200 rounded-lg overflow-hidden bg-default-50 dark:bg-default-100/30">
-          <div className="p-3 border-b border-default-200">
+          {/* Tabs */}
+          <div className="px-4 pt-4">
             <Tabs
               selectedKey={selectedTab}
               onSelectionChange={(key) =>
@@ -1691,20 +1984,60 @@ export default function GroomingPage() {
           </div>
 
           {/* Summary footer */}
-          <div className="p-3 border-t border-default-200 text-xs text-default-500">
-            <div className="flex justify-between">
-              <span>
-                Tasks: {pendingTasks.length} pending, {approvedTasks.length}{" "}
-                approved
-              </span>
-              <span>
-                Epics: {pendingEpics.length} pending, {approvedEpics.length}{" "}
-                approved
-              </span>
+          <div className="px-4 py-2 text-xs text-default-400">
+            <div className="flex gap-4">
+              <span>{pendingTasks.length + approvedTasks.length} tasks</span>
+              <span>{pendingEpics.length + approvedEpics.length} epics</span>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Rename Chat Modal - Gemini style */}
+      <Modal
+        isOpen={isRenameModalOpen}
+        onClose={closeRenameModal}
+        size="sm"
+      >
+        <ModalContent>
+          <ModalHeader className="flex flex-col gap-1 pb-2">
+            <span className="text-lg font-semibold">Rename this chat</span>
+          </ModalHeader>
+          <ModalBody className="py-2">
+            <Input
+              autoFocus
+              value={renameSessionTitle}
+              onValueChange={setRenameSessionTitle}
+              placeholder="Enter chat name..."
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleRenameSession();
+                } else if (e.key === "Escape") {
+                  closeRenameModal();
+                }
+              }}
+              classNames={{
+                inputWrapper: "bg-default-100",
+              }}
+            />
+          </ModalBody>
+          <ModalFooter className="pt-2">
+            <Button
+              variant="light"
+              onPress={closeRenameModal}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="primary"
+              onPress={handleRenameSession}
+              isDisabled={!renameSessionTitle.trim()}
+            >
+              Rename
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
 
       {/* Task Selector Modal */}
       <Modal
