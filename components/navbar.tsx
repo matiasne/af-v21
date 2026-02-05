@@ -12,12 +12,14 @@ import NextLink from "next/link";
 import Image from "next/image";
 import { useTheme } from "next-themes";
 
-import { ThemeSwitch } from "@/components/theme-switch";
 import { useAuth } from "@/infrastructure/context/AuthContext";
+import { useProjectChatSafe } from "@/infrastructure/context/ProjectChatContext";
 import { SetPasswordModal } from "@/components/SetPasswordModal";
 
 export const Navbar = () => {
   const { user, loading, signOut, setPassword, hasPasswordProvider } = useAuth();
+  const projectChatContext = useProjectChatSafe();
+  const projectContext = projectChatContext?.projectContext;
   const [isSetPasswordModalOpen, setIsSetPasswordModalOpen] = useState(false);
   const { theme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -48,7 +50,14 @@ export const Navbar = () => {
           </NextLink>
 
           <div className="flex items-center gap-4">
-            <ThemeSwitch />
+            {projectContext?.name && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-default-500">/</span>
+                <span className="text-sm font-medium text-default-700">
+                  {projectContext.name}
+                </span>
+              </div>
+            )}
             {loading ? null : user ? (
               <Dropdown placement="bottom-end">
                 <DropdownTrigger>

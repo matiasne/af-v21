@@ -1,4 +1,4 @@
-import { Project, ConfigChatMessage } from "../entities/Project";
+import { Project, ConfigChatMessage, ProjectShare } from "../entities/Project";
 
 export interface ProjectRepository {
   getProjects(userId: string): Promise<Project[]>;
@@ -64,4 +64,18 @@ export interface ProjectRepository {
     projectId: string,
     migrationId: string
   ): Promise<void>;
+
+  // Invite user to project
+  inviteUserToProject(
+    inviterId: string,
+    projectId: string,
+    inviteeEmail: string
+  ): Promise<{ success: boolean; error?: string }>;
+
+  // Remove user from project
+  removeUserFromProject(
+    removerId: string,
+    projectId: string,
+    userIdToRemove: string
+  ): Promise<{ success: boolean; error?: string }>;
 }

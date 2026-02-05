@@ -14,6 +14,7 @@ import {
   setDoc,
   arrayUnion,
   arrayRemove,
+  where,
 } from "firebase/firestore";
 import {
   ref,
@@ -634,6 +635,134 @@ export class FirebaseProjectRepository implements ProjectRepository {
         boilerplateDone: false,
         updatedAt: now,
       });
+    }
+  }
+
+  async inviteUserToProject(
+    inviterId: string,
+    projectId: string,
+    inviteeEmail: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const now = Date.now();
+
+      // Find user by email in the users collection
+      const usersCollection = collection(db, "users");
+      const userQuery = query(usersCollection, where("email", "==", inviteeEmail));
+      const userSnapshot = await getDocs(userQuery);
+
+      if (userSnapshot.empty) {
+        return { success: false, error: "User not found with this email" };
+      }
+
+      const inviteeDoc = userSnapshot.docs[0];
+      const inviteeId = inviteeDoc.id;
+
+      // Check if user is already invited or has access to the project
+      const inviteeData = inviteeDoc.data();
+      const existingProjects: UserProjectReference[] = inviteeData.projects || [];
+      const alreadyHasAccess = existingProjects.some(p => p.projectId === projectId);
+
+      if (alreadyHasAccess) {
+        return { success: false, error: "User already has access to this project" };
+      }
+
+      // Get project to verify it exists and add to sharedWith
+      const projectDoc = await getDoc(this.getProjectDoc(projectId));
+      if (!projectDoc.exists()) {
+        return { success: false, error: "Project not found" };
+      }
+
+      // Add project reference to invitee's user document with role "invited"
+      const projectRef: UserProjectReference = {
+        projectId: projectId,
+        role: "invited",
+        addedAt: now,
+      };
+
+      await updateDoc(inviteeDoc.ref, {
+        projects: arrayUnion(projectRef),
+      });
+
+      // Add invitee to project's sharedWith array
+      const projectData = projectDoc.data();
+      const sharedWith = projectData.sharedWith || [];
+
+      // Check if already in sharedWith
+      const alreadyShared = sharedWith.some((s: { userId: string }) => s.userId === inviteeId);
+
+      if (!alreadyShared) {
+        await updateDoc(this.getProjectDoc(projectId), {
+          sharedWith: arrayUnion({
+            userId: inviteeId,
+            email: inviteeEmail,
+            role: "invited",
+            sharedAt: now,
+            sharedBy: inviterId,
+          }),
+          updatedAt: now,
+        });
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error("[FirebaseProjectRepository] Error inviting user:", error);
+      return { success: false, error: "Failed to invite user" };
+    }
+  }
+
+  async removeUserFromProject(
+    removerId: string,
+    projectId: string,
+    userIdToRemove: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Get the project to find the user's share info
+      const projectDoc = await getDoc(this.getProjectDoc(projectId));
+      if (!projectDoc.exists()) {
+        return { success: false, error: "Project not found" };
+      }
+
+      const projectData = projectDoc.data();
+      const sharedWith = projectData.sharedWith || [];
+
+      // Find the share entry to remove
+      const shareToRemove = sharedWith.find(
+        (s: { userId: string }) => s.userId === userIdToRemove
+      );
+
+      if (!shareToRemove) {
+        return { success: false, error: "User not found in project" };
+      }
+
+      // Remove from project's sharedWith array
+      await updateDoc(this.getProjectDoc(projectId), {
+        sharedWith: arrayRemove(shareToRemove),
+        updatedAt: Date.now(),
+      });
+
+      // Remove project reference from user's document
+      const userDocRef = this.getUserDoc(userIdToRemove);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        const projectRefs: UserProjectReference[] = userData.projects || [];
+        const projectRefToRemove = projectRefs.find(
+          (ref) => ref.projectId === projectId
+        );
+
+        if (projectRefToRemove) {
+          await updateDoc(userDocRef, {
+            projects: arrayRemove(projectRefToRemove),
+          });
+        }
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error("[FirebaseProjectRepository] Error removing user:", error);
+      return { success: false, error: "Failed to remove user" };
     }
   }
 }

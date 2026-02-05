@@ -223,7 +223,7 @@ export interface ProjectStatus {
   processId?: string;
 }
 
-export type ProjectRole = "owner" | "editor" | "viewer";
+export type ProjectRole = "owner" | "editor" | "viewer" | "invited";
 
 export interface ProjectShare {
   userId: string;

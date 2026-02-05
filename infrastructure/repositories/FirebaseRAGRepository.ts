@@ -356,6 +356,76 @@ export class FirebaseRAGRepository implements RAGRepository {
       return null;
     }
   }
+
+  async listCorpora(): Promise<RAGCorpus[]> {
+    try {
+      console.log("[RAG Repository] Listing all corpora");
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/corpora?key=${this.apiKey}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[RAG Repository] List corpora error:", errorText);
+        return [];
+      }
+
+      const data = await response.json();
+      if (!data.corpora || !Array.isArray(data.corpora)) {
+        return [];
+      }
+
+      return data.corpora.map(
+        (corpus: {
+          name?: string;
+          displayName?: string;
+          createTime?: string;
+          updateTime?: string;
+        }): RAGCorpus => ({
+          name: corpus.name || "",
+          displayName: corpus.displayName || "",
+          createTime: corpus.createTime,
+          updateTime: corpus.updateTime,
+        })
+      );
+    } catch (error) {
+      console.error("[RAG Repository] Error listing corpora:", error);
+      return [];
+    }
+  }
+
+  async deleteCorpus(corpusName: string): Promise<boolean> {
+    try {
+      console.log(`[RAG Repository] Deleting corpus: ${corpusName}`);
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/${corpusName}?key=${this.apiKey}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[RAG Repository] Delete corpus error:", errorText);
+        return false;
+      }
+
+      console.log(`[RAG Repository] Corpus deleted successfully`);
+      return true;
+    } catch (error) {
+      console.error("[RAG Repository] Error deleting corpus:", error);
+      return false;
+    }
+  }
 }
 
 export const ragRepository = new FirebaseRAGRepository();
