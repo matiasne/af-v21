@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { FirebaseRAGRepository } from "@/infrastructure/repositories/FirebaseRAGRepository";
 
 export interface ChatMessage {
@@ -43,23 +42,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.OPENROUTER_API_KEY;
 
     if (!apiKey) {
       return NextResponse.json(
-        { error: "Gemini API key not configured" },
+        { error: "OpenRouter API key not configured" },
         { status: 500 },
       );
     }
-
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     // Search for similar tasks in RAG if storage name is provided
     let ragSearchResults = "";
     if (ragStoreName) {
       try {
-        const ragRepository = new FirebaseRAGRepository(apiKey);
+        const ragApiKey = process.env.GOOGLE_FILE_SEARCH_API_KEY || "";
+        const ragRepository = new FirebaseRAGRepository(ragApiKey);
         const lastMessage = messages[messages.length - 1];
         if (lastMessage && lastMessage.role === "user") {
           const searchResults = await ragRepository.searchFiles(lastMessage.content, ragStoreName);
@@ -201,47 +198,55 @@ Only suggest tasks when you have enough information. If the user's request is va
 
 Always respond with valid JSON only. No additional text before or after the JSON.`;
 
-    // Convert chat history to Gemini format
-    const history = messages.slice(0, -1).map((msg: ChatMessage) => ({
-      role: msg.role === "user" ? "user" : "model",
-      parts: [{ text: msg.content }],
-    }));
+    // Convert chat history to OpenRouter format
+    const chatMessages = [
+      {
+        role: "system" as const,
+        content: systemPrompt,
+      },
+      {
+        role: "assistant" as const,
+        content: JSON.stringify({
+          response:
+            "I'm ready to help you with your grooming session. Tell me about the features, improvements, or bugs you'd like to work on, and I'll help you break them down into actionable tasks and epics.",
+          suggestedTasks: [],
+          suggestedEpics: [],
+        }),
+      },
+      ...messages.map((msg: ChatMessage) => ({
+        role: msg.role as "user" | "assistant",
+        content: msg.content,
+      })),
+    ];
 
-    const chat = model.startChat({
-      history: [
-        {
-          role: "user",
-          parts: [{ text: systemPrompt }],
-        },
-        {
-          role: "model",
-          parts: [
-            {
-              text: JSON.stringify({
-                response:
-                  "I'm ready to help you with your grooming session. Tell me about the features, improvements, or bugs you'd like to work on, and I'll help you break them down into actionable tasks and epics.",
-                suggestedTasks: [],
-                suggestedEpics: [],
-              }),
-            },
-          ],
-        },
-        ...history,
-      ],
+    // Call OpenRouter API
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+        "X-Title": "Grooming Session Assistant",
+      },
+      body: JSON.stringify({
+        model: "anthropic/claude-3.5-sonnet",
+        messages: chatMessages,
+        temperature: 0.7,
+        max_tokens: 4096,
+      }),
     });
 
-    // Get the last message (the current user message)
-    const lastMessage = messages[messages.length - 1];
-
-    if (!lastMessage || lastMessage.role !== "user") {
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("OpenRouter API error:", errorText);
       return NextResponse.json(
-        { error: "Last message must be from user" },
-        { status: 400 },
+        { error: "Failed to get response from OpenRouter" },
+        { status: 500 },
       );
     }
 
-    const result = await chat.sendMessage(lastMessage.content);
-    const responseText = result.response.text();
+    const data = await response.json();
+    const responseText = data.choices?.[0]?.message?.content || "";
 
     // Parse the JSON response
     let parsedResponse: {
