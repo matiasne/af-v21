@@ -157,7 +157,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="relative min-h-screen">
+    <div className="relative min-h-screen pt-16">
       <Threads
         color={[0.5, 0.3, 1]}
         amplitude={1.5}
@@ -165,214 +165,214 @@ export default function DashboardPage() {
         enableMouseInteraction
         className="fixed inset-0 -z-10"
       />
-      <div className="relative z-10">
+      <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-8">
         <div className="flex justify-between items-center mb-8">
           <Button color="primary" onPress={onOpen}>
             New Project
           </Button>
         </div>
 
-      {loading ? (
-        <div className="flex justify-center items-center min-h-[40vh]">
-          <Spinner size="lg" />
-        </div>
-      ) : projects.length === 0 ? (
-        <Card className="p-8">
-          <CardBody className="text-center">
-            <p className="text-default-500 mb-4">
-              You don&apos;t have any projects yet.
-            </p>
-            <Button color="primary" onPress={onOpen}>
-              Create your first project
-            </Button>
-          </CardBody>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {projects.map((project, index) => (
-            <ProjectCard
-              key={project.id}
-              project={project}
-              onEditClick={handleEditClick}
-              onDeleteClick={handleDeleteClick}
-              formatDate={formatDate}
-              index={index}
-            />
-          ))}
-        </div>
-      )}
+        {loading ? (
+          <div className="flex justify-center items-center min-h-[40vh]">
+            <Spinner size="lg" />
+          </div>
+        ) : projects.length === 0 ? (
+          <Card className="p-8">
+            <CardBody className="text-center">
+              <p className="text-default-500 mb-4">
+                You don&apos;t have any projects yet.
+              </p>
+              <Button color="primary" onPress={onOpen}>
+                Create your first project
+              </Button>
+            </CardBody>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {projects.map((project, index) => (
+              <ProjectCard
+                key={project.id}
+                project={project}
+                onEditClick={handleEditClick}
+                onDeleteClick={handleDeleteClick}
+                formatDate={formatDate}
+                index={index}
+              />
+            ))}
+          </div>
+        )}
 
-      <Modal
-        isOpen={isOpen}
-        onOpenChange={(open) => {
-          if (!open) resetForm();
-          onOpenChange();
-        }}
-      >
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader>Create New Project</ModalHeader>
-              <ModalBody>
-                <Input
-                  label="Project Name"
-                  placeholder="Enter project name"
-                  value={projectName}
-                  onChange={(e) => setProjectName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (
-                      e.key === "Enter" &&
-                      projectName.trim() &&
-                      !isSubmitting
-                    ) {
-                      handleCreateProject(onClose);
-                    }
-                  }}
-                  isRequired
-                />
-                <Input
-                  label="Description"
-                  placeholder="Enter project description (optional)"
-                  value={projectDescription}
-                  onChange={(e) => setProjectDescription(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (
-                      e.key === "Enter" &&
-                      projectName.trim() &&
-                      !isSubmitting
-                    ) {
-                      handleCreateProject(onClose);
-                    }
-                  }}
-                />
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="flat" onPress={onClose}>
-                  Cancel
-                </Button>
-                <Button
-                  color="primary"
-                  isLoading={isSubmitting}
-                  isDisabled={!projectName.trim()}
-                  onPress={() => handleCreateProject(onClose)}
-                >
-                  Create
-                </Button>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
+        <Modal
+          isOpen={isOpen}
+          onOpenChange={(open) => {
+            if (!open) resetForm();
+            onOpenChange();
+          }}
+        >
+          <ModalContent>
+            {(onClose) => (
+              <>
+                <ModalHeader>Create New Project</ModalHeader>
+                <ModalBody>
+                  <Input
+                    label="Project Name"
+                    placeholder="Enter project name"
+                    value={projectName}
+                    onChange={(e) => setProjectName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (
+                        e.key === "Enter" &&
+                        projectName.trim() &&
+                        !isSubmitting
+                      ) {
+                        handleCreateProject(onClose);
+                      }
+                    }}
+                    isRequired
+                  />
+                  <Input
+                    label="Description"
+                    placeholder="Enter project description (optional)"
+                    value={projectDescription}
+                    onChange={(e) => setProjectDescription(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (
+                        e.key === "Enter" &&
+                        projectName.trim() &&
+                        !isSubmitting
+                      ) {
+                        handleCreateProject(onClose);
+                      }
+                    }}
+                  />
+                </ModalBody>
+                <ModalFooter>
+                  <Button variant="flat" onPress={onClose}>
+                    Cancel
+                  </Button>
+                  <Button
+                    color="primary"
+                    isLoading={isSubmitting}
+                    isDisabled={!projectName.trim()}
+                    onPress={() => handleCreateProject(onClose)}
+                  >
+                    Create
+                  </Button>
+                </ModalFooter>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
 
-      <Modal
-        isOpen={isEditOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            resetForm();
-            setProjectToEdit(null);
-          }
-          onEditOpenChange();
-        }}
-      >
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader>Edit Project</ModalHeader>
-              <ModalBody>
-                <Input
-                  label="Project Name"
-                  placeholder="Enter project name"
-                  value={projectName}
-                  onChange={(e) => setProjectName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (
-                      e.key === "Enter" &&
-                      projectName.trim() &&
-                      !isSubmitting
-                    ) {
-                      handleUpdateProject(onClose);
-                    }
-                  }}
-                  isRequired
-                />
-                <Input
-                  label="Description"
-                  placeholder="Enter project description (optional)"
-                  value={projectDescription}
-                  onChange={(e) => setProjectDescription(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (
-                      e.key === "Enter" &&
-                      projectName.trim() &&
-                      !isSubmitting
-                    ) {
-                      handleUpdateProject(onClose);
-                    }
-                  }}
-                />
-                <Input
-                  label="GitHub URL"
-                  placeholder="https://github.com/user/repo"
-                  value={projectGithubUrl}
-                  onChange={(e) => setProjectGithubUrl(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (
-                      e.key === "Enter" &&
-                      projectName.trim() &&
-                      !isSubmitting
-                    ) {
-                      handleUpdateProject(onClose);
-                    }
-                  }}
-                  type="url"
-                />
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="flat" onPress={onClose}>
-                  Cancel
-                </Button>
-                <Button
-                  color="primary"
-                  isLoading={isSubmitting}
-                  isDisabled={!projectName.trim()}
-                  onPress={() => handleUpdateProject(onClose)}
-                >
-                  Save Changes
-                </Button>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
+        <Modal
+          isOpen={isEditOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              resetForm();
+              setProjectToEdit(null);
+            }
+            onEditOpenChange();
+          }}
+        >
+          <ModalContent>
+            {(onClose) => (
+              <>
+                <ModalHeader>Edit Project</ModalHeader>
+                <ModalBody>
+                  <Input
+                    label="Project Name"
+                    placeholder="Enter project name"
+                    value={projectName}
+                    onChange={(e) => setProjectName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (
+                        e.key === "Enter" &&
+                        projectName.trim() &&
+                        !isSubmitting
+                      ) {
+                        handleUpdateProject(onClose);
+                      }
+                    }}
+                    isRequired
+                  />
+                  <Input
+                    label="Description"
+                    placeholder="Enter project description (optional)"
+                    value={projectDescription}
+                    onChange={(e) => setProjectDescription(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (
+                        e.key === "Enter" &&
+                        projectName.trim() &&
+                        !isSubmitting
+                      ) {
+                        handleUpdateProject(onClose);
+                      }
+                    }}
+                  />
+                  <Input
+                    label="GitHub URL"
+                    placeholder="https://github.com/user/repo"
+                    value={projectGithubUrl}
+                    onChange={(e) => setProjectGithubUrl(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (
+                        e.key === "Enter" &&
+                        projectName.trim() &&
+                        !isSubmitting
+                      ) {
+                        handleUpdateProject(onClose);
+                      }
+                    }}
+                    type="url"
+                  />
+                </ModalBody>
+                <ModalFooter>
+                  <Button variant="flat" onPress={onClose}>
+                    Cancel
+                  </Button>
+                  <Button
+                    color="primary"
+                    isLoading={isSubmitting}
+                    isDisabled={!projectName.trim()}
+                    onPress={() => handleUpdateProject(onClose)}
+                  >
+                    Save Changes
+                  </Button>
+                </ModalFooter>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
 
-      <Modal isOpen={isDeleteOpen} onOpenChange={onDeleteOpenChange}>
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader>Delete Project</ModalHeader>
-              <ModalBody>
-                <p>
-                  Are you sure you want to delete{" "}
-                  <strong>{projectToDelete?.name}</strong>? This action cannot
-                  be undone.
-                </p>
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="flat" onPress={onClose}>
-                  Cancel
-                </Button>
-                <Button
-                  color="danger"
-                  onPress={() => handleConfirmDelete(onClose)}
-                  isLoading={isSubmitting}
-                >
-                  Delete
-                </Button>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
+        <Modal isOpen={isDeleteOpen} onOpenChange={onDeleteOpenChange}>
+          <ModalContent>
+            {(onClose) => (
+              <>
+                <ModalHeader>Delete Project</ModalHeader>
+                <ModalBody>
+                  <p>
+                    Are you sure you want to delete{" "}
+                    <strong>{projectToDelete?.name}</strong>? This action cannot
+                    be undone.
+                  </p>
+                </ModalBody>
+                <ModalFooter>
+                  <Button variant="flat" onPress={onClose}>
+                    Cancel
+                  </Button>
+                  <Button
+                    color="danger"
+                    onPress={() => handleConfirmDelete(onClose)}
+                    isLoading={isSubmitting}
+                  >
+                    Delete
+                  </Button>
+                </ModalFooter>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
       </div>
     </div>
   );

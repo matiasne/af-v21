@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Button } from "@heroui/button";
-import { Link } from "@heroui/link";
 import {
   Dropdown,
   DropdownTrigger,
@@ -11,29 +9,17 @@ import {
 } from "@heroui/dropdown";
 import { Avatar } from "@heroui/avatar";
 import NextLink from "next/link";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useTheme } from "next-themes";
 
-import { ThemeSwitch } from "@/components/theme-switch";
 import { useAuth } from "@/infrastructure/context/AuthContext";
+import { useProjectChatSafe } from "@/infrastructure/context/ProjectChatContext";
 import { SetPasswordModal } from "@/components/SetPasswordModal";
 
-interface BreadcrumbItem {
-  label: string;
-  href?: string;
-}
-
-interface NavbarProps {
-  pageTitle?: string | null;
-  projectName?: string | null;
-  backUrl?: string | null;
-  breadcrumbs?: BreadcrumbItem[];
-}
-
-export const Navbar = ({ pageTitle, projectName, backUrl, breadcrumbs }: NavbarProps = {}) => {
-  const router = useRouter();
+export const Navbar = () => {
   const { user, loading, signOut, setPassword, hasPasswordProvider } = useAuth();
+  const projectChatContext = useProjectChatSafe();
+  const projectContext = projectChatContext?.projectContext;
   const [isSetPasswordModalOpen, setIsSetPasswordModalOpen] = useState(false);
   const { theme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -64,7 +50,14 @@ export const Navbar = ({ pageTitle, projectName, backUrl, breadcrumbs }: NavbarP
           </NextLink>
 
           <div className="flex items-center gap-4">
-            <ThemeSwitch />
+            {projectContext?.name && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-default-500">/</span>
+                <span className="text-sm font-medium text-default-700">
+                  {projectContext.name}
+                </span>
+              </div>
+            )}
             {loading ? null : user ? (
               <Dropdown placement="bottom-end">
                 <DropdownTrigger>
@@ -110,57 +103,6 @@ export const Navbar = ({ pageTitle, projectName, backUrl, breadcrumbs }: NavbarP
             ) : null}
           </div>
         </div>
-
-        {/* Segunda fila: Back y título del proyecto */}
-        {pageTitle && (
-          <div className="flex items-center gap-3 pb-3">
-            {backUrl && (
-              <Button
-                variant="light"
-                size="sm"
-                onPress={() => router.push(backUrl)}
-              >
-                ← Back
-              </Button>
-            )}
-            <div className="flex items-center gap-2">
-              {breadcrumbs && breadcrumbs.length > 0 ? (
-                <>
-                  {breadcrumbs.map((crumb, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      {crumb.href ? (
-                        <Link
-                          as={NextLink}
-                          href={crumb.href}
-                          className="text-sm text-default-500 hover:text-default-700"
-                        >
-                          {crumb.label}
-                        </Link>
-                      ) : (
-                        <span className="text-sm text-default-500">{crumb.label}</span>
-                      )}
-                      {index < breadcrumbs.length - 1 && (
-                        <span className="text-sm text-default-400">&gt;</span>
-                      )}
-                    </div>
-                  ))}
-                  <span className="text-sm text-default-400">&gt;</span>
-                  <h1 className="text-lg font-semibold">{pageTitle}</h1>
-                </>
-              ) : (
-                <>
-                  {projectName && projectName !== pageTitle && (
-                    <>
-                      <span className="text-lg text-default-500">{projectName}</span>
-                      <span className="text-lg text-default-400">&gt;</span>
-                    </>
-                  )}
-                  <h1 className="text-xl font-semibold">{pageTitle}</h1>
-                </>
-              )}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Set Password Modal */}

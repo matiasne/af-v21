@@ -10,7 +10,7 @@ export default function DashboardLayout({
   return (
     <>
       <div className="fixed top-0 left-0 right-0 z-50 bg-background">
-        <Navbar pageTitle="My Projects" backUrl="/" />
+        <Navbar />
       </div>
       <div className="pt-20">{children}</div>
     </>

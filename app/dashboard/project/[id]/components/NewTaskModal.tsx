@@ -25,7 +25,7 @@ interface NewTaskModalProps {
     priority: "high" | "medium" | "low";
     cleanArchitectureArea: CleanArchitectureArea;
     acceptanceCriteria: string[];
-  }) => Promise<void>;
+  }) => Promise<string | void>;
   projectContext?: {
     name: string;
     description?: string;

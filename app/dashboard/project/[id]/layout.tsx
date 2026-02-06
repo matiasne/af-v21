@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode } from "react";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 
 import {
   ProjectChatProvider,
@@ -14,6 +14,7 @@ import { FloatingInput } from "./components";
 
 function ProjectLayoutContent({ children }: { children: ReactNode }) {
   const params = useParams();
+  const pathname = usePathname();
   const projectId = params.id as string;
   const { user } = useAuth();
 
@@ -23,29 +24,22 @@ function ProjectLayoutContent({ children }: { children: ReactNode }) {
     handleChatHistoryChange,
     isChatLoading,
     setIsChatLoading,
-    pageTitle,
-    breadcrumbs,
-    backUrl,
     isConfiguration,
     projectOwnerId,
   } = useProjectChat();
 
   const { migration } = useMigration(projectId, projectOwnerId);
 
+  // Hide FloatingInput on grooming page (it has its own chat)
+  const isGroomingPage = pathname?.includes("/grooming");
+
   return (
     <>
-      {pageTitle && (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-background">
-          <Navbar
-            pageTitle={pageTitle}
-            projectName={projectContext?.name}
-            backUrl={backUrl || `/dashboard/project/${projectId}`}
-            breadcrumbs={breadcrumbs}
-          />
-        </div>
-      )}
-      <div className={pageTitle ? "pt-1" : "pb-24"}>{children}</div>
-      {projectContext && !isConfiguration && (
+      <div className="fixed top-0 left-0 right-0 z-50 bg-background">
+        <Navbar />
+      </div>
+      <div className="pt-1">{children}</div>
+      {projectContext && !isConfiguration && !isGroomingPage && (
         <FloatingInput
           projectContext={projectContext}
           projectId={projectId}

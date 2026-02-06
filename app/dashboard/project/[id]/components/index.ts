@@ -27,3 +27,6 @@ export { MigrationPlannerCard } from "./MigrationPlannerCard";
 export { ProjectConfigModal } from "./ProjectConfigModal";
 export { ProjectStepper, type ProjectStep } from "./ProjectStepper";
 export { DocumentUploadCard } from "./DocumentUploadCard";
+export { default as NewEpicModal } from "./NewEpicModal";
+export { default as GroomingSessionModal } from "./GroomingSessionModal";
+export { TaskDetailModal } from "./TaskDetailModal";
