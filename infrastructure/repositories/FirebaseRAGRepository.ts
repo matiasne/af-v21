@@ -8,12 +8,12 @@ export class FirebaseRAGRepository implements RAGRepository {
   private apiKey: string;
 
   constructor(apiKey?: string) {
-    this.apiKey = apiKey || process.env.GEMINI_API_KEY || "";
+    this.apiKey = apiKey || process.env.GOOGLE_FILE_SEARCH_API_KEY || "";
   }
 
   async searchFiles(
     query: string,
-    storeName: string
+    storeName: string,
   ): Promise<RAGSearchResult[]> {
     try {
       const response = await fetch(
@@ -27,7 +27,7 @@ export class FirebaseRAGRepository implements RAGRepository {
             query: query,
             resultsCount: 5,
           }),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -49,7 +49,7 @@ export class FirebaseRAGRepository implements RAGRepository {
         }): RAGSearchResult => ({
           content: chunk.chunk?.data?.stringValue || "",
           relevanceScore: chunk.chunkRelevanceScore || 0,
-        })
+        }),
       );
     } catch (error) {
       console.error("Error searching project files:", error);
@@ -66,7 +66,7 @@ export class FirebaseRAGRepository implements RAGRepository {
           headers: {
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (!response.ok) {
@@ -94,11 +94,13 @@ export class FirebaseRAGRepository implements RAGRepository {
       const allDocuments: RAGFile[] = [];
       let pageToken: string | undefined;
 
-      console.log(`[RAG Repository] Listing documents for corpus: ${corpusName}`);
+      console.log(
+        `[RAG Repository] Listing documents for corpus: ${corpusName}`,
+      );
 
       do {
         const url = new URL(
-          `https://generativelanguage.googleapis.com/v1beta/${corpusName}/documents`
+          `https://generativelanguage.googleapis.com/v1beta/${corpusName}/documents`,
         );
         url.searchParams.set("key", this.apiKey);
         url.searchParams.set("pageSize", "100");
@@ -106,7 +108,9 @@ export class FirebaseRAGRepository implements RAGRepository {
           url.searchParams.set("pageToken", pageToken);
         }
 
-        console.log(`[RAG Repository] Fetching documents from: ${url.toString().replace(this.apiKey, '[REDACTED]')}`);
+        console.log(
+          `[RAG Repository] Fetching documents from: ${url.toString().replace(this.apiKey, "[REDACTED]")}`,
+        );
 
         const response = await fetch(url.toString(), {
           method: "GET",
@@ -128,7 +132,9 @@ export class FirebaseRAGRepository implements RAGRepository {
         console.log(`[RAG Repository] Response data:`, data);
 
         if (data.documents && Array.isArray(data.documents)) {
-          console.log(`[RAG Repository] Found ${data.documents.length} documents in this page`);
+          console.log(
+            `[RAG Repository] Found ${data.documents.length} documents in this page`,
+          );
           const documents = data.documents.map(
             (doc: {
               name?: string;
@@ -146,9 +152,9 @@ export class FirebaseRAGRepository implements RAGRepository {
                   acc[item.key] = item.stringValue;
                   return acc;
                 },
-                {}
+                {},
               ),
-            })
+            }),
           );
           allDocuments.push(...documents);
         } else {
@@ -158,7 +164,9 @@ export class FirebaseRAGRepository implements RAGRepository {
         pageToken = data.nextPageToken;
       } while (pageToken);
 
-      console.log(`[RAG Repository] Total documents fetched: ${allDocuments.length}`);
+      console.log(
+        `[RAG Repository] Total documents fetched: ${allDocuments.length}`,
+      );
       return allDocuments;
     } catch (error) {
       console.error("[RAG Repository] Error listing documents:", error);
@@ -168,17 +176,23 @@ export class FirebaseRAGRepository implements RAGRepository {
 
   async deleteDocumentByDisplayName(
     corpusName: string,
-    displayName: string
+    displayName: string,
   ): Promise<boolean> {
     try {
-      console.log(`[RAG Repository] Deleting document with displayName: ${displayName} from corpus: ${corpusName}`);
+      console.log(
+        `[RAG Repository] Deleting document with displayName: ${displayName} from corpus: ${corpusName}`,
+      );
 
       // First, list documents to find the one with matching displayName
       const documents = await this.listDocuments(corpusName);
-      const documentToDelete = documents.find(doc => doc.displayName === displayName);
+      const documentToDelete = documents.find(
+        (doc) => doc.displayName === displayName,
+      );
 
       if (!documentToDelete) {
-        console.log(`[RAG Repository] Document with displayName "${displayName}" not found`);
+        console.log(
+          `[RAG Repository] Document with displayName "${displayName}" not found`,
+        );
         return false;
       }
 
@@ -192,7 +206,7 @@ export class FirebaseRAGRepository implements RAGRepository {
           headers: {
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (!response.ok) {
@@ -209,9 +223,13 @@ export class FirebaseRAGRepository implements RAGRepository {
     }
   }
 
-  async getOrCreateCorpus(corpusDisplayName: string): Promise<RAGCorpus | null> {
+  async getOrCreateCorpus(
+    corpusDisplayName: string,
+  ): Promise<RAGCorpus | null> {
     try {
-      console.log(`[RAG Repository] Getting or creating corpus: ${corpusDisplayName}`);
+      console.log(
+        `[RAG Repository] Getting or creating corpus: ${corpusDisplayName}`,
+      );
 
       // First, try to list all corpora to find one with matching display name
       const listResponse = await fetch(
@@ -221,17 +239,20 @@ export class FirebaseRAGRepository implements RAGRepository {
           headers: {
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (listResponse.ok) {
         const listData = await listResponse.json();
         if (listData.corpora && Array.isArray(listData.corpora)) {
           const existingCorpus = listData.corpora.find(
-            (c: { displayName?: string }) => c.displayName === corpusDisplayName
+            (c: { displayName?: string }) =>
+              c.displayName === corpusDisplayName,
           );
           if (existingCorpus) {
-            console.log(`[RAG Repository] Found existing corpus: ${existingCorpus.name}`);
+            console.log(
+              `[RAG Repository] Found existing corpus: ${existingCorpus.name}`,
+            );
             return {
               name: existingCorpus.name,
               displayName: existingCorpus.displayName || corpusDisplayName,
@@ -254,7 +275,7 @@ export class FirebaseRAGRepository implements RAGRepository {
           body: JSON.stringify({
             displayName: corpusDisplayName,
           }),
-        }
+        },
       );
 
       if (!createResponse.ok) {
@@ -273,7 +294,10 @@ export class FirebaseRAGRepository implements RAGRepository {
         updateTime: createData.updateTime,
       };
     } catch (error) {
-      console.error("[RAG Repository] Error getting or creating corpus:", error);
+      console.error(
+        "[RAG Repository] Error getting or creating corpus:",
+        error,
+      );
       return null;
     }
   }
@@ -281,14 +305,18 @@ export class FirebaseRAGRepository implements RAGRepository {
   async uploadDocument(
     corpusName: string,
     displayName: string,
-    content: string
+    content: string,
   ): Promise<RAGFile | null> {
     try {
-      console.log(`[RAG Repository] Uploading document "${displayName}" to corpus: ${corpusName}`);
+      console.log(
+        `[RAG Repository] Uploading document "${displayName}" to corpus: ${corpusName}`,
+      );
 
       // First check if document already exists and delete it
       const existingDocs = await this.listDocuments(corpusName);
-      const existingDoc = existingDocs.find(doc => doc.displayName === displayName);
+      const existingDoc = existingDocs.find(
+        (doc) => doc.displayName === displayName,
+      );
       if (existingDoc) {
         console.log(`[RAG Repository] Document already exists, deleting first`);
         await this.deleteDocumentByDisplayName(corpusName, displayName);
@@ -309,7 +337,7 @@ export class FirebaseRAGRepository implements RAGRepository {
               { key: "createdAt", stringValue: new Date().toISOString() },
             ],
           }),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -334,7 +362,7 @@ export class FirebaseRAGRepository implements RAGRepository {
               stringValue: content,
             },
           }),
-        }
+        },
       );
 
       if (!chunkResponse.ok) {
@@ -367,7 +395,7 @@ export class FirebaseRAGRepository implements RAGRepository {
           headers: {
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (!response.ok) {
@@ -392,7 +420,7 @@ export class FirebaseRAGRepository implements RAGRepository {
           displayName: corpus.displayName || "",
           createTime: corpus.createTime,
           updateTime: corpus.updateTime,
-        })
+        }),
       );
     } catch (error) {
       console.error("[RAG Repository] Error listing corpora:", error);
@@ -410,7 +438,7 @@ export class FirebaseRAGRepository implements RAGRepository {
           headers: {
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (!response.ok) {
