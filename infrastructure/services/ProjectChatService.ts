@@ -1,4 +1,11 @@
 import {
+  GoogleGenerativeAI,
+  SchemaType,
+  FunctionCallingMode,
+  FunctionDeclaration,
+} from "@google/generative-ai";
+
+import {
   RAGRepository,
   RAGSearchResult,
 } from "@/domain/repositories/RAGRepository";
@@ -33,33 +40,30 @@ export interface ProjectChatResponse {
   message: ChatMessage;
 }
 
-// Define the search tool for OpenRouter (OpenAI-compatible format)
-const searchProjectFilesTool = {
-  type: "function" as const,
-  function: {
-    name: "search_project_files",
-    description:
-      "Search for information in the project's analyzed files. Use this tool when the user asks about specific files, business logic, functional details, code structure, or any technical details about their project. This searches through the functional and business analysis of the project files.",
-    parameters: {
-      type: "object",
-      properties: {
-        query: {
-          type: "string",
-          description:
-            "The search query to find relevant information in the project files. Be specific about what you're looking for.",
-        },
+// Define the search tool for function calling
+const searchProjectFilesTool: FunctionDeclaration = {
+  name: "search_project_files",
+  description:
+    "Search for information in the project's analyzed files. Use this tool when the user asks about specific files, business logic, functional details, code structure, or any technical details about their project. This searches through the functional and business analysis of the project files.",
+  parameters: {
+    type: SchemaType.OBJECT,
+    properties: {
+      query: {
+        type: SchemaType.STRING,
+        description:
+          "The search query to find relevant information in the project files. Be specific about what you're looking for.",
       },
-      required: ["query"],
     },
+    required: ["query"],
   },
 };
 
 export class ProjectChatService {
-  private apiKey: string;
+  private genAI: GoogleGenerativeAI;
   private ragRepository: RAGRepository;
 
   constructor(apiKey: string, ragRepository: RAGRepository) {
-    this.apiKey = apiKey;
+    this.genAI = new GoogleGenerativeAI(apiKey);
     this.ragRepository = ragRepository;
   }
 
@@ -149,86 +153,78 @@ You can help with:
     // Get RAG store name from migration context (passed from client)
     const ragStoreName = migrationContext?.ragStoreName || null;
 
+    // Configure model with tools if RAG store is available
+    const modelConfig: {
+      model: string;
+      tools?: { functionDeclarations: FunctionDeclaration[] }[];
+      toolConfig?: { functionCallingConfig: { mode: FunctionCallingMode } };
+    } = {
+      model: "gemini-2.0-flash-exp",
+    };
+
+    if (ragStoreName) {
+      modelConfig.tools = [
+        {
+          functionDeclarations: [searchProjectFilesTool],
+        },
+      ];
+      modelConfig.toolConfig = {
+        functionCallingConfig: {
+          mode: FunctionCallingMode.AUTO,
+        },
+      };
+    }
+
+    const model = this.genAI.getGenerativeModel(modelConfig);
+
     const systemPrompt = this.buildSystemPrompt(
       projectContext,
       migrationContext,
       !!ragStoreName
     );
 
-    // Build messages for OpenRouter
-    const chatMessages: Array<{
-      role: "system" | "user" | "assistant" | "tool";
-      content: string;
-      tool_call_id?: string;
-    }> = [
-      {
-        role: "system",
-        content: systemPrompt,
-      },
-      {
-        role: "assistant",
-        content: "I understand. I'm ready to help with your project and migration. How can I assist you today?",
-      },
-      ...messages.map((msg: ChatMessage) => ({
-        role: msg.role as "user" | "assistant",
-        content: msg.content,
-      })),
-    ];
+    // Convert chat history to Gemini format
+    const history = messages.slice(0, -1).map((msg: ChatMessage) => ({
+      role: msg.role === "user" ? "user" : "model",
+      parts: [{ text: msg.content }],
+    }));
 
-    // Prepare request body
-    const requestBody: {
-      model: string;
-      messages: typeof chatMessages;
-      temperature: number;
-      max_tokens: number;
-      tools?: typeof searchProjectFilesTool[];
-      tool_choice?: string;
-    } = {
-      model: "anthropic/claude-3.5-sonnet",
-      messages: chatMessages,
-      temperature: 0.7,
-      max_tokens: 4096,
-    };
-
-    // Add tools if RAG store is available
-    if (ragStoreName) {
-      requestBody.tools = [searchProjectFilesTool];
-      requestBody.tool_choice = "auto";
-    }
-
-    // Call OpenRouter API
-    let response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${this.apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-        "X-Title": "Project Chat Assistant",
-      },
-      body: JSON.stringify(requestBody),
+    const chat = model.startChat({
+      history: [
+        {
+          role: "user",
+          parts: [{ text: systemPrompt }],
+        },
+        {
+          role: "model",
+          parts: [
+            {
+              text: "I understand. I'm ready to help with your project and migration. How can I assist you today?",
+            },
+          ],
+        },
+        ...history,
+      ],
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("OpenRouter API error:", errorText);
-      throw new Error("Failed to get response from OpenRouter");
-    }
+    // Get the last message (the current user message)
+    const lastMessage = messages[messages.length - 1];
 
-    let data = await response.json();
-    let assistantMessage = data.choices?.[0]?.message;
+    let result = await chat.sendMessage(lastMessage.content);
+    let response = result.response;
 
-    // Handle tool calls
+    // Handle function calls
+    let functionCall = response.functionCalls()?.[0];
     let iterations = 0;
     const maxIterations = 3;
 
-    while (assistantMessage?.tool_calls && iterations < maxIterations) {
+    console.log("Function call loop start", functionCall);
+
+    while (functionCall && iterations < maxIterations) {
       iterations++;
 
-      const toolCall = assistantMessage.tool_calls[0];
-
-      if (toolCall.function.name === "search_project_files" && ragStoreName) {
-        const args = JSON.parse(toolCall.function.arguments);
-        const query = args.query;
+      if (functionCall.name === "search_project_files" && ragStoreName) {
+        const query = (functionCall.args as { query?: string })?.query;
 
         if (query) {
           const searchResults = await this.ragRepository.searchFiles(
@@ -237,42 +233,19 @@ You can help with:
           );
           const formattedResults = this.formatSearchResults(searchResults);
 
-          // Add assistant message with tool call and tool response
-          chatMessages.push({
-            role: "assistant",
-            content: assistantMessage.content || "",
-            ...({ tool_calls: assistantMessage.tool_calls } as Record<string, unknown>),
-          } as typeof chatMessages[number]);
-
-          chatMessages.push({
-            role: "tool",
-            content: formattedResults,
-            tool_call_id: toolCall.id,
-          });
-
-          // Make another request with the tool response
-          response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${this.apiKey}`,
-              "Content-Type": "application/json",
-              "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-              "X-Title": "Project Chat Assistant",
+          // Send the function response back to the model
+          result = await chat.sendMessage([
+            {
+              functionResponse: {
+                name: "search_project_files",
+                response: {
+                  results: formattedResults,
+                },
+              },
             },
-            body: JSON.stringify({
-              ...requestBody,
-              messages: chatMessages,
-            }),
-          });
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error("OpenRouter API error:", errorText);
-            throw new Error("Failed to get response from OpenRouter");
-          }
-
-          data = await response.json();
-          assistantMessage = data.choices?.[0]?.message;
+          ]);
+          response = result.response;
+          functionCall = response.functionCalls()?.[0];
         } else {
           break;
         }
@@ -281,7 +254,7 @@ You can help with:
       }
     }
 
-    const responseText = assistantMessage?.content || "";
+    const responseText = response.text();
 
     return {
       message: {

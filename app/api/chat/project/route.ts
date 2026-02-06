@@ -19,11 +19,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const apiKey = process.env.OPENROUTER_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
       return NextResponse.json(
-        { error: "OpenRouter API key not configured" },
+        { error: "Gemini API key not configured" },
         { status: 500 }
       );
     }

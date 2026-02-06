@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export interface ChatMessage {
   role: "user" | "assistant";
@@ -23,14 +24,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const apiKey = process.env.OPENROUTER_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
       return NextResponse.json(
-        { error: "OpenRouter API key not configured" },
+        { error: "Gemini API key not configured" },
         { status: 500 },
       );
     }
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const systemPrompt = `You are an AI assistant helping users define the target tech stack for migrating their legacy software project.
 
@@ -93,56 +97,46 @@ Common technology names to use (use these exact names for consistency):
 
 Always respond with valid JSON only. No additional text before or after the JSON.`;
 
-    // Convert chat history to OpenRouter format
-    const chatMessages = [
-      {
-        role: "system" as const,
-        content: systemPrompt,
-      },
-      {
-        role: "assistant" as const,
-        content: JSON.stringify({
-          response:
-            "I'm ready to help you define the target tech stack for your project migration. Tell me about your current legacy system and what you're looking to achieve with the migration.",
-          techStack: [],
-          suggestions: [],
-          isComplete: false,
-        }),
-      },
-      ...messages.map((msg: ChatMessage) => ({
-        role: msg.role as "user" | "assistant",
-        content: msg.content,
-      })),
-    ];
+    // Convert chat history to Gemini format
+    const history = messages.slice(0, -1).map((msg: ChatMessage) => ({
+      role: msg.role === "user" ? "user" : "model",
+      parts: [{ text: msg.content }],
+    }));
 
-    // Call OpenRouter API
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-        "X-Title": "Tech Stack Migration Assistant",
-      },
-      body: JSON.stringify({
-        model: "anthropic/claude-3.5-sonnet",
-        messages: chatMessages,
-        temperature: 0.7,
-        max_tokens: 2048,
-      }),
+    const chat = model.startChat({
+      history: [
+        {
+          role: "user",
+          parts: [{ text: systemPrompt }],
+        },
+        {
+          role: "model",
+          parts: [
+            {
+              text: JSON.stringify({
+                response:
+                  "I'm ready to help you define the target tech stack for your project migration. Tell me about your current legacy system and what you're looking to achieve with the migration.",
+                techStack: [],
+              }),
+            },
+          ],
+        },
+        ...history,
+      ],
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("OpenRouter API error:", errorText);
+    // Get the last message (the current user message)
+    const lastMessage = messages[messages.length - 1];
+
+    if (!lastMessage || lastMessage.role !== "user") {
       return NextResponse.json(
-        { error: "Failed to get response from OpenRouter" },
-        { status: 500 },
+        { error: "Last message must be from user" },
+        { status: 400 },
       );
     }
 
-    const data = await response.json();
-    const responseText = data.choices?.[0]?.message?.content || "";
+    const result = await chat.sendMessage(lastMessage.content);
+    const responseText = result.response.text();
 
     // Parse the JSON response
     let parsedResponse: {

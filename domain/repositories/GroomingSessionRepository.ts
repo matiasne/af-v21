@@ -28,7 +28,7 @@ export interface GroomingSessionRepository {
     userId: string,
     projectId: string,
     sessionId: string,
-    data: Partial<Pick<GroomingSession, "title" | "status" | "suggestedTasks" | "suggestedEpics">>
+    data: Partial<Pick<GroomingSession, "title" | "status" | "pinned" | "suggestedTasks" | "suggestedEpics">>
   ): Promise<void>;
 
   deleteSession(
