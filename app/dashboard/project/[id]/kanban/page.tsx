@@ -1380,12 +1380,13 @@ export default function KanbanPage() {
         isOpen={isConfigModalOpen}
         onClose={() => setIsConfigModalOpen(false)}
         size="md"
+        scrollBehavior="inside"
       >
         <ModalContent>
           <ModalHeader>
             <h2 className="text-xl font-bold">Task Board Configuration</h2>
           </ModalHeader>
-          <ModalBody>
+          <ModalBody className="max-h-[60vh] md:max-h-[70vh]">
             <div className="flex flex-col gap-4">
               {/* Processor Host Selection */}
               <div>
