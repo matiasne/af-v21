@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export interface TaskAssistRequest {
   field: "description" | "acceptanceCriteria";
@@ -27,14 +28,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const apiKey = process.env.OPENROUTER_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
       return NextResponse.json(
-        { error: "OpenRouter API key not configured" },
+        { error: "Gemini API key not configured" },
         { status: 500 }
       );
     }
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     let systemPrompt = "";
 
@@ -84,39 +88,9 @@ Form validates email format before submission
 Error message displays when required fields are empty`;
     }
 
-    // Call OpenRouter API
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-        "X-Title": "Task Assist",
-      },
-      body: JSON.stringify({
-        model: "anthropic/claude-3.5-sonnet",
-        messages: [
-          {
-            role: "user",
-            content: systemPrompt,
-          },
-        ],
-        temperature: 0.7,
-        max_tokens: 1024,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("OpenRouter API error:", errorText);
-      return NextResponse.json(
-        { error: "Failed to get response from OpenRouter" },
-        { status: 500 }
-      );
-    }
-
-    const data = await response.json();
-    const suggestion = data.choices?.[0]?.message?.content?.trim() || "";
+    const result = await model.generateContent(systemPrompt);
+    const response = result.response;
+    const suggestion = response.text().trim();
 
     return NextResponse.json({ suggestion } as TaskAssistResponse);
   } catch (error) {

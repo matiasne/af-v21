@@ -669,6 +669,7 @@ export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDel
         onClose={() => setIsModalOpen(false)}
         epics={epics}
         onUpdateEpic={onUpdateTaskEpic}
+        onDeleteTask={onDeleteTask}
       />
 
       {/* Delete Confirmation Modal */}

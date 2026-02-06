@@ -1249,6 +1249,33 @@ export default function KanbanPage() {
               }
             }
           }}
+          onDeleteTask={async (taskId: string) => {
+            if (user?.uid && projectId) {
+              try {
+                // Delete from Firestore
+                await executionPlanRepository.deleteTask(
+                  user.uid,
+                  projectId,
+                  taskId,
+                );
+
+                // Also delete from RAG if storage name is available
+                if (migration?.ragFunctionalAndBusinessStoreName) {
+                  try {
+                    await ragDeleteDocument(
+                      migration.ragFunctionalAndBusinessStoreName,
+                      `task-${taskId}`,
+                    );
+                  } catch (ragError) {
+                    console.error("Error deleting task from RAG:", ragError);
+                    // Don't throw - task is already deleted from Firestore
+                  }
+                }
+              } catch (error) {
+                console.error("Error deleting task:", error);
+              }
+            }
+          }}
         />
       ) : (
         <TaskList
