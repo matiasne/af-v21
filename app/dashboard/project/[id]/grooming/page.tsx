@@ -41,7 +41,46 @@ import {
 } from "@/domain/entities/GroomingSession";
 import { groomingSessionRepository } from "@/infrastructure/repositories/FirebaseGroomingSessionRepository";
 import { executionPlanRepository } from "@/infrastructure/repositories/FirebaseExecutionPlanRepository";
-import { ragRepository } from "@/infrastructure/repositories/FirebaseRAGRepository";
+import { RAGCorpus, RAGFile } from "@/domain/entities/RAGFile";
+
+// RAG API helper functions
+async function ragGetOrCreateCorpus(corpusDisplayName: string): Promise<RAGCorpus | null> {
+  try {
+    const response = await fetch("/api/rag/files", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "getOrCreateCorpus", corpusDisplayName }),
+    });
+    if (!response.ok) {
+      console.error("[RAG API] getOrCreateCorpus failed:", await response.text());
+      return null;
+    }
+    const data = await response.json();
+    return data.corpus;
+  } catch (error) {
+    console.error("[RAG API] Error in getOrCreateCorpus:", error);
+    return null;
+  }
+}
+
+async function ragUploadDocument(corpusName: string, displayName: string, content: string): Promise<RAGFile | null> {
+  try {
+    const response = await fetch("/api/rag/files", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "uploadDocument", corpusName, displayName, content }),
+    });
+    if (!response.ok) {
+      console.error("[RAG API] uploadDocument failed:", await response.text());
+      return null;
+    }
+    const data = await response.json();
+    return data.document;
+  } catch (error) {
+    console.error("[RAG API] Error in uploadDocument:", error);
+    return null;
+  }
+}
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -1058,7 +1097,7 @@ export default function GroomingPage() {
         project?.taskRAGStore || `${projectId}-tasks-rag`;
       try {
         const corpus =
-          await ragRepository.getOrCreateCorpus(ragStoreNameForTasks);
+          await ragGetOrCreateCorpus(ragStoreNameForTasks);
         if (corpus) {
           const taskContent = [
             `Task: ${taskData.title}`,
@@ -1073,7 +1112,7 @@ export default function GroomingPage() {
             .filter(Boolean)
             .join("\n\n");
 
-          await ragRepository.uploadDocument(
+          await ragUploadDocument(
             corpus.name,
             `task-${taskId}`,
             taskContent
