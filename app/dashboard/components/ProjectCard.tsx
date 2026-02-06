@@ -124,7 +124,7 @@ export function ProjectCard({
         key={project.id}
         className="h-full w-full cursor-pointer"
         isPressable
-        onPress={() => router.push(`/dashboard/project/${project.id}`)}
+        onPress={() => router.push(`/dashboard/project/${project.id}/kanban`)}
       >
         <CardHeader className="flex flex-col items-start gap-2">
           <div className="flex w-full items-start justify-between gap-2">
