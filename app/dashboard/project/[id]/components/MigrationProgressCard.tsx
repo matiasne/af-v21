@@ -633,10 +633,10 @@ export function MigrationProgressCard({
                           {step === "tech_stack_analysis" &&
                             result?.status === "completed" &&
                             techStackAnalysis && (
-                              <div className="ml-10 p-4 rounded-lg bg-success-50 dark:bg-success-900/20 space-y-3">
+                              <div className="ml-10 p-4 rounded-lg bg-success-50 dark:bg-success-500/20 space-y-3">
                                 {/* Summary */}
                                 {techStackAnalysis.summary && (
-                                  <p className="text-sm text-default-700 dark:text-default-300">
+                                  <p className="text-sm text-default-700 dark:text-default-600">
                                     {techStackAnalysis.summary}
                                   </p>
                                 )}
@@ -811,7 +811,7 @@ export function MigrationProgressCard({
                             result?.status === "completed" &&
                             result.metadata &&
                             Object.keys(result.metadata).length > 0 && (
-                              <div className="ml-10 p-3 rounded-lg bg-success-50 dark:bg-success-900/20">
+                              <div className="ml-10 p-3 rounded-lg bg-success-50 dark:bg-success-500/20">
                                 <div className="flex flex-wrap gap-3">
                                   {Object.entries(result.metadata).map(
                                     ([key, value]) => (

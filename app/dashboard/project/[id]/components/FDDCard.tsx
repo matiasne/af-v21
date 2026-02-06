@@ -64,7 +64,7 @@ export function FDDCard({
     <Card className="w-full">
       <CardHeader className="flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-secondary-100 dark:bg-secondary-900/30">
+          <div className="p-2 rounded-lg bg-secondary-100 dark:bg-secondary/20">
             <svg
               className="h-5 w-5 text-secondary"
               fill="none"
@@ -121,31 +121,31 @@ export function FDDCard({
           <>
             {/* FDD Overview */}
             <div className="space-y-3">
-              <div className="bg-secondary-50 dark:bg-secondary-900/20 rounded-lg p-4">
+              <div className="bg-secondary-50 dark:bg-secondary/20 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-secondary-600 dark:text-secondary-400 font-medium">
+                  <span className="text-sm text-secondary-600 dark:text-secondary font-medium">
                     Functional Design
                   </span>
-                  <span className="text-xs text-secondary-500">v{toc.version}</span>
+                  <span className="text-xs text-secondary-500 dark:text-secondary">v{toc.version}</span>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <p className="text-2xl font-bold text-secondary-700 dark:text-secondary-300">
+                    <p className="text-2xl font-bold text-secondary-500 dark:text-secondary-50">
                       {totalSections}
                     </p>
-                    <p className="text-xs text-secondary-500">Sections</p>
+                    <p className="text-xs text-secondary-500 dark:text-secondary">Sections</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-secondary-700 dark:text-secondary-300">
+                    <p className="text-2xl font-bold text-secondary-700 dark:text-secondary-50">
                       {totalSubsections}
                     </p>
-                    <p className="text-xs text-secondary-500">Subsections</p>
+                    <p className="text-xs text-secondary-500 dark:text-secondary">Subsections</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-secondary-700 dark:text-secondary-300">
+                    <p className="text-2xl font-bold text-secondary-700 dark:text-secondary-50">
                       {totalFileRefs}
                     </p>
-                    <p className="text-xs text-secondary-500">File Refs</p>
+                    <p className="text-xs text-secondary-500 dark:text-secondary">File Refs</p>
                   </div>
                 </div>
               </div>

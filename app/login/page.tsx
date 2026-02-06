@@ -55,7 +55,9 @@ export default function LoginPage() {
       await signInWithGoogle();
       navigateWithAnimation();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to sign in with Google");
+      setError(
+        err instanceof Error ? err.message : "Failed to sign in with Google",
+      );
       setLoading(false);
     }
   };
@@ -78,7 +80,7 @@ export default function LoginPage() {
         }`}
       >
         <Image
-          src="/Echo Logo Black H.png"
+          src="/echo-logo-bl.svg"
           alt="Echo Logo"
           width={180}
           height={54}

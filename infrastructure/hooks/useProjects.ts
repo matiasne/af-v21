@@ -339,6 +339,44 @@ export function useProjects() {
     [user, projectRepository],
   );
 
+  const inviteUserToProject = useCallback(
+    async (projectId: string, inviteeEmail: string): Promise<{ success: boolean; error?: string }> => {
+      if (!user) return { success: false, error: "Not authenticated" };
+
+      try {
+        const result = await projectRepository.inviteUserToProject(user.uid, projectId, inviteeEmail);
+        if (result.success) {
+          // Refresh projects to get updated sharedWith list
+          await fetchProjects(false);
+        }
+        return result;
+      } catch (err) {
+        setError(err as Error);
+        return { success: false, error: "Failed to invite user" };
+      }
+    },
+    [user, projectRepository, fetchProjects],
+  );
+
+  const removeUserFromProject = useCallback(
+    async (projectId: string, userIdToRemove: string): Promise<{ success: boolean; error?: string }> => {
+      if (!user) return { success: false, error: "Not authenticated" };
+
+      try {
+        const result = await projectRepository.removeUserFromProject(user.uid, projectId, userIdToRemove);
+        if (result.success) {
+          // Refresh projects to get updated sharedWith list
+          await fetchProjects(false);
+        }
+        return result;
+      } catch (err) {
+        setError(err as Error);
+        return { success: false, error: "Failed to remove user" };
+      }
+    },
+    [user, projectRepository, fetchProjects],
+  );
+
   return {
     projects,
     loading,
@@ -361,5 +399,7 @@ export function useProjects() {
     subscribeToExecutorModule,
     startBoilerplate,
     restartExecutorModule,
+    inviteUserToProject,
+    removeUserFromProject,
   };
 }

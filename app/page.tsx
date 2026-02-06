@@ -50,7 +50,7 @@ export default function Home() {
       />
       <div className="relative z-10 mb-6">
         <Image
-          src="/Echo Logo Black H.png"
+          src="/echo-logo-bl.svg"
           alt="Echo Logo"
           width={200}
           height={60}

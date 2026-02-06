@@ -321,9 +321,9 @@ export function CodeAnalysisAndFDDCard({
         )}
         <CardHeader className="flex justify-between items-center relative z-10">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary-100 dark:bg-primary-900/30">
+            <div className="p-2 rounded-lg bg-primary-100 dark:bg-primary-500/20">
               <svg
-                className="h-5 w-5 text-primary"
+                className="h-5 w-5 text-primary-600 dark:text-primary-600"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth={1.5}
@@ -392,9 +392,9 @@ export function CodeAnalysisAndFDDCard({
                   {/* FDD Overview */}
                   <div className="space-y-3">
                     <div className="flex flex-row items-center gap-2 mb-3 text-center">
-                      <div className="p-1.5 rounded-lg bg-secondary-100 dark:bg-secondary-900/30">
+                      <div className="p-1.5 rounded-lg bg-secondary-100 dark:bg-secondary/20">
                         <svg
-                          className="h-4 w-4 text-secondary"
+                          className="h-4 w-4 text-secondary dark:text-secondary-600"
                           fill="none"
                           stroke="currentColor"
                           strokeWidth={1.5}
@@ -413,35 +413,35 @@ export function CodeAnalysisAndFDDCard({
                         </h4>
                       </div>
                     </div>
-                    <div className="bg-secondary-50 dark:bg-secondary-900/20 rounded-lg p-4">
+                    <div className="bg-secondary-50 dark:bg-secondary/20 rounded-lg p-4">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-secondary-600 dark:text-secondary-400 font-medium">
+                        <span className="text-sm text-secondary-600 dark:text-secondary-600 font-medium">
                           Functional Design
                         </span>
-                        <span className="text-xs text-secondary-500">
+                        <span className="text-xs text-secondary-500 dark:text-secondary-600">
                           v{toc.version}
                         </span>
                       </div>
                       <div className="grid grid-cols-3 gap-4">
                         <div>
-                          <p className="text-2xl font-bold text-secondary-700 dark:text-secondary-300">
+                          <p className="text-2xl font-bold text-secondary-700 dark:text-secondary-700">
                             {totalSections}
                           </p>
-                          <p className="text-xs text-secondary-500">Sections</p>
+                          <p className="text-xs text-secondary-500 dark:text-secondary-600">Sections</p>
                         </div>
                         <div>
-                          <p className="text-2xl font-bold text-secondary-700 dark:text-secondary-300">
+                          <p className="text-2xl font-bold text-secondary-700 dark:text-secondary-700">
                             {totalSubsections}
                           </p>
-                          <p className="text-xs text-secondary-500">
+                          <p className="text-xs text-secondary-500 dark:text-secondary-600">
                             Subsections
                           </p>
                         </div>
                         <div>
-                          <p className="text-2xl font-bold text-secondary-700 dark:text-secondary-300">
+                          <p className="text-2xl font-bold text-secondary-700 dark:text-secondary-700">
                             {totalFiles}
                           </p>
-                          <p className="text-xs text-secondary-500">Files</p>
+                          <p className="text-xs text-secondary-500 dark:text-secondary-600">Files</p>
                         </div>
                       </div>
                     </div>

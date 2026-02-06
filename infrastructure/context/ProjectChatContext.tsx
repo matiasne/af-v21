@@ -292,3 +292,9 @@ export function useProjectChat() {
   }
   return context;
 }
+
+// Safe version that returns null if not within provider (for use in navbar, etc.)
+export function useProjectChatSafe() {
+  const context = useContext(ProjectChatContext);
+  return context ?? null;
+}

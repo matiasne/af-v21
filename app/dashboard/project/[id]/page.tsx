@@ -608,7 +608,7 @@ export default function ProjectDashboardPage() {
         isLoading={isUpdatingUIType}
       />
 
-      <div className="container mx-auto max-w-6xl px-4 py-8">
+      <div className="container mx-auto max-w-6xl px-4 py-2">
         {/* Project Header with Configuration and Share Buttons */}
         <div className="flex justify-between items-start mb-6">
           <div className="flex-1 mr-4">

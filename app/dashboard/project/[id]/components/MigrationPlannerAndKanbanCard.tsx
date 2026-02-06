@@ -405,17 +405,17 @@ export function MigrationPlannerAndKanbanCard({
                   <div
                     className={`rounded-lg p-4 ${
                       isPlannerCompleted
-                        ? "bg-success-50 dark:bg-success-900/20"
+                        ? "bg-success-50 dark:bg-success-500/20"
                         : isPlannerError
-                          ? "bg-danger-50 dark:bg-danger-900/20"
+                          ? "bg-danger-50 dark:bg-danger-500/20"
                           : isPlannerStopped
-                            ? "bg-warning-50 dark:bg-warning-900/20"
-                            : "bg-primary-50 dark:bg-primary-900/20"
+                            ? "bg-warning-50 dark:bg-warning-500/20"
+                            : "bg-primary-50 dark:bg-primary-500/20"
                     }`}
                   >
                     {/* Current description */}
                     {plannerStatus.description && (
-                      <p className="text-sm text-default-700 dark:text-default-300 mb-3">
+                      <p className="text-sm text-default-700 dark:text-default-500 mb-3">
                         {plannerStatus.description}
                       </p>
                     )}
@@ -535,11 +535,11 @@ export function MigrationPlannerAndKanbanCard({
                         key={column.id}
                         className={`p-3 rounded-lg ${
                           column.id === "completed"
-                            ? "bg-success-50 dark:bg-success-900/20"
+                            ? "bg-success-50 dark:bg-success-500/20"
                             : column.id === "in_progress"
-                              ? "bg-primary-50 dark:bg-primary-900/20"
+                              ? "bg-primary-50 dark:bg-primary-500/20"
                               : column.id === "todo"
-                                ? "bg-warning-50 dark:bg-warning-900/20"
+                                ? "bg-warning-50 dark:bg-warning-500/20"
                                 : "bg-default-100"
                         }`}
                       >
@@ -577,7 +577,7 @@ export function MigrationPlannerAndKanbanCard({
 
                   {/* Active Tasks Indicator */}
                   {inProgressTasks > 0 && (
-                    <div className="bg-primary-50 dark:bg-primary-900/20 rounded-lg p-3">
+                    <div className="bg-primary-50 dark:bg-primary-500/20 rounded-lg p-3">
                       <div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                         <p className="text-sm text-primary-600 dark:text-primary-400">

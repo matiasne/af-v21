@@ -223,7 +223,7 @@ export interface ProjectStatus {
   processId?: string;
 }
 
-export type ProjectRole = "owner" | "editor" | "viewer";
+export type ProjectRole = "owner" | "editor" | "viewer" | "invited";
 
 export interface ProjectShare {
   userId: string;
@@ -231,6 +231,13 @@ export interface ProjectShare {
   role: ProjectRole;
   sharedAt: number;
   sharedBy: string;
+}
+
+// User's reference to a project with their role
+export interface UserProjectReference {
+  projectId: string;
+  role: ProjectRole;
+  addedAt: number;
 }
 
 export interface Project {
@@ -247,6 +254,7 @@ export interface Project {
   processorHost?: string;
   ownerId?: string;
   sharedWith?: ProjectShare[];
+  taskRAGStore?: string;
   createdAt?: number;
   updatedAt?: number;
 }

@@ -39,6 +39,7 @@ export interface ExecutionPlanTask {
   deliverables: string[];
   skillsRequired: string[];
   relatedRequirements: string[];
+  order?: number;
 }
 
 export interface ExecutionPlan {
