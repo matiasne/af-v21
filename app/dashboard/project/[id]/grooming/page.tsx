@@ -1362,6 +1362,16 @@ export default function GroomingPage() {
                 <Button
                   variant="light"
                   className="w-full justify-start gap-2 h-9 px-3 text-default-600 hover:bg-default-100 rounded-xl"
+                  onPress={() => router.push(`/dashboard/project/${projectId}`)}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  </svg>
+                  <span className="text-sm">Start Migration</span>
+                </Button>
+                <Button
+                  variant="light"
+                  className="w-full justify-start gap-2 h-9 px-3 text-default-600 hover:bg-default-100 rounded-xl"
                   onPress={handleStartNewSession}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1381,6 +1391,18 @@ export default function GroomingPage() {
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </Button>
+                </Tooltip>
+                <Tooltip content="Start Migration" placement="right">
+                  <Button
+                    variant="light"
+                    isIconOnly
+                    className="w-full h-9 text-default-600 hover:bg-default-100 rounded-xl"
+                    onPress={() => router.push(`/dashboard/project/${projectId}`)}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                     </svg>
                   </Button>
                 </Tooltip>
@@ -1753,22 +1775,40 @@ export default function GroomingPage() {
                   {messages.map((msg, idx) => (
                     <div
                       key={idx}
-                      className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                      className={`flex items-start gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300 ${
+                        msg.role === "user" ? "justify-end" : "justify-start"
+                      }`}
+                      style={{ animationDelay: `${idx * 50}ms` }}
                     >
+                      {/* Assistant avatar - sparkles icon with gradient */}
+                      {msg.role === "assistant" && (
+                        <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-400 via-purple-500 to-pink-500 flex items-center justify-center">
+                          <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2L9.5 9.5L2 12L9.5 14.5L12 22L14.5 14.5L22 12L14.5 9.5L12 2Z" />
+                          </svg>
+                        </div>
+                      )}
+
                       <div
-                        className={`max-w-[85%] rounded-2xl px-5 py-4 ${
+                        className={`max-w-[85%] ${
                           msg.role === "user"
-                            ? "bg-primary text-white"
-                            : "bg-default-100 text-default-800"
+                            ? "bg-default-100 dark:bg-default-100 text-default-800 dark:text-white px-5 py-3 rounded-3xl"
+                            : "text-default-800 dark:text-white"
                         }`}
                       >
-                        <p className="text-base whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                        <p className="text-[15px] whitespace-pre-wrap leading-relaxed">{msg.content}</p>
                       </div>
                     </div>
                   ))}
                   {(isLoading || isProcessingDocument) && (
-                    <div className="flex justify-start">
-                      <div className="bg-default-100 rounded-xl px-4 py-3 flex items-center gap-2">
+                    <div className="flex items-start gap-3 justify-start animate-in fade-in slide-in-from-bottom-2 duration-300">
+                      {/* Assistant avatar - sparkles icon with gradient */}
+                      <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-400 via-purple-500 to-pink-500 flex items-center justify-center">
+                        <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M12 2L9.5 9.5L2 12L9.5 14.5L12 22L14.5 14.5L22 12L14.5 9.5L12 2Z" />
+                        </svg>
+                      </div>
+                      <div className="flex items-center gap-2">
                         <Spinner size="sm" color="primary" />
                         {isProcessingDocument && (
                           <span className="text-sm text-default-500">

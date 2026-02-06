@@ -89,6 +89,7 @@ export default function DashboardPage() {
       if (id) {
         resetForm();
         onClose();
+        router.push(`/dashboard/project/${id}/kanban`);
       }
     } finally {
       setIsSubmitting(false);

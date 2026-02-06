@@ -1176,19 +1176,6 @@ export default function KanbanPage() {
         <div className="flex items-center justify-center py-12">
           <Spinner color="primary" />
         </div>
-      ) : !migration ? (
-        <div className="text-center py-12">
-          <p className="text-default-500 mb-4">No migration selected</p>
-          <Button
-            color="primary"
-            variant="flat"
-            onPress={() =>
-              router.push(`/dashboard/project/${projectId}/migration`)
-            }
-          >
-            Go to Migration
-          </Button>
-        </div>
       ) : viewMode === "kanban" ? (
         <KanbanBoard
           tasks={filteredTasks}
