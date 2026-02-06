@@ -31,6 +31,7 @@ interface KanbanBoardProps {
   onCreateTask?: () => void;
   onUpdateTaskEpic?: (taskId: string, epicId: string) => Promise<void>;
   onDeleteTask?: (taskId: string) => Promise<void>;
+  onMoveToBacklog?: (taskId: string) => Promise<void>;
 }
 
 function getColumnColor(status: TaskStatus): "default" | "primary" | "warning" | "success" {
@@ -375,7 +376,7 @@ function KanbanColumn({
   );
 }
 
-export function KanbanBoard({ tasks, epics = [], isLocked = false, lockedReason, onMoveTask, onMoveAllBacklogToTodo, onMoveAllTodoToBacklog, onCreateTask, onUpdateTaskEpic, onDeleteTask }: KanbanBoardProps) {
+export function KanbanBoard({ tasks, epics = [], isLocked = false, lockedReason, onMoveTask, onMoveAllBacklogToTodo, onMoveAllTodoToBacklog, onCreateTask, onUpdateTaskEpic, onDeleteTask, onMoveToBacklog }: KanbanBoardProps) {
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<TaskStatus | null>(null);
   const [selectedTask, setSelectedTask] = useState<ExecutionPlanTask | null>(null);
@@ -524,6 +525,7 @@ export function KanbanBoard({ tasks, epics = [], isLocked = false, lockedReason,
         epics={epics}
         onUpdateEpic={onUpdateTaskEpic}
         onDeleteTask={onDeleteTask}
+        onMoveToBacklog={onMoveToBacklog}
       />
     </>
   );

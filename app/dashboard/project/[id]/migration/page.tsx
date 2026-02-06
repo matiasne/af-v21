@@ -447,7 +447,7 @@ export default function MigrationPage() {
 
       {/* Completed Summary */}
       {isCompleted && (
-        <div className="mt-8 p-6 rounded-lg bg-success-50 dark:bg-success-900/20">
+        <div className="mt-8 p-6 rounded-lg bg-success-50 dark:bg-success-500/20">
           <h3 className="text-lg font-semibold text-success-600 dark:text-success-400 mb-2">
             Migration Completed Successfully!
           </h3>
