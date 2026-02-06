@@ -165,7 +165,7 @@ export default function DashboardPage() {
         enableMouseInteraction
         className="fixed inset-0 -z-10"
       />
-      <div className="relative z-10">
+      <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-8">
         <div className="flex justify-between items-center mb-8">
           <Button color="primary" onPress={onOpen}>
             New Project
