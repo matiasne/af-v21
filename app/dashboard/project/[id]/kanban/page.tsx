@@ -1276,6 +1276,20 @@ export default function KanbanPage() {
               }
             }
           }}
+          onMoveToBacklog={async (taskId: string) => {
+            if (user?.uid && projectId) {
+              try {
+                await executionPlanRepository.updateTaskStatus(
+                  user.uid,
+                  projectId,
+                  taskId,
+                  "backlog",
+                );
+              } catch (error) {
+                console.error("Error moving task to backlog:", error);
+              }
+            }
+          }}
         />
       ) : (
         <TaskList
@@ -1332,6 +1346,20 @@ export default function KanbanPage() {
                 }
               } catch (error) {
                 console.error("Error deleting task:", error);
+              }
+            }
+          }}
+          onMoveToBacklog={async (taskId: string) => {
+            if (user?.uid && projectId) {
+              try {
+                await executionPlanRepository.updateTaskStatus(
+                  user.uid,
+                  projectId,
+                  taskId,
+                  "backlog",
+                );
+              } catch (error) {
+                console.error("Error moving task to backlog:", error);
               }
             }
           }}
