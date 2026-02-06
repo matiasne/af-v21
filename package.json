@@ -53,6 +53,7 @@
     "@heroui/toast": "2.0.18",
     "@heroui/tooltip": "2.2.25",
     "@heroui/user": "2.2.23",
+    "@pinecone-database/pinecone": "^7.0.0",
     "@react-aria/ssr": "3.9.10",
     "@react-aria/visually-hidden": "3.8.28",
     "@types/react-grid-layout": "^1.3.6",
