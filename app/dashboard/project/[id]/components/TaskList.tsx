@@ -39,6 +39,7 @@ interface TaskListProps {
   onReorderTasks?: (taskOrders: { taskId: string; order: number }[]) => Promise<void>;
   onDeleteTask?: (taskId: string) => Promise<void>;
   onDeleteEpic?: (epicId: string, deleteTasksToo: boolean) => Promise<void>;
+  onMoveToBacklog?: (taskId: string) => Promise<void>;
 }
 
 const STATUS_OPTIONS: { id: TaskStatus; label: string }[] = [
@@ -101,7 +102,7 @@ const getStatusColor = (
   }
 };
 
-export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDeleteTask, onDeleteEpic }: TaskListProps) {
+export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDeleteTask, onDeleteEpic, onMoveToBacklog }: TaskListProps) {
   const [selectedTask, setSelectedTask] = useState<ExecutionPlanTask | null>(
     null
   );
@@ -669,6 +670,8 @@ export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDel
         onClose={() => setIsModalOpen(false)}
         epics={epics}
         onUpdateEpic={onUpdateTaskEpic}
+        onDeleteTask={onDeleteTask}
+        onMoveToBacklog={onMoveToBacklog}
       />
 
       {/* Delete Confirmation Modal */}

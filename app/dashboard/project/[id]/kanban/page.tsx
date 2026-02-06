@@ -1249,6 +1249,47 @@ export default function KanbanPage() {
               }
             }
           }}
+          onDeleteTask={async (taskId: string) => {
+            if (user?.uid && projectId) {
+              try {
+                // Delete from Firestore
+                await executionPlanRepository.deleteTask(
+                  user.uid,
+                  projectId,
+                  taskId,
+                );
+
+                // Also delete from RAG if storage name is available
+                if (migration?.ragFunctionalAndBusinessStoreName) {
+                  try {
+                    await ragDeleteDocument(
+                      migration.ragFunctionalAndBusinessStoreName,
+                      `task-${taskId}`,
+                    );
+                  } catch (ragError) {
+                    console.error("Error deleting task from RAG:", ragError);
+                    // Don't throw - task is already deleted from Firestore
+                  }
+                }
+              } catch (error) {
+                console.error("Error deleting task:", error);
+              }
+            }
+          }}
+          onMoveToBacklog={async (taskId: string) => {
+            if (user?.uid && projectId) {
+              try {
+                await executionPlanRepository.updateTaskStatus(
+                  user.uid,
+                  projectId,
+                  taskId,
+                  "backlog",
+                );
+              } catch (error) {
+                console.error("Error moving task to backlog:", error);
+              }
+            }
+          }}
         />
       ) : (
         <TaskList
@@ -1308,6 +1349,20 @@ export default function KanbanPage() {
               }
             }
           }}
+          onMoveToBacklog={async (taskId: string) => {
+            if (user?.uid && projectId) {
+              try {
+                await executionPlanRepository.updateTaskStatus(
+                  user.uid,
+                  projectId,
+                  taskId,
+                  "backlog",
+                );
+              } catch (error) {
+                console.error("Error moving task to backlog:", error);
+              }
+            }
+          }}
           onDeleteEpic={async (epicId: string, deleteTasksToo: boolean) => {
             if (user?.uid && projectId) {
               try {
@@ -1353,12 +1408,13 @@ export default function KanbanPage() {
         isOpen={isConfigModalOpen}
         onClose={() => setIsConfigModalOpen(false)}
         size="md"
+        scrollBehavior="inside"
       >
         <ModalContent>
           <ModalHeader>
             <h2 className="text-xl font-bold">Task Board Configuration</h2>
           </ModalHeader>
-          <ModalBody>
+          <ModalBody className="max-h-[60vh] md:max-h-[70vh]">
             <div className="flex flex-col gap-4">
               {/* Processor Host Selection */}
               <div>

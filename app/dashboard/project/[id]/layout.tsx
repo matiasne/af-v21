@@ -38,7 +38,7 @@ function ProjectLayoutContent({ children }: { children: ReactNode }) {
       <div className="fixed top-0 left-0 right-0 z-50 bg-background">
         <Navbar />
       </div>
-      <div className="pt-12">{children}</div>
+      <div className="pt-1">{children}</div>
       {projectContext && !isConfiguration && !isGroomingPage && (
         <FloatingInput
           projectContext={projectContext}

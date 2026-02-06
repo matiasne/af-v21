@@ -27,6 +27,8 @@ interface TaskDetailModalProps {
   onClose: () => void;
   epics?: Epic[];
   onUpdateEpic?: (taskId: string, epicId: string) => Promise<void>;
+  onDeleteTask?: (taskId: string) => Promise<void>;
+  onMoveToBacklog?: (taskId: string) => Promise<void>;
 }
 
 const getStatusColor = (
@@ -103,8 +105,56 @@ export function TaskDetailModal({
   onClose,
   epics = [],
   onUpdateEpic,
+  onDeleteTask,
+  onMoveToBacklog,
 }: TaskDetailModalProps) {
   const [isUpdatingEpic, setIsUpdatingEpic] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isMovingToBacklog, setIsMovingToBacklog] = useState(false);
+  const [showMoveToBacklogConfirm, setShowMoveToBacklogConfirm] = useState(false);
+
+  const handleDeleteClick = () => {
+    setShowDeleteConfirm(true);
+    setShowMoveToBacklogConfirm(false);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!task || !onDeleteTask) return;
+    setIsDeleting(true);
+    try {
+      await onDeleteTask(task.id);
+      setShowDeleteConfirm(false);
+      onClose();
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(false);
+  };
+
+  const handleMoveToBacklogClick = () => {
+    setShowMoveToBacklogConfirm(true);
+    setShowDeleteConfirm(false);
+  };
+
+  const handleConfirmMoveToBacklog = async () => {
+    if (!task || !onMoveToBacklog) return;
+    setIsMovingToBacklog(true);
+    try {
+      await onMoveToBacklog(task.id);
+      setShowMoveToBacklogConfirm(false);
+      onClose();
+    } finally {
+      setIsMovingToBacklog(false);
+    }
+  };
+
+  const handleCancelMoveToBacklog = () => {
+    setShowMoveToBacklogConfirm(false);
+  };
 
   const handleEpicChange = async (epicId: string) => {
     if (!task || !onUpdateEpic) return;
@@ -350,7 +400,103 @@ export function TaskDetailModal({
             <p>Updated: {new Date(task.updatedAt).toLocaleString()}</p>
           </div>
         </ModalBody>
-        <ModalFooter>
+        <ModalFooter className="flex justify-between">
+          <div className="flex items-center gap-2">
+            {/* Delete button */}
+            {onDeleteTask && !showDeleteConfirm && !showMoveToBacklogConfirm && (
+              <Button
+                color="danger"
+                variant="light"
+                onPress={handleDeleteClick}
+                startContent={
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
+                  </svg>
+                }
+              >
+                Delete
+              </Button>
+            )}
+            {/* Move to Backlog button - only show for completed tasks */}
+            {onMoveToBacklog && task.status === "completed" && !showDeleteConfirm && !showMoveToBacklogConfirm && (
+              <Button
+                color="warning"
+                variant="light"
+                onPress={handleMoveToBacklogClick}
+                startContent={
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+                    />
+                  </svg>
+                }
+              >
+                Move to Backlog
+              </Button>
+            )}
+            {/* Delete confirmation */}
+            {showDeleteConfirm && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-danger">Delete this task?</span>
+                <Button
+                  size="sm"
+                  color="danger"
+                  onPress={handleConfirmDelete}
+                  isLoading={isDeleting}
+                >
+                  Yes, Delete
+                </Button>
+                <Button
+                  size="sm"
+                  variant="flat"
+                  onPress={handleCancelDelete}
+                  isDisabled={isDeleting}
+                >
+                  Cancel
+                </Button>
+              </div>
+            )}
+            {/* Move to Backlog confirmation */}
+            {showMoveToBacklogConfirm && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-warning">Move this task back to backlog?</span>
+                <Button
+                  size="sm"
+                  color="warning"
+                  onPress={handleConfirmMoveToBacklog}
+                  isLoading={isMovingToBacklog}
+                >
+                  Yes, Move
+                </Button>
+                <Button
+                  size="sm"
+                  variant="flat"
+                  onPress={handleCancelMoveToBacklog}
+                  isDisabled={isMovingToBacklog}
+                >
+                  Cancel
+                </Button>
+              </div>
+            )}
+          </div>
           <Button color="primary" variant="light" onPress={onClose}>
             Close
           </Button>
