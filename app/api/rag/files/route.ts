@@ -1,27 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { FirebaseRAGRepository } from "@/infrastructure/repositories/FirebaseRAGRepository";
-
-function getApiKey(): string | null {
-  return process.env.GOOGLE_FILE_SEARCH_API_KEY || null;
-}
+import { ragRepository } from "@/infrastructure/repositories/FirebaseRAGRepository";
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const corpusName = searchParams.get("corpusName");
     const listCorpora = searchParams.get("listCorpora");
-
-    const apiKey = getApiKey();
-
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "Gemini API key not configured" },
-        { status: 500 },
-      );
-    }
-
-    const ragRepository = new FirebaseRAGRepository(apiKey);
 
     // List all corpora if requested
     if (listCorpora === "true") {
@@ -67,16 +52,6 @@ export async function GET(request: NextRequest) {
 // POST - Create or get corpus, or upload document
 export async function POST(request: NextRequest) {
   try {
-    const apiKey = getApiKey();
-
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "Gemini API key not configured" },
-        { status: 500 },
-      );
-    }
-
-    const ragRepository = new FirebaseRAGRepository(apiKey);
     const body = await request.json();
     const { action } = body;
 
@@ -154,16 +129,6 @@ export async function POST(request: NextRequest) {
 // DELETE - Delete a document or corpus
 export async function DELETE(request: NextRequest) {
   try {
-    const apiKey = getApiKey();
-
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "Gemini API key not configured" },
-        { status: 500 },
-      );
-    }
-
-    const ragRepository = new FirebaseRAGRepository(apiKey);
     const { searchParams } = new URL(request.url);
     const corpusName = searchParams.get("corpusName");
     const displayName = searchParams.get("displayName");
