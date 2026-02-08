@@ -153,12 +153,13 @@ export default function GroomingPage() {
   const [existingTasks, setExistingTasks] = useState<ExistingTask[]>([]);
   const [tasksLoading, setTasksLoading] = useState(true);
 
-  const { migration, loading: migrationLoading } = useMigration(
+  const { loading: migrationLoading } = useMigration(
     projectId,
     projectOwnerId
   );
 
-  const ragStoreName = migration?.ragFunctionalAndBusinessStoreName;
+  // Use the tasks RAG store for searching similar tasks during grooming
+  const tasksRagStoreName = project?.taskRAGStore || `${projectId}-tasks-rag`;
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
@@ -666,6 +667,10 @@ export default function GroomingPage() {
               .join("\n\n---\n\n")
           : undefined;
 
+      console.log("[Grooming Page] Sending request with tasksRagStoreName:", tasksRagStoreName);
+      console.log("[Grooming Page] projectId:", projectId);
+      console.log("[Grooming Page] project?.taskRAGStore:", project?.taskRAGStore);
+
       const response = await fetch("/api/chat/grooming", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -675,7 +680,7 @@ export default function GroomingPage() {
           existingTasks: suggestedTasks.filter((t) => t.status !== "rejected"),
           existingEpics: suggestedEpics.filter((e) => e.status !== "rejected"),
           documentContext,
-          ragStoreName,
+          ragStoreName: tasksRagStoreName,
         }),
       });
 
@@ -871,7 +876,7 @@ export default function GroomingPage() {
             existingEpics: suggestedEpics.filter((e) => e.status !== "rejected"),
             documentContent: content,
             documentName: file.name,
-            ragStoreName,
+            ragStoreName: tasksRagStoreName,
           }),
         });
 
@@ -1002,7 +1007,7 @@ export default function GroomingPage() {
           existingTasks: suggestedTasks.filter((t) => t.status !== "rejected"),
           existingEpics: suggestedEpics.filter((e) => e.status !== "rejected"),
           documentContext,
-          ragStoreName,
+          ragStoreName: tasksRagStoreName,
         }),
       });
 

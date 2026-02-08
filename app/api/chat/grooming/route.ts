@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { FirebaseRAGRepository } from "@/infrastructure/repositories/FirebaseRAGRepository";
+import { ragRepository } from "@/infrastructure/repositories/FirebaseRAGRepository";
 
 export interface ChatMessage {
   role: "user" | "assistant";
@@ -57,17 +57,22 @@ export async function POST(request: NextRequest) {
 
     // Search for similar tasks in RAG if storage name is provided
     let ragSearchResults = "";
+    console.log("[Grooming API] ========== RAG SEARCH ==========");
+    console.log("[Grooming API] ragStoreName received:", ragStoreName);
     if (ragStoreName) {
       try {
-        const ragRepository = new FirebaseRAGRepository(apiKey);
         const lastMessage = messages[messages.length - 1];
         if (lastMessage && lastMessage.role === "user") {
+          console.log("[Grooming API] User query:", lastMessage.content);
+          console.log("[Grooming API] Calling ragRepository.searchFiles...");
           const searchResults = await ragRepository.searchFiles(lastMessage.content, ragStoreName);
+          console.log("[Grooming API] Search returned", searchResults.length, "results");
+          console.log("[Grooming API] Results:", JSON.stringify(searchResults, null, 2));
           if (searchResults.length > 0) {
             ragSearchResults = `
 SIMILAR EXISTING TASKS/CONTEXT FOUND IN PROJECT (from RAG search):
 ---
-${searchResults.map((result, index) => `[Result ${index + 1}] (relevance: ${(result.relevanceScore * 100).toFixed(1)}%)
+${searchResults.map((result: { content: string; relevanceScore: number }, index: number) => `[Result ${index + 1}] (relevance: ${(result.relevanceScore * 100).toFixed(1)}%)
 ${result.content}`).join("\n\n")}
 ---
 
@@ -80,10 +85,13 @@ IMPORTANT: Review the above search results to check if similar tasks already exi
           }
         }
       } catch (error) {
-        console.error("Error searching RAG:", error);
+        console.error("[Grooming API] Error searching RAG:", error);
         // Continue without RAG results if search fails
       }
+    } else {
+      console.log("[Grooming API] No ragStoreName provided, skipping RAG search");
     }
+    console.log("[Grooming API] ========== RAG SEARCH END ==========");
 
     // Build document context section
     let documentSection = "";
