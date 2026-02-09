@@ -121,12 +121,13 @@ export function ProjectCard({
     >
       <GradientBorderWrapper isActive={isRunning}>
         <Card
-        key={project.id}
-        className="h-full w-full cursor-pointer"
-        isPressable
-        onPress={() => router.push(`/dashboard/project/${project.id}/kanban`)}
-      >
-        <CardHeader className="flex flex-col items-start gap-2">
+          key={project.id}
+          className="h-full w-full cursor-pointer hover:shadow-lg transition-shadow"
+        >
+        <CardHeader
+          className="flex flex-col items-start gap-2 cursor-pointer"
+          onClick={() => router.push(`/dashboard/project/${project.id}/kanban`)}
+        >
           <div className="flex w-full items-start justify-between gap-2">
             <h3 className="text-lg font-semibold flex-1">{project.name}</h3>
             <div className="flex flex-col items-end gap-1">
@@ -209,7 +210,10 @@ export function ProjectCard({
             )}
           </div>
         </CardHeader>
-        <CardBody className="gap-2">
+        <CardBody
+          className="gap-2 cursor-pointer"
+          onClick={() => router.push(`/dashboard/project/${project.id}/kanban`)}
+        >
           <p className="text-default-500 text-sm line-clamp-3">
             {project.description || "No description"}
           </p>

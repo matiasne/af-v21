@@ -1536,7 +1536,7 @@ export default function KanbanPage() {
                     .filter((p) => p.status === "running")
                     .map((processor) => (
                       <SelectItem
-                        key={processor.hostname}
+                        key={processor.id}
                         textValue={processor.hostname}
                       >
                         <div className="flex flex-col">
