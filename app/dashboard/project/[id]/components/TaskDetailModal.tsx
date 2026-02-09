@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Modal,
   ModalContent,
@@ -12,6 +12,8 @@ import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
 import { Select, SelectItem } from "@heroui/select";
 import { Divider } from "@heroui/divider";
+import { Input } from "@heroui/input";
+import { Textarea } from "@heroui/input";
 
 import {
   ExecutionPlanTask,
@@ -29,6 +31,10 @@ interface TaskDetailModalProps {
   onUpdateEpic?: (taskId: string, epicId: string) => Promise<void>;
   onDeleteTask?: (taskId: string) => Promise<void>;
   onMoveToBacklog?: (taskId: string) => Promise<void>;
+  onUpdateTask?: (
+    taskId: string,
+    updates: { title?: string; description?: string; dependencies?: string[] }
+  ) => Promise<void>;
 }
 
 const getStatusColor = (
@@ -107,12 +113,71 @@ export function TaskDetailModal({
   onUpdateEpic,
   onDeleteTask,
   onMoveToBacklog,
+  onUpdateTask,
 }: TaskDetailModalProps) {
   const [isUpdatingEpic, setIsUpdatingEpic] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isMovingToBacklog, setIsMovingToBacklog] = useState(false);
   const [showMoveToBacklogConfirm, setShowMoveToBacklogConfirm] = useState(false);
+
+  // Editing state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedTitle, setEditedTitle] = useState("");
+  const [editedDescription, setEditedDescription] = useState("");
+  const [editedDependencies, setEditedDependencies] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Reset editing state when task changes or modal opens/closes
+  useEffect(() => {
+    if (task && isOpen) {
+      setEditedTitle(task.title || "");
+      setEditedDescription(task.description || "");
+      setEditedDependencies((task.dependencies || []).join(", "));
+      setIsEditing(false);
+    }
+  }, [task, isOpen]);
+
+  const handleStartEditing = () => {
+    if (task) {
+      setEditedTitle(task.title || "");
+      setEditedDescription(task.description || "");
+      setEditedDependencies((task.dependencies || []).join(", "));
+      setIsEditing(true);
+    }
+  };
+
+  const handleCancelEditing = () => {
+    setIsEditing(false);
+    if (task) {
+      setEditedTitle(task.title || "");
+      setEditedDescription(task.description || "");
+      setEditedDependencies((task.dependencies || []).join(", "));
+    }
+  };
+
+  const handleSaveEdits = async () => {
+    if (!task || !onUpdateTask) return;
+
+    setIsSaving(true);
+    try {
+      const parsedDependencies = editedDependencies
+        .split(",")
+        .map((d) => d.trim())
+        .filter((d) => d.length > 0);
+
+      await onUpdateTask(task.id, {
+        title: editedTitle,
+        description: editedDescription,
+        dependencies: parsedDependencies,
+      });
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Error saving task edits:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleDeleteClick = () => {
     setShowDeleteConfirm(true);
@@ -180,7 +245,42 @@ export function TaskDetailModal({
     <Modal isOpen={isOpen} onClose={onClose} size="2xl" scrollBehavior="inside">
       <ModalContent>
         <ModalHeader className="flex flex-col gap-1">
-          <h2 className="text-lg font-semibold">{task.title}</h2>
+          <div className="flex items-center justify-between w-full">
+            {isEditing ? (
+              <Input
+                value={editedTitle}
+                onValueChange={setEditedTitle}
+                placeholder="Task title"
+                className="flex-1 mr-2"
+                size="lg"
+              />
+            ) : (
+              <h2 className="text-lg font-semibold">{task.title}</h2>
+            )}
+            {onUpdateTask && !isEditing && (
+              <Button
+                isIconOnly
+                variant="light"
+                size="sm"
+                onPress={handleStartEditing}
+                aria-label="Edit task"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                  />
+                </svg>
+              </Button>
+            )}
+          </div>
           <div className="flex flex-wrap items-center gap-2 mt-2">
             <Chip
               size="sm"
@@ -220,16 +320,26 @@ export function TaskDetailModal({
         </ModalHeader>
         <ModalBody>
           {/* Description */}
-          {task.description && (
-            <div className="mb-4">
-              <h3 className="text-sm font-semibold text-default-700 mb-2">
-                Description
-              </h3>
+          <div className="mb-4">
+            <h3 className="text-sm font-semibold text-default-700 mb-2">
+              Description
+            </h3>
+            {isEditing ? (
+              <Textarea
+                value={editedDescription}
+                onValueChange={setEditedDescription}
+                placeholder="Task description"
+                minRows={3}
+                maxRows={8}
+              />
+            ) : task.description ? (
               <p className="text-sm text-default-600 whitespace-pre-wrap">
                 {task.description}
               </p>
-            </div>
-          )}
+            ) : (
+              <p className="text-sm text-default-400 italic">No description</p>
+            )}
+          </div>
 
           {/* Epic Assignment */}
           {epics.length > 0 && onUpdateEpic && (
@@ -298,39 +408,48 @@ export function TaskDetailModal({
           )}
 
           {/* Dependencies */}
-          {task.dependencies && task.dependencies.length > 0 && (
-            <>
-              <Divider className="my-4" />
-              <div className="mb-4">
-                <h3 className="text-sm font-semibold text-default-700 mb-2">
-                  Dependencies ({task.dependencies.length})
-                </h3>
-                <ul className="space-y-1">
-                  {task.dependencies.map((dep, index) => (
-                    <li
-                      key={index}
-                      className="flex items-center gap-2 text-sm text-default-600"
-                    >
-                      <svg
-                        className="w-4 h-4 text-default-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-                        />
-                      </svg>
-                      <span>{dep}</span>
-                    </li>
-                  ))}
-                </ul>
+          <Divider className="my-4" />
+          <div className="mb-4">
+            <h3 className="text-sm font-semibold text-default-700 mb-2">
+              Dependencies {!isEditing && task.dependencies && task.dependencies.length > 0 && `(${task.dependencies.length})`}
+            </h3>
+            {isEditing ? (
+              <div>
+                <Input
+                  value={editedDependencies}
+                  onValueChange={setEditedDependencies}
+                  placeholder="Enter dependencies separated by commas"
+                  description="Separate multiple dependencies with commas"
+                />
               </div>
-            </>
-          )}
+            ) : task.dependencies && task.dependencies.length > 0 ? (
+              <ul className="space-y-1">
+                {task.dependencies.map((dep, index) => (
+                  <li
+                    key={index}
+                    className="flex items-center gap-2 text-sm text-default-600"
+                  >
+                    <svg
+                      className="w-4 h-4 text-default-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                      />
+                    </svg>
+                    <span>{dep}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-default-400 italic">No dependencies</p>
+            )}
+          </div>
 
           {/* Source Document */}
           {task.sourceDocument && (
@@ -402,8 +521,27 @@ export function TaskDetailModal({
         </ModalBody>
         <ModalFooter className="flex justify-between">
           <div className="flex items-center gap-2">
+            {/* Edit mode buttons */}
+            {isEditing && (
+              <>
+                <Button
+                  color="primary"
+                  onPress={handleSaveEdits}
+                  isLoading={isSaving}
+                >
+                  Save Changes
+                </Button>
+                <Button
+                  variant="flat"
+                  onPress={handleCancelEditing}
+                  isDisabled={isSaving}
+                >
+                  Cancel
+                </Button>
+              </>
+            )}
             {/* Delete button */}
-            {onDeleteTask && !showDeleteConfirm && !showMoveToBacklogConfirm && (
+            {onDeleteTask && !showDeleteConfirm && !showMoveToBacklogConfirm && !isEditing && (
               <Button
                 color="danger"
                 variant="light"
@@ -428,7 +566,7 @@ export function TaskDetailModal({
               </Button>
             )}
             {/* Move to Backlog button - only show for completed tasks */}
-            {onMoveToBacklog && task.status === "completed" && !showDeleteConfirm && !showMoveToBacklogConfirm && (
+            {onMoveToBacklog && task.status === "completed" && !showDeleteConfirm && !showMoveToBacklogConfirm && !isEditing && (
               <Button
                 color="warning"
                 variant="light"

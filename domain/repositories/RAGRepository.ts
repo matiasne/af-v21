@@ -1,6 +1,7 @@
 import { RAGFile, RAGCorpus } from "../entities/RAGFile";
 
 export interface RAGSearchResult {
+  id: string; // Document ID (e.g., task-abc123)
   content: string;
   relevanceScore: number;
 }

@@ -88,13 +88,15 @@ export class PineconeRAGRepository implements RAGRepository {
         const fields = hit.fields as Record<string, unknown> | undefined;
         const content = (fields?.content as string) || (fields?.["search-text"] as string) || "";
         const score = hit._score || 0;
+        const documentId = hit._id || "";
 
         console.log(`[Pinecone RAG] Match ${index + 1}:`);
-        console.log(`  - ID: ${hit._id}`);
+        console.log(`  - ID: ${documentId}`);
         console.log(`  - Score: ${score}`);
         console.log(`  - Content preview: ${content.substring(0, 200)}...`);
 
         return {
+          id: documentId,
           content,
           relevanceScore: score,
         };

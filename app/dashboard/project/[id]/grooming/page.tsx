@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@heroui/button";
-import { Input } from "@heroui/input";
+import { Input, Textarea } from "@heroui/input";
 import { Spinner } from "@heroui/spinner";
 import { Chip } from "@heroui/chip";
 import { Tabs, Tab } from "@heroui/tabs";
@@ -42,6 +42,7 @@ import {
 import { groomingSessionRepository } from "@/infrastructure/repositories/FirebaseGroomingSessionRepository";
 import { executionPlanRepository } from "@/infrastructure/repositories/FirebaseExecutionPlanRepository";
 import { RAGCorpus, RAGFile } from "@/domain/entities/RAGFile";
+import { GraphNode } from "./components/GraphNodesModal";
 
 // RAG API helper functions
 async function ragGetOrCreateCorpus(corpusDisplayName: string): Promise<RAGCorpus | null> {
@@ -63,12 +64,36 @@ async function ragGetOrCreateCorpus(corpusDisplayName: string): Promise<RAGCorpu
   }
 }
 
-async function ragUploadDocument(corpusName: string, displayName: string, content: string): Promise<RAGFile | null> {
+interface TaskMetadata {
+  title: string;
+  description: string;
+  category: string;
+  priority: string;
+  cleanArchitectureArea: string;
+  epicId?: string;
+  dependsOn?: string[]; // Task IDs this task depends on
+  blocks?: string[]; // Task IDs this task blocks
+}
+
+async function ragUploadDocument(
+  corpusName: string,
+  displayName: string,
+  content: string,
+  projectId?: string,
+  taskMetadata?: TaskMetadata
+): Promise<RAGFile | null> {
   try {
     const response = await fetch("/api/rag/files", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "uploadDocument", corpusName, displayName, content }),
+      body: JSON.stringify({
+        action: "uploadDocument",
+        corpusName,
+        displayName,
+        content,
+        projectId,
+        taskMetadata,
+      }),
     });
     if (!response.ok) {
       console.error("[RAG API] uploadDocument failed:", await response.text());
@@ -87,6 +112,14 @@ interface ChatMessage {
   content: string;
 }
 
+// Dependency between tasks
+interface TaskDependency {
+  taskId: string;
+  taskTitle: string;
+  type: "DEPENDS_ON" | "BLOCKS";
+  isExisting: boolean; // true if it's an existing task in the project, false if it's a suggested task
+}
+
 interface SuggestedTask {
   id: string;
   title: string;
@@ -97,6 +130,9 @@ interface SuggestedTask {
   acceptanceCriteria: string[];
   status: "pending" | "approved" | "rejected";
   epicId?: string;
+  // Dependencies detected automatically or set by user
+  dependsOn?: TaskDependency[];
+  blocks?: TaskDependency[];
 }
 
 interface SuggestedEpic {
@@ -166,7 +202,6 @@ export default function GroomingPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [suggestedTasks, setSuggestedTasks] = useState<SuggestedTask[]>([]);
   const [suggestedEpics, setSuggestedEpics] = useState<SuggestedEpic[]>([]);
-  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [expandedEpicId, setExpandedEpicId] = useState<string | null>(null);
   const [approvingTaskId, setApprovingTaskId] = useState<string | null>(null);
   const [approvingEpicId, setApprovingEpicId] = useState<string | null>(null);
@@ -177,6 +212,9 @@ export default function GroomingPage() {
   const [selectedTab, setSelectedTab] = useState<"tasks" | "epics">("tasks");
   const [isTaskSelectorModalOpen, setIsTaskSelectorModalOpen] = useState(false);
   const [taskSearchQuery, setTaskSearchQuery] = useState("");
+
+  // Graph nodes state (used for context in responses)
+  const [graphNodes, setGraphNodes] = useState<GraphNode[]>([]);
 
   // Session persistence state
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -195,6 +233,20 @@ export default function GroomingPage() {
   // Resizable Suggestions panel state
   const [suggestionsPanelWidth, setSuggestionsPanelWidth] = useState(400);
   const [isResizingSuggestions, setIsResizingSuggestions] = useState(false);
+
+  // Dependency management state
+  const [isDependencyModalOpen, setIsDependencyModalOpen] = useState(false);
+  const [dependencyTargetTaskId, setDependencyTargetTaskId] = useState<string | null>(null);
+  const [dependencySearchQuery, setDependencySearchQuery] = useState("");
+  const [selectedDependencyType, setSelectedDependencyType] = useState<"DEPENDS_ON" | "BLOCKS">("DEPENDS_ON");
+
+  // Task detail modal state
+  const [selectedTaskForDetail, setSelectedTaskForDetail] = useState<SuggestedTask | null>(null);
+  const [isTaskDetailModalOpen, setIsTaskDetailModalOpen] = useState(false);
+  const [isEditingTask, setIsEditingTask] = useState(false);
+  const [editedTaskTitle, setEditedTaskTitle] = useState("");
+  const [editedTaskDescription, setEditedTaskDescription] = useState("");
+  const [isSavingTask, setIsSavingTask] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -495,7 +547,6 @@ export default function GroomingPage() {
       // Clear existing state first
       setSuggestedTasks([]);
       setSuggestedEpics([]);
-      setExpandedTaskId(null);
       setExpandedEpicId(null);
 
       // Set the session ID, title and messages
@@ -681,6 +732,7 @@ export default function GroomingPage() {
           existingEpics: suggestedEpics.filter((e) => e.status !== "rejected"),
           documentContext,
           ragStoreName: tasksRagStoreName,
+          projectId,
         }),
       });
 
@@ -692,6 +744,11 @@ export default function GroomingPage() {
 
       // Add assistant message
       setMessages([...newMessages, data.message]);
+
+      // Update graph nodes if available
+      if (data.graphNodes && data.graphNodes.length > 0) {
+        setGraphNodes(data.graphNodes);
+      }
 
       // Save assistant message to session
       if (sessionId) {
@@ -877,6 +934,7 @@ export default function GroomingPage() {
             documentContent: content,
             documentName: file.name,
             ragStoreName: tasksRagStoreName,
+            projectId,
           }),
         });
 
@@ -888,6 +946,11 @@ export default function GroomingPage() {
 
         // Add assistant response
         setMessages((prev) => [...prev, data.message]);
+
+        // Update graph nodes if available
+        if (data.graphNodes && data.graphNodes.length > 0) {
+          setGraphNodes(data.graphNodes);
+        }
 
         // Update suggested tasks
         if (data.suggestedTasks && data.suggestedTasks.length > 0) {
@@ -1008,6 +1071,7 @@ export default function GroomingPage() {
           existingEpics: suggestedEpics.filter((e) => e.status !== "rejected"),
           documentContext,
           ragStoreName: tasksRagStoreName,
+          projectId,
         }),
       });
 
@@ -1019,6 +1083,11 @@ export default function GroomingPage() {
 
       // Add assistant message
       setMessages([...newMessages, data.message]);
+
+      // Update graph nodes if available (resend)
+      if (data.graphNodes && data.graphNodes.length > 0) {
+        setGraphNodes(data.graphNodes);
+      }
 
       // Save assistant message to session
       if (sessionId) {
@@ -1086,6 +1155,8 @@ export default function GroomingPage() {
     priority: "high" | "medium" | "low";
     cleanArchitectureArea: CleanArchitectureArea;
     acceptanceCriteria: string[];
+    dependsOn?: TaskDependency[];
+    blocks?: TaskDependency[];
   }): Promise<string> => {
     if (!user?.uid || !projectId)
       throw new Error("User or project not available");
@@ -1117,10 +1188,24 @@ export default function GroomingPage() {
             .filter(Boolean)
             .join("\n\n");
 
+          // Extract task IDs from dependencies for Neo4j relationship creation
+          const dependsOnIds = taskData.dependsOn?.map((d) => d.taskId) || [];
+          const blocksIds = taskData.blocks?.map((b) => b.taskId) || [];
+
           await ragUploadDocument(
             corpus.name,
             `task-${taskId}`,
-            taskContent
+            taskContent,
+            projectId,
+            {
+              title: taskData.title,
+              description: taskData.description,
+              category: taskData.category,
+              priority: taskData.priority,
+              cleanArchitectureArea: taskData.cleanArchitectureArea,
+              dependsOn: dependsOnIds.length > 0 ? dependsOnIds : undefined,
+              blocks: blocksIds.length > 0 ? blocksIds : undefined,
+            }
           );
         }
       } catch (ragError) {
@@ -1180,11 +1265,15 @@ export default function GroomingPage() {
         priority: task.priority,
         cleanArchitectureArea: task.cleanArchitectureArea,
         acceptanceCriteria: task.acceptanceCriteria,
+        dependsOn: task.dependsOn,
+        blocks: task.blocks,
       });
-      setSuggestedTasks((prev) =>
-        prev.map((t) => (t.id === task.id ? { ...t, status: "approved" } : t))
+      const updatedTasks = suggestedTasks.map((t) =>
+        t.id === task.id ? { ...t, status: "approved" as const } : t
       );
-      setExpandedTaskId(null);
+      setSuggestedTasks(updatedTasks);
+      // Save the updated status to the session
+      await saveSuggestionsToSession(updatedTasks, suggestedEpics);
     } catch (error) {
       console.error("Error approving task:", error);
     } finally {
@@ -1192,12 +1281,164 @@ export default function GroomingPage() {
     }
   };
 
-  const handleRejectTask = (taskId: string) => {
-    setSuggestedTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, status: "rejected" } : t))
+  const handleRejectTask = async (taskId: string) => {
+    const updatedTasks = suggestedTasks.map((t) =>
+      t.id === taskId ? { ...t, status: "rejected" as const } : t
     );
-    setExpandedTaskId(null);
+    setSuggestedTasks(updatedTasks);
+    // Save the updated status to the session
+    await saveSuggestionsToSession(updatedTasks, suggestedEpics);
   };
+
+  // Task detail modal handlers
+  const handleOpenTaskDetail = (task: SuggestedTask) => {
+    setSelectedTaskForDetail(task);
+    setEditedTaskTitle(task.title);
+    setEditedTaskDescription(task.description);
+    setIsEditingTask(false);
+    setIsTaskDetailModalOpen(true);
+  };
+
+  const handleCloseTaskDetail = () => {
+    setIsTaskDetailModalOpen(false);
+    setSelectedTaskForDetail(null);
+    setIsEditingTask(false);
+  };
+
+  const handleStartEditingTask = () => {
+    if (selectedTaskForDetail) {
+      setEditedTaskTitle(selectedTaskForDetail.title);
+      setEditedTaskDescription(selectedTaskForDetail.description);
+      setIsEditingTask(true);
+    }
+  };
+
+  const handleCancelEditingTask = () => {
+    if (selectedTaskForDetail) {
+      setEditedTaskTitle(selectedTaskForDetail.title);
+      setEditedTaskDescription(selectedTaskForDetail.description);
+    }
+    setIsEditingTask(false);
+  };
+
+  const handleSaveTaskEdits = () => {
+    if (!selectedTaskForDetail) return;
+
+    // Update the task in suggestedTasks
+    setSuggestedTasks((prev) =>
+      prev.map((t) =>
+        t.id === selectedTaskForDetail.id
+          ? { ...t, title: editedTaskTitle, description: editedTaskDescription }
+          : t
+      )
+    );
+
+    // Update the selected task
+    setSelectedTaskForDetail((prev) => {
+      if (!prev) return prev;
+      return { ...prev, title: editedTaskTitle, description: editedTaskDescription };
+    });
+
+    setIsEditingTask(false);
+  };
+
+  // Dependency management handlers
+  const handleAddDependency = (taskId: string) => {
+    setDependencyTargetTaskId(taskId);
+    setDependencySearchQuery("");
+    setSelectedDependencyType("DEPENDS_ON");
+    setIsDependencyModalOpen(true);
+  };
+
+  const handleRemoveDependency = (taskId: string, depTaskId: string, type: "DEPENDS_ON" | "BLOCKS") => {
+    setSuggestedTasks((prev) =>
+      prev.map((t) => {
+        if (t.id !== taskId) return t;
+        if (type === "DEPENDS_ON") {
+          return {
+            ...t,
+            dependsOn: t.dependsOn?.filter((d) => d.taskId !== depTaskId) || [],
+          };
+        } else {
+          return {
+            ...t,
+            blocks: t.blocks?.filter((d) => d.taskId !== depTaskId) || [],
+          };
+        }
+      })
+    );
+  };
+
+  const handleConfirmAddDependency = (selectedTask: { id: string; title: string; isExisting: boolean }) => {
+    if (!dependencyTargetTaskId) return;
+
+    const newDep: TaskDependency = {
+      taskId: selectedTask.id,
+      taskTitle: selectedTask.title,
+      type: selectedDependencyType,
+      isExisting: selectedTask.isExisting,
+    };
+
+    setSuggestedTasks((prev) =>
+      prev.map((t) => {
+        if (t.id !== dependencyTargetTaskId) return t;
+        if (selectedDependencyType === "DEPENDS_ON") {
+          // Check if already exists
+          if (t.dependsOn?.some((d) => d.taskId === selectedTask.id)) return t;
+          return {
+            ...t,
+            dependsOn: [...(t.dependsOn || []), newDep],
+          };
+        } else {
+          if (t.blocks?.some((d) => d.taskId === selectedTask.id)) return t;
+          return {
+            ...t,
+            blocks: [...(t.blocks || []), newDep],
+          };
+        }
+      })
+    );
+
+    setIsDependencyModalOpen(false);
+    setDependencyTargetTaskId(null);
+  };
+
+  // Get available tasks for dependency selection (other suggested tasks + existing tasks)
+  const getAvailableTasksForDependency = useCallback(() => {
+    if (!dependencyTargetTaskId) return [];
+
+    const currentTask = suggestedTasks.find((t) => t.id === dependencyTargetTaskId);
+    if (!currentTask) return [];
+
+    // Filter suggested tasks (exclude current task and already added dependencies)
+    const suggestedOptions = suggestedTasks
+      .filter((t) => {
+        if (t.id === dependencyTargetTaskId) return false;
+        if (t.status === "rejected") return false;
+        // Check if already a dependency
+        if (selectedDependencyType === "DEPENDS_ON") {
+          if (currentTask.dependsOn?.some((d) => d.taskId === t.id)) return false;
+        } else {
+          if (currentTask.blocks?.some((d) => d.taskId === t.id)) return false;
+        }
+        return true;
+      })
+      .map((t) => ({ id: t.id, title: t.title, isExisting: false }));
+
+    // Filter existing tasks
+    const existingOptions = existingTasks
+      .filter((t) => {
+        if (selectedDependencyType === "DEPENDS_ON") {
+          if (currentTask.dependsOn?.some((d) => d.taskId === t.id)) return false;
+        } else {
+          if (currentTask.blocks?.some((d) => d.taskId === t.id)) return false;
+        }
+        return true;
+      })
+      .map((t) => ({ id: t.id, title: t.title, isExisting: true }));
+
+    return [...suggestedOptions, ...existingOptions];
+  }, [dependencyTargetTaskId, suggestedTasks, existingTasks, selectedDependencyType]);
 
   const handleApproveEpic = async (epic: SuggestedEpic) => {
     setApprovingEpicId(epic.id);
@@ -1209,6 +1450,7 @@ export default function GroomingPage() {
 
       // First, create all the tasks that belong to this epic and collect the real Firestore IDs
       const createdTaskIds: string[] = [];
+      let updatedTasks = [...suggestedTasks];
       for (const task of epicTasks) {
         const createdTaskId = await handleCreateTask({
           title: task.title,
@@ -1219,11 +1461,12 @@ export default function GroomingPage() {
           acceptanceCriteria: task.acceptanceCriteria,
         });
         createdTaskIds.push(createdTaskId);
-        // Mark task as approved
-        setSuggestedTasks((prev) =>
-          prev.map((t) => (t.id === task.id ? { ...t, status: "approved" } : t))
+        // Mark task as approved in the updated array
+        updatedTasks = updatedTasks.map((t) =>
+          t.id === task.id ? { ...t, status: "approved" as const } : t
         );
       }
+      setSuggestedTasks(updatedTasks);
 
       // Create the epic with the actual Firestore task IDs
       await handleCreateEpic(
@@ -1235,10 +1478,14 @@ export default function GroomingPage() {
         createdTaskIds
       );
 
-      setSuggestedEpics((prev) =>
-        prev.map((e) => (e.id === epic.id ? { ...e, status: "approved" } : e))
+      const updatedEpics = suggestedEpics.map((e) =>
+        e.id === epic.id ? { ...e, status: "approved" as const } : e
       );
+      setSuggestedEpics(updatedEpics);
       setExpandedEpicId(null);
+
+      // Save the updated statuses to the session
+      await saveSuggestionsToSession(updatedTasks, updatedEpics);
     } catch (error) {
       console.error("Error approving epic:", error);
     } finally {
@@ -1246,18 +1493,20 @@ export default function GroomingPage() {
     }
   };
 
-  const handleRejectEpic = (epicId: string) => {
-    setSuggestedEpics((prev) =>
-      prev.map((e) => (e.id === epicId ? { ...e, status: "rejected" } : e))
+  const handleRejectEpic = async (epicId: string) => {
+    const updatedEpics = suggestedEpics.map((e) =>
+      e.id === epicId ? { ...e, status: "rejected" as const } : e
     );
+    setSuggestedEpics(updatedEpics);
     setExpandedEpicId(null);
+    // Save the updated status to the session
+    await saveSuggestionsToSession(suggestedTasks, updatedEpics);
   };
 
   // Start a new session (clear current session and start fresh)
   const handleStartNewSession = () => {
     setSuggestedTasks([]);
     setSuggestedEpics([]);
-    setExpandedTaskId(null);
     setExpandedEpicId(null);
     setInputValue("");
     setUploadedDocuments([]);
@@ -1628,25 +1877,52 @@ export default function GroomingPage() {
         <div className="flex flex-col bg-background rounded-xl border border-default-200 overflow-hidden">
           {/* Chat header - same style as Suggestions */}
           <div className="px-4 pt-4 pb-3 border-b border-default-200 bg-default-100/50 dark:bg-default-200/20">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-secondary-100 dark:bg-secondary-500/20 rounded-lg">
-                <svg
-                  className="w-5 h-5 text-secondary-600 dark:text-secondary-300"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                  />
-                </svg>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-secondary-100 dark:bg-secondary-500/20 rounded-lg">
+                  <svg
+                    className="w-5 h-5 text-secondary-600 dark:text-secondary-300"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                    />
+                  </svg>
+                </div>
+                <span className="font-semibold text-base text-default-700">
+                  {currentSessionTitle || "Grooming Session"}
+                </span>
               </div>
-              <span className="font-semibold text-base text-default-700">
-                {currentSessionTitle || "Grooming Session"}
-              </span>
+              {/* Graph Context Button - Opens graph page */}
+              <Tooltip content="View Task Relationship Graph">
+                <Button
+                  isIconOnly
+                  size="sm"
+                  variant="flat"
+                  color="primary"
+                  onPress={() => router.push(`/dashboard/project/${projectId}/graph`)}
+                  className="relative"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 10V3L4 14h7v7l9-11h-7z"
+                    />
+                  </svg>
+                </Button>
+              </Tooltip>
             </div>
           </div>
 
@@ -2001,19 +2277,7 @@ export default function GroomingPage() {
                   <TaskCard
                     key={task.id}
                     task={task}
-                    isExpanded={expandedTaskId === task.id}
-                    onExpand={() => {
-                      if (
-                        task.status === "pending" &&
-                        expandedTaskId !== task.id
-                      ) {
-                        setExpandedTaskId(task.id);
-                      }
-                    }}
-                    onApprove={() => handleApproveTask(task)}
-                    onReject={() => handleRejectTask(task.id)}
-                    onReference={() => handleReferenceTask(task)}
-                    isApproving={approvingTaskId === task.id}
+                    onClick={() => handleOpenTaskDetail(task)}
                     epicName={
                       task.epicId
                         ? suggestedEpics.find((e) => e.id === task.epicId)
@@ -2394,46 +2658,471 @@ export default function GroomingPage() {
           </ModalBody>
         </ModalContent>
       </Modal>
+
+      {/* Add Dependency Modal */}
+      <Modal
+        isOpen={isDependencyModalOpen}
+        onClose={() => {
+          setIsDependencyModalOpen(false);
+          setDependencyTargetTaskId(null);
+        }}
+        size="md"
+      >
+        <ModalContent>
+          <ModalHeader className="flex flex-col gap-1 pb-2">
+            Add Dependency
+          </ModalHeader>
+          <ModalBody className="py-2">
+            {/* Dependency Type Selector */}
+            <div className="flex gap-2 mb-3">
+              <Button
+                size="sm"
+                color={selectedDependencyType === "DEPENDS_ON" ? "warning" : "default"}
+                variant={selectedDependencyType === "DEPENDS_ON" ? "solid" : "flat"}
+                onPress={() => setSelectedDependencyType("DEPENDS_ON")}
+                className="flex-1"
+              >
+                Depends On
+              </Button>
+              <Button
+                size="sm"
+                color={selectedDependencyType === "BLOCKS" ? "danger" : "default"}
+                variant={selectedDependencyType === "BLOCKS" ? "solid" : "flat"}
+                onPress={() => setSelectedDependencyType("BLOCKS")}
+                className="flex-1"
+              >
+                Blocks
+              </Button>
+            </div>
+
+            {/* Search Input */}
+            <Input
+              placeholder="Search tasks..."
+              value={dependencySearchQuery}
+              onChange={(e) => setDependencySearchQuery(e.target.value)}
+              size="sm"
+              startContent={
+                <svg className="w-4 h-4 text-default-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              }
+              classNames={{ inputWrapper: "bg-default-100" }}
+            />
+
+            {/* Task List */}
+            <ScrollShadow className="max-h-64 mt-3">
+              <div className="space-y-2">
+                {getAvailableTasksForDependency()
+                  .filter((t) =>
+                    dependencySearchQuery === "" ||
+                    t.title.toLowerCase().includes(dependencySearchQuery.toLowerCase())
+                  )
+                  .map((task) => (
+                    <div
+                      key={task.id}
+                      className="p-2 rounded-lg border border-default-200 hover:border-primary-300 cursor-pointer transition-colors"
+                      onClick={() => handleConfirmAddDependency(task)}
+                    >
+                      <p className="text-sm font-medium">{task.title}</p>
+                      <Chip
+                        size="sm"
+                        variant="flat"
+                        color={task.isExisting ? "secondary" : "primary"}
+                        classNames={{ base: "h-4 mt-1", content: "text-xs px-1" }}
+                      >
+                        {task.isExisting ? "Existing Task" : "Suggested Task"}
+                      </Chip>
+                    </div>
+                  ))}
+                {getAvailableTasksForDependency().filter((t) =>
+                  dependencySearchQuery === "" ||
+                  t.title.toLowerCase().includes(dependencySearchQuery.toLowerCase())
+                ).length === 0 && (
+                  <p className="text-sm text-default-400 text-center py-4">
+                    No tasks available
+                  </p>
+                )}
+              </div>
+            </ScrollShadow>
+          </ModalBody>
+          <ModalFooter className="pt-2">
+            <Button
+              size="sm"
+              variant="light"
+              onPress={() => {
+                setIsDependencyModalOpen(false);
+                setDependencyTargetTaskId(null);
+              }}
+            >
+              Cancel
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Task Detail Modal */}
+      <Modal
+        isOpen={isTaskDetailModalOpen}
+        onClose={handleCloseTaskDetail}
+        size="2xl"
+        scrollBehavior="inside"
+      >
+        <ModalContent>
+          {selectedTaskForDetail && (
+            <>
+              <ModalHeader className="flex flex-col gap-1 pb-2">
+                <div className="flex items-center justify-between w-full">
+                  {isEditingTask ? (
+                    <Input
+                      value={editedTaskTitle}
+                      onChange={(e) => setEditedTaskTitle(e.target.value)}
+                      size="lg"
+                      variant="bordered"
+                      placeholder="Task title"
+                      classNames={{ input: "text-lg font-semibold" }}
+                    />
+                  ) : (
+                    <span className="text-lg font-semibold">{selectedTaskForDetail.title}</span>
+                  )}
+                  {!isEditingTask && (
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant="light"
+                      onPress={handleStartEditingTask}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </Button>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                  <Chip
+                    size="sm"
+                    color={CATEGORY_COLORS[selectedTaskForDetail.category]}
+                    variant="flat"
+                    classNames={{ base: "h-5", content: "text-xs px-1" }}
+                  >
+                    {selectedTaskForDetail.category}
+                  </Chip>
+                  <Chip
+                    size="sm"
+                    color={PRIORITY_COLORS[selectedTaskForDetail.priority]}
+                    variant="dot"
+                    classNames={{ base: "h-5", content: "text-xs px-1" }}
+                  >
+                    {selectedTaskForDetail.priority}
+                  </Chip>
+                  <Chip
+                    size="sm"
+                    variant="flat"
+                    classNames={{ base: "h-5", content: "text-xs px-1" }}
+                  >
+                    {selectedTaskForDetail.cleanArchitectureArea}
+                  </Chip>
+                  {selectedTaskForDetail.epicId && (
+                    <Chip
+                      size="sm"
+                      variant="bordered"
+                      classNames={{ base: "h-5", content: "text-xs px-1" }}
+                    >
+                      {suggestedEpics.find((e) => e.id === selectedTaskForDetail.epicId)?.title || "Epic"}
+                    </Chip>
+                  )}
+                </div>
+              </ModalHeader>
+              <ModalBody className="py-4 space-y-4">
+                {/* Description */}
+                <div>
+                  <p className="text-sm font-medium text-default-600 mb-2">Description</p>
+                  {isEditingTask ? (
+                    <Textarea
+                      value={editedTaskDescription}
+                      onChange={(e) => setEditedTaskDescription(e.target.value)}
+                      variant="bordered"
+                      placeholder="Task description"
+                      minRows={3}
+                      maxRows={8}
+                    />
+                  ) : (
+                    <p className="text-sm text-default-700 whitespace-pre-wrap bg-default-50 dark:bg-default-100 p-3 rounded-lg">
+                      {selectedTaskForDetail.description}
+                    </p>
+                  )}
+                </div>
+
+                {/* Edit Mode Actions */}
+                {isEditingTask && (
+                  <div className="flex gap-2 justify-end">
+                    <Button
+                      size="sm"
+                      variant="flat"
+                      onPress={handleCancelEditingTask}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      color="primary"
+                      onPress={handleSaveTaskEdits}
+                    >
+                      Save Changes
+                    </Button>
+                  </div>
+                )}
+
+                {/* Acceptance Criteria */}
+                {selectedTaskForDetail.acceptanceCriteria.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium text-default-600 mb-2">Acceptance Criteria</p>
+                    <ul className="space-y-2 bg-default-50 dark:bg-default-100 p-3 rounded-lg">
+                      {selectedTaskForDetail.acceptanceCriteria.map((criterion, idx) => (
+                        <li
+                          key={idx}
+                          className="text-sm text-default-700 flex items-start gap-2"
+                        >
+                          <span className="text-primary mt-0.5">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </span>
+                          <span>{criterion}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Dependencies Section */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-medium text-default-600">Dependencies</p>
+                    <Button
+                      size="sm"
+                      variant="flat"
+                      color="primary"
+                      onPress={() => handleAddDependency(selectedTaskForDetail.id)}
+                      startContent={
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                      }
+                    >
+                      Add Dependency
+                    </Button>
+                  </div>
+
+                  <div className="bg-default-50 dark:bg-default-100 p-3 rounded-lg space-y-3">
+                    {/* Depends On */}
+                    {selectedTaskForDetail.dependsOn && selectedTaskForDetail.dependsOn.length > 0 ? (
+                      <div>
+                        <p className="text-xs font-medium text-default-500 mb-2 flex items-center gap-1">
+                          <svg className="w-3.5 h-3.5 text-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                          Depends On
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedTaskForDetail.dependsOn.map((dep, idx) => (
+                            <Chip
+                              key={`dep-${idx}`}
+                              size="sm"
+                              variant={dep.isExisting ? "bordered" : "flat"}
+                              color="warning"
+                              classNames={{ base: "h-6", content: "text-xs px-2" }}
+                              onClose={() => {
+                                handleRemoveDependency(selectedTaskForDetail.id, dep.taskId, "DEPENDS_ON");
+                                // Update the selected task in state
+                                setSelectedTaskForDetail((prev) => {
+                                  if (!prev) return prev;
+                                  return {
+                                    ...prev,
+                                    dependsOn: prev.dependsOn?.filter((d) => d.taskId !== dep.taskId),
+                                  };
+                                });
+                              }}
+                            >
+                              {dep.taskTitle}
+                              {dep.isExisting && " (existing)"}
+                            </Chip>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* Blocks */}
+                    {selectedTaskForDetail.blocks && selectedTaskForDetail.blocks.length > 0 ? (
+                      <div>
+                        <p className="text-xs font-medium text-default-500 mb-2 flex items-center gap-1">
+                          <svg className="w-3.5 h-3.5 text-danger" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                          </svg>
+                          Blocks
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedTaskForDetail.blocks.map((block, idx) => (
+                            <Chip
+                              key={`block-${idx}`}
+                              size="sm"
+                              variant={block.isExisting ? "bordered" : "flat"}
+                              color="danger"
+                              classNames={{ base: "h-6", content: "text-xs px-2" }}
+                              onClose={() => {
+                                handleRemoveDependency(selectedTaskForDetail.id, block.taskId, "BLOCKS");
+                                // Update the selected task in state
+                                setSelectedTaskForDetail((prev) => {
+                                  if (!prev) return prev;
+                                  return {
+                                    ...prev,
+                                    blocks: prev.blocks?.filter((b) => b.taskId !== block.taskId),
+                                  };
+                                });
+                              }}
+                            >
+                              {block.taskTitle}
+                              {block.isExisting && " (existing)"}
+                            </Chip>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* No dependencies message */}
+                    {(!selectedTaskForDetail.dependsOn || selectedTaskForDetail.dependsOn.length === 0) &&
+                     (!selectedTaskForDetail.blocks || selectedTaskForDetail.blocks.length === 0) && (
+                      <p className="text-sm text-default-400 text-center py-2">
+                        No dependencies yet
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </ModalBody>
+              <ModalFooter className="pt-2 gap-2">
+                {selectedTaskForDetail.status === "pending" ? (
+                  <>
+                    <Button
+                      size="sm"
+                      color="primary"
+                      variant="flat"
+                      onPress={() => {
+                        handleReferenceTask(selectedTaskForDetail);
+                        handleCloseTaskDetail();
+                      }}
+                      startContent={
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                      }
+                    >
+                      Discuss
+                    </Button>
+                    <Button
+                      size="sm"
+                      color="danger"
+                      variant="flat"
+                      onPress={() => {
+                        handleRejectTask(selectedTaskForDetail.id);
+                        handleCloseTaskDetail();
+                      }}
+                    >
+                      Reject
+                    </Button>
+                    <Button
+                      size="sm"
+                      color="success"
+                      onPress={() => {
+                        handleApproveTask(selectedTaskForDetail);
+                        handleCloseTaskDetail();
+                      }}
+                      isLoading={approvingTaskId === selectedTaskForDetail.id}
+                    >
+                      Approve
+                    </Button>
+                  </>
+                ) : selectedTaskForDetail.status === "approved" ? (
+                  <>
+                    <Chip color="success" variant="flat" size="sm">
+                      <div className="flex items-center gap-1">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Task Approved - Added to Backlog
+                      </div>
+                    </Chip>
+                    <Button
+                      size="sm"
+                      color="default"
+                      variant="flat"
+                      onPress={async () => {
+                        const updatedTasks = suggestedTasks.map((t) =>
+                          t.id === selectedTaskForDetail.id ? { ...t, status: "pending" as const } : t
+                        );
+                        setSuggestedTasks(updatedTasks);
+                        setSelectedTaskForDetail((prev) => prev ? { ...prev, status: "pending" } : prev);
+                        await saveSuggestionsToSession(updatedTasks, suggestedEpics);
+                      }}
+                    >
+                      Undo Approval
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Chip color="default" variant="flat" size="sm">
+                      <div className="flex items-center gap-1">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Task Rejected
+                      </div>
+                    </Chip>
+                    <Button
+                      size="sm"
+                      color="primary"
+                      variant="flat"
+                      onPress={async () => {
+                        const updatedTasks = suggestedTasks.map((t) =>
+                          t.id === selectedTaskForDetail.id ? { ...t, status: "pending" as const } : t
+                        );
+                        setSuggestedTasks(updatedTasks);
+                        setSelectedTaskForDetail((prev) => prev ? { ...prev, status: "pending" } : prev);
+                        await saveSuggestionsToSession(updatedTasks, suggestedEpics);
+                      }}
+                    >
+                      Restore Task
+                    </Button>
+                  </>
+                )}
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+
     </div>
   );
 }
 
-// Task Card Component
+// Task Card Component - simplified to just show summary, click opens modal
 function TaskCard({
   task,
-  isExpanded,
-  onExpand,
-  onApprove,
-  onReject,
-  onReference,
-  isApproving,
+  onClick,
   epicName,
 }: {
   task: SuggestedTask;
-  isExpanded: boolean;
-  onExpand: () => void;
-  onApprove: () => void;
-  onReject: () => void;
-  onReference: () => void;
-  isApproving: boolean;
+  onClick: () => void;
   epicName?: string;
 }) {
   return (
     <div
-      className={`rounded-lg border transition-all ${
+      className={`rounded-lg border transition-all cursor-pointer ${
         task.status === "approved"
-          ? "border-success-200 bg-success-50/50 dark:bg-success-900/20"
+          ? "border-success-200 bg-success-50/50 dark:bg-success-900/20 hover:border-success-300"
           : task.status === "rejected"
-            ? "border-default-200 bg-default-100 opacity-50"
-            : isExpanded
-              ? "border-primary-300 bg-white dark:bg-default-100"
-              : "border-default-200 bg-white dark:bg-default-100 hover:border-primary-200 cursor-pointer"
+            ? "border-default-200 bg-default-100 opacity-60 hover:opacity-80"
+            : "border-default-200 bg-white dark:bg-default-100 hover:border-primary-200"
       }`}
-      onClick={() => {
-        if (task.status === "pending" && !isExpanded) {
-          onExpand();
-        }
-      }}
+      onClick={onClick}
     >
       <div className="p-3">
         <div className="flex items-start justify-between gap-2">
@@ -2465,6 +3154,27 @@ function TaskCard({
                   classNames={{ base: "h-5", content: "text-xs px-1" }}
                 >
                   {epicName}
+                </Chip>
+              )}
+              {/* Show dependency count badges */}
+              {task.dependsOn && task.dependsOn.length > 0 && (
+                <Chip
+                  size="sm"
+                  color="warning"
+                  variant="flat"
+                  classNames={{ base: "h-5", content: "text-xs px-1" }}
+                >
+                  {task.dependsOn.length} dep
+                </Chip>
+              )}
+              {task.blocks && task.blocks.length > 0 && (
+                <Chip
+                  size="sm"
+                  color="danger"
+                  variant="flat"
+                  classNames={{ base: "h-5", content: "text-xs px-1" }}
+                >
+                  blocks {task.blocks.length}
                 </Chip>
               )}
             </div>
@@ -2505,95 +3215,6 @@ function TaskCard({
           )}
         </div>
       </div>
-
-      {isExpanded && task.status === "pending" && (
-        <div className="px-3 pb-3 space-y-3 border-t border-default-100">
-          <div className="pt-3">
-            <p className="text-xs font-medium text-default-600 mb-1">
-              Description
-            </p>
-            <p className="text-sm text-default-700 whitespace-pre-wrap">
-              {task.description}
-            </p>
-          </div>
-
-          {task.acceptanceCriteria.length > 0 && (
-            <div>
-              <p className="text-xs font-medium text-default-600 mb-1">
-                Acceptance Criteria
-              </p>
-              <ul className="space-y-1">
-                {task.acceptanceCriteria.map((criterion, idx) => (
-                  <li
-                    key={idx}
-                    className="text-sm text-default-700 flex items-start gap-2"
-                  >
-                    <span className="text-default-400 mt-0.5">-</span>
-                    <span>{criterion}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <div className="flex items-center gap-1.5 pt-2">
-            <Chip
-              size="sm"
-              variant="flat"
-              classNames={{ base: "h-5", content: "text-xs px-1" }}
-            >
-              {task.cleanArchitectureArea}
-            </Chip>
-          </div>
-
-          <div className="flex gap-2 pt-2">
-            <div className="flex-1" onClick={(e) => e.stopPropagation()}>
-              <Button
-                size="sm"
-                color="primary"
-                variant="flat"
-                onPress={onReference}
-                className="w-full"
-                startContent={
-                  <svg
-                    className="w-3.5 h-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                    />
-                  </svg>
-                }
-              >
-                Discuss
-              </Button>
-            </div>
-            <Button
-              size="sm"
-              color="danger"
-              variant="flat"
-              onPress={onReject}
-              className="flex-1"
-            >
-              Reject
-            </Button>
-            <Button
-              size="sm"
-              color="success"
-              onPress={onApprove}
-              isLoading={isApproving}
-              className="flex-1"
-            >
-              Approve
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

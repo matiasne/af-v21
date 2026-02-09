@@ -30,8 +30,9 @@ function ProjectLayoutContent({ children }: { children: ReactNode }) {
 
   const { migration } = useMigration(projectId, projectOwnerId);
 
-  // Hide FloatingInput on grooming page (it has its own chat)
+  // Hide FloatingInput on grooming and graph pages
   const isGroomingPage = pathname?.includes("/grooming");
+  const isGraphPage = pathname?.includes("/graph");
 
   return (
     <>
@@ -39,7 +40,7 @@ function ProjectLayoutContent({ children }: { children: ReactNode }) {
         <Navbar />
       </div>
       <div className="pt-1">{children}</div>
-      {projectContext && !isConfiguration && !isGroomingPage && (
+      {projectContext && !isConfiguration && !isGroomingPage && !isGraphPage && (
         <FloatingInput
           projectContext={projectContext}
           projectId={projectId}
