@@ -1,10 +1,224 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { ragRepository } from "@/infrastructure/repositories/FirebaseRAGRepository";
+import { graphRAGService } from "@/application/services/GraphRAGService";
+import { ragRepository } from "@/infrastructure/repositories/PineconeRAGRepository";
+
+/**
+ * Detect dependencies from task content using pattern matching
+ */
+function detectDependenciesFromContent(content: string): { dependsOn: string[]; blocks: string[] } {
+  const dependsOn: string[] = [];
+  const blocks: string[] = [];
+
+  // DEPENDS_ON patterns
+  const dependsOnPatterns = [
+    /depends on ["`']?([^"`'\n.]+)["`']?/gi,
+    /requires ["`']?([^"`'\n.]+)["`']?/gi,
+    /after ["`']?([^"`'\n.]+)["`']? is (done|completed|finished)/gi,
+    /needs ["`']?([^"`'\n.]+)["`']? first/gi,
+    /blocked by ["`']?([^"`'\n.]+)["`']?/gi,
+    /waiting for ["`']?([^"`'\n.]+)["`']?/gi,
+    /prerequisite:?\s*["`']?([^"`'\n.]+)["`']?/gi,
+  ];
+
+  for (const pattern of dependsOnPatterns) {
+    let match;
+    while ((match = pattern.exec(content)) !== null) {
+      const reference = match[1].trim();
+      if (reference.length > 3 && reference.length < 100) {
+        dependsOn.push(reference);
+      }
+    }
+  }
+
+  // BLOCKS patterns
+  const blocksPatterns = [
+    /blocks ["`']?([^"`'\n.]+)["`']?/gi,
+    /is required for ["`']?([^"`'\n.]+)["`']?/gi,
+    /must be done before ["`']?([^"`'\n.]+)["`']?/gi,
+    /prerequisite for ["`']?([^"`'\n.]+)["`']?/gi,
+  ];
+
+  for (const pattern of blocksPatterns) {
+    let match;
+    while ((match = pattern.exec(content)) !== null) {
+      const reference = match[1].trim();
+      if (reference.length > 3 && reference.length < 100) {
+        blocks.push(reference);
+      }
+    }
+  }
+
+  return { dependsOn, blocks };
+}
+
+/**
+ * Find dependencies for suggested tasks by:
+ * 1. Searching existing tasks in the project (via Pinecone)
+ * 2. Finding relationships between the suggested tasks themselves
+ */
+async function findTaskDependencies(
+  tasks: SuggestedTask[],
+  ragStoreName: string | undefined
+): Promise<Map<string, { dependsOn: TaskDependency[]; blocks: TaskDependency[] }>> {
+  const dependencyMap = new Map<string, { dependsOn: TaskDependency[]; blocks: TaskDependency[] }>();
+
+  // Initialize dependency arrays for each task
+  for (const task of tasks) {
+    dependencyMap.set(task.id, { dependsOn: [], blocks: [] });
+  }
+
+  // Create a lookup map for suggested tasks by title (lowercase for matching)
+  const suggestedTasksByTitle = new Map<string, SuggestedTask>();
+  for (const task of tasks) {
+    suggestedTasksByTitle.set(task.title.toLowerCase(), task);
+  }
+
+  for (const task of tasks) {
+    const taskContent = `${task.title}\n${task.description}\n${task.acceptanceCriteria.join("\n")}`;
+    const detected = detectDependenciesFromContent(taskContent);
+    const taskDeps = dependencyMap.get(task.id)!;
+
+    // Process DEPENDS_ON references
+    for (const reference of detected.dependsOn) {
+      const refLower = reference.toLowerCase();
+
+      // First check if it matches another suggested task
+      let foundInSuggested = false;
+      const suggestedEntries = Array.from(suggestedTasksByTitle.entries());
+      for (const [title, suggestedTask] of suggestedEntries) {
+        if (suggestedTask.id !== task.id && (title.includes(refLower) || refLower.includes(title))) {
+          taskDeps.dependsOn.push({
+            taskId: suggestedTask.id,
+            taskTitle: suggestedTask.title,
+            type: "DEPENDS_ON",
+            isExisting: false,
+          });
+          foundInSuggested = true;
+          break;
+        }
+      }
+
+      // If not found in suggested tasks, search in existing tasks via Pinecone
+      if (!foundInSuggested && ragStoreName) {
+        try {
+          const searchResults = await ragRepository.searchFiles(reference, ragStoreName);
+          const bestMatch = searchResults.find((r) => r.relevanceScore > 0.6);
+          if (bestMatch) {
+            // Extract task title from content (first line usually contains "Task: title")
+            const titleMatch = bestMatch.content.match(/Task:\s*(.+)/);
+            const matchedTitle = titleMatch ? titleMatch[1].trim() : bestMatch.id;
+
+            taskDeps.dependsOn.push({
+              taskId: bestMatch.id,
+              taskTitle: matchedTitle,
+              type: "DEPENDS_ON",
+              isExisting: true,
+            });
+          }
+        } catch (error) {
+          console.error("[Grooming API] Error searching for dependency:", error);
+        }
+      }
+    }
+
+    // Process BLOCKS references
+    for (const reference of detected.blocks) {
+      const refLower = reference.toLowerCase();
+
+      // First check if it matches another suggested task
+      let foundInSuggested = false;
+      const suggestedEntriesForBlocks = Array.from(suggestedTasksByTitle.entries());
+      for (const [title, suggestedTask] of suggestedEntriesForBlocks) {
+        if (suggestedTask.id !== task.id && (title.includes(refLower) || refLower.includes(title))) {
+          taskDeps.blocks.push({
+            taskId: suggestedTask.id,
+            taskTitle: suggestedTask.title,
+            type: "BLOCKS",
+            isExisting: false,
+          });
+          foundInSuggested = true;
+          break;
+        }
+      }
+
+      // If not found in suggested tasks, search in existing tasks via Pinecone
+      if (!foundInSuggested && ragStoreName) {
+        try {
+          const searchResults = await ragRepository.searchFiles(reference, ragStoreName);
+          const bestMatch = searchResults.find((r) => r.relevanceScore > 0.6);
+          if (bestMatch) {
+            const titleMatch = bestMatch.content.match(/Task:\s*(.+)/);
+            const matchedTitle = titleMatch ? titleMatch[1].trim() : bestMatch.id;
+
+            taskDeps.blocks.push({
+              taskId: bestMatch.id,
+              taskTitle: matchedTitle,
+              type: "BLOCKS",
+              isExisting: true,
+            });
+          }
+        } catch (error) {
+          console.error("[Grooming API] Error searching for blocker:", error);
+        }
+      }
+    }
+  }
+
+  // Also detect implicit dependencies based on task ordering and categories
+  // Tasks in the same epic or with related categories might have dependencies
+  for (let i = 0; i < tasks.length; i++) {
+    const task = tasks[i];
+    const taskDeps = dependencyMap.get(task.id)!;
+
+    // Database tasks often need to be done before backend tasks
+    if (task.category === "backend") {
+      for (const otherTask of tasks) {
+        if (otherTask.id !== task.id && otherTask.category === "database" && task.epicId && task.epicId === otherTask.epicId) {
+          // Check if this dependency already exists
+          if (!taskDeps.dependsOn.find((d) => d.taskId === otherTask.id)) {
+            taskDeps.dependsOn.push({
+              taskId: otherTask.id,
+              taskTitle: otherTask.title,
+              type: "DEPENDS_ON",
+              isExisting: false,
+            });
+          }
+        }
+      }
+    }
+
+    // Frontend tasks often depend on backend/API tasks
+    if (task.category === "frontend") {
+      for (const otherTask of tasks) {
+        if (otherTask.id !== task.id && (otherTask.category === "backend" || otherTask.category === "api") && task.epicId && task.epicId === otherTask.epicId) {
+          if (!taskDeps.dependsOn.find((d) => d.taskId === otherTask.id)) {
+            taskDeps.dependsOn.push({
+              taskId: otherTask.id,
+              taskTitle: otherTask.title,
+              type: "DEPENDS_ON",
+              isExisting: false,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  return dependencyMap;
+}
 
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+}
+
+// Dependency between tasks
+export interface TaskDependency {
+  taskId: string;
+  taskTitle: string;
+  type: "DEPENDS_ON" | "BLOCKS";
+  isExisting: boolean; // true if it's an existing task in the project, false if it's a suggested task
 }
 
 interface SuggestedTask {
@@ -16,6 +230,9 @@ interface SuggestedTask {
   cleanArchitectureArea: "domain" | "application" | "infrastructure" | "presentation";
   acceptanceCriteria: string[];
   epicId?: string;
+  // Dependencies detected automatically or set by user
+  dependsOn?: TaskDependency[];
+  blocks?: TaskDependency[];
 }
 
 interface SuggestedEpic {
@@ -26,15 +243,31 @@ interface SuggestedEpic {
   taskIds: string[];
 }
 
+export interface GraphNode {
+  id: string;
+  title: string;
+  type: "task" | "epic";
+  category?: string;
+  priority?: string;
+  relevanceScore?: number;
+  relationships: {
+    type: string;
+    targetId: string;
+    targetTitle: string;
+    targetType: "task" | "epic";
+  }[];
+}
+
 export interface GroomingResponse {
   message: ChatMessage;
   suggestedTasks: SuggestedTask[];
   suggestedEpics: SuggestedEpic[];
+  graphNodes?: GraphNode[];
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const { messages, projectContext, existingTasks, documentContent, documentName, documentContext, ragStoreName } = await request.json();
+    const { messages, projectContext, existingTasks, documentContent, documentName, documentContext, ragStoreName, projectId } = await request.json();
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(
@@ -55,43 +288,82 @@ export async function POST(request: NextRequest) {
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-    // Search for similar tasks in RAG if storage name is provided
+    // Search for similar tasks using GraphRAG (Pinecone + Neo4j) if storage name is provided
     let ragSearchResults = "";
-    console.log("[Grooming API] ========== RAG SEARCH ==========");
+    let graphNodes: GraphNode[] = [];
+    console.log("[Grooming API] ========== GRAPH RAG SEARCH ==========");
     console.log("[Grooming API] ragStoreName received:", ragStoreName);
-    if (ragStoreName) {
+    console.log("[Grooming API] projectId received:", projectId);
+    if (ragStoreName && projectId) {
       try {
         const lastMessage = messages[messages.length - 1];
         if (lastMessage && lastMessage.role === "user") {
           console.log("[Grooming API] User query:", lastMessage.content);
-          console.log("[Grooming API] Calling ragRepository.searchFiles...");
-          const searchResults = await ragRepository.searchFiles(lastMessage.content, ragStoreName);
+          console.log("[Grooming API] Calling graphRAGService.search...");
+          const searchResults = await graphRAGService.search(
+            lastMessage.content,
+            ragStoreName,
+            projectId,
+            { includeGraphContext: true, includeRelatedTasks: true }
+          );
           console.log("[Grooming API] Search returned", searchResults.length, "results");
           console.log("[Grooming API] Results:", JSON.stringify(searchResults, null, 2));
           if (searchResults.length > 0) {
-            ragSearchResults = `
-SIMILAR EXISTING TASKS/CONTEXT FOUND IN PROJECT (from RAG search):
----
-${searchResults.map((result: { content: string; relevanceScore: number }, index: number) => `[Result ${index + 1}] (relevance: ${(result.relevanceScore * 100).toFixed(1)}%)
-${result.content}`).join("\n\n")}
----
+            // Use the GraphRAG service to format results with graph context
+            ragSearchResults = graphRAGService.formatForLLMContext(searchResults);
 
-IMPORTANT: Review the above search results to check if similar tasks already exist in the project. If you find existing tasks that are similar to what the user is asking for:
-1. Mention to the user that similar tasks may already exist
-2. Explain what you found and how it relates to their request
-3. Only suggest NEW tasks that are genuinely different from existing ones
-4. If the user's request is already covered by existing tasks, let them know instead of creating duplicates
-`;
+            // Convert search results to graph nodes for visualization
+            graphNodes = searchResults.map((result) => {
+              const node: GraphNode = {
+                id: result.taskId || `result-${Math.random().toString(36).slice(2, 11)}`,
+                title: result.graphContext?.task?.title || result.content.split("\n")[0].replace("Task: ", ""),
+                type: "task",
+                category: result.graphContext?.task?.category,
+                priority: result.graphContext?.task?.priority,
+                relevanceScore: result.relevanceScore,
+                relationships: [],
+              };
+
+              // Add relationships from graph context
+              if (result.graphContext?.relationships) {
+                node.relationships = result.graphContext.relationships
+                  .filter((rel) => rel.relatedTask || rel.relatedEpic)
+                  .map((rel) => ({
+                    type: rel.type,
+                    targetId: rel.relatedTask?.id || rel.relatedEpic?.id || "",
+                    targetTitle: rel.relatedTask?.title || rel.relatedEpic?.title || "",
+                    targetType: rel.relatedEpic ? "epic" as const : "task" as const,
+                  }));
+              }
+
+              // Add related tasks as RELATED_TO relationships
+              if (result.relatedTasks) {
+                result.relatedTasks.forEach((relatedTask) => {
+                  if (!node.relationships.find((r) => r.targetId === relatedTask.id)) {
+                    node.relationships.push({
+                      type: "RELATED_TO",
+                      targetId: relatedTask.id,
+                      targetTitle: relatedTask.title,
+                      targetType: "task",
+                    });
+                  }
+                });
+              }
+
+              return node;
+            });
+
+            console.log("[Grooming API] Graph nodes created:", graphNodes.length);
           }
         }
       } catch (error) {
-        console.error("[Grooming API] Error searching RAG:", error);
+        console.error("[Grooming API] Error searching GraphRAG:", error);
         // Continue without RAG results if search fails
       }
     } else {
-      console.log("[Grooming API] No ragStoreName provided, skipping RAG search");
+      console.log("[Grooming API] No ragStoreName or projectId provided, skipping GraphRAG search");
     }
-    console.log("[Grooming API] ========== RAG SEARCH END ==========");
+    console.log("[Grooming API] ========== GRAPH RAG SEARCH END ==========");
 
     // Build document context section
     let documentSection = "";
@@ -303,13 +575,38 @@ Always respond with valid JSON only. No additional text before or after the JSON
       taskIds: Array.isArray(epic.taskIds) ? epic.taskIds : [],
     }));
 
+    // Detect dependencies for suggested tasks
+    let tasksWithDependencies = validatedTasks;
+    if (validatedTasks.length > 0) {
+      try {
+        console.log("[Grooming API] Detecting dependencies for", validatedTasks.length, "tasks");
+        const dependencyMap = await findTaskDependencies(validatedTasks as SuggestedTask[], ragStoreName);
+
+        // Add dependencies to each task
+        tasksWithDependencies = validatedTasks.map((task) => {
+          const deps = dependencyMap.get(task.id);
+          return {
+            ...task,
+            dependsOn: deps?.dependsOn || [],
+            blocks: deps?.blocks || [],
+          };
+        });
+
+        console.log("[Grooming API] Dependencies detected successfully");
+      } catch (depError) {
+        console.error("[Grooming API] Error detecting dependencies:", depError);
+        // Continue without dependencies if detection fails
+      }
+    }
+
     return NextResponse.json({
       message: {
         role: "assistant",
         content: parsedResponse.response,
       },
-      suggestedTasks: validatedTasks,
+      suggestedTasks: tasksWithDependencies,
       suggestedEpics: validatedEpics,
+      graphNodes: graphNodes.length > 0 ? graphNodes : undefined,
     } as GroomingResponse);
   } catch (error) {
     console.error("Grooming chat API error:", error);

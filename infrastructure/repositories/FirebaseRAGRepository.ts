@@ -46,7 +46,8 @@ export class FirebaseRAGRepository implements RAGRepository {
         (chunk: {
           chunk?: { data?: { stringValue?: string } };
           chunkRelevanceScore?: number;
-        }): RAGSearchResult => ({
+        }, index: number): RAGSearchResult => ({
+          id: `gemini-chunk-${index}`,
           content: chunk.chunk?.data?.stringValue || "",
           relevanceScore: chunk.chunkRelevanceScore || 0,
         }),

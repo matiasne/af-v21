@@ -385,6 +385,35 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
 
     await deleteDoc(epicRef);
   }
+
+  async updateTask(
+    userId: string,
+    projectId: string,
+    taskId: string,
+    updates: {
+      title?: string;
+      description?: string;
+      dependencies?: string[];
+    }
+  ): Promise<void> {
+    const taskRef = doc(db, "projects", projectId, "tasks", taskId);
+
+    const updateData: Record<string, unknown> = {
+      updatedAt: Date.now(),
+    };
+
+    if (updates.title !== undefined) {
+      updateData.title = updates.title;
+    }
+    if (updates.description !== undefined) {
+      updateData.description = updates.description;
+    }
+    if (updates.dependencies !== undefined) {
+      updateData.dependencies = updates.dependencies;
+    }
+
+    await updateDoc(taskRef, updateData);
+  }
 }
 
 export const executionPlanRepository = new FirebaseExecutionPlanRepository();

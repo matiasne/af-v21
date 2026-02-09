@@ -63,4 +63,15 @@ export interface ExecutionPlanRepository {
     epicId: string,
     deleteTasksToo?: boolean
   ): Promise<void>;
+
+  updateTask(
+    userId: string,
+    projectId: string,
+    taskId: string,
+    updates: {
+      title?: string;
+      description?: string;
+      dependencies?: string[];
+    }
+  ): Promise<void>;
 }

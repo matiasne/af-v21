@@ -53,12 +53,34 @@ async function ragGetOrCreateCorpus(corpusDisplayName: string): Promise<RAGCorpu
   }
 }
 
-async function ragUploadDocument(corpusName: string, displayName: string, content: string): Promise<RAGFile | null> {
+interface TaskMetadataForRAG {
+  title: string;
+  description: string;
+  category: string;
+  priority: string;
+  cleanArchitectureArea: string;
+  epicId?: string;
+}
+
+async function ragUploadDocument(
+  corpusName: string,
+  displayName: string,
+  content: string,
+  projectId?: string,
+  taskMetadata?: TaskMetadataForRAG
+): Promise<RAGFile | null> {
   try {
     const response = await fetch("/api/rag/files", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "uploadDocument", corpusName, displayName, content }),
+      body: JSON.stringify({
+        action: "uploadDocument",
+        corpusName,
+        displayName,
+        content,
+        projectId,
+        taskMetadata,
+      }),
     });
     if (!response.ok) {
       console.error("[RAG API] uploadDocument failed:", await response.text());
@@ -85,6 +107,42 @@ async function ragDeleteDocument(corpusName: string, displayName: string): Promi
     return true;
   } catch (error) {
     console.error("[RAG API] Error in deleteDocument:", error);
+    return false;
+  }
+}
+
+async function ragUpdateTask(
+  corpusName: string,
+  taskId: string,
+  projectId: string,
+  updates: {
+    title?: string;
+    description?: string;
+    dependencies?: string[];
+    category?: string;
+    priority?: string;
+    cleanArchitectureArea?: string;
+  }
+): Promise<boolean> {
+  try {
+    const response = await fetch("/api/rag/files", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "updateTask",
+        corpusName,
+        taskId,
+        projectId,
+        updates,
+      }),
+    });
+    if (!response.ok) {
+      console.error("[RAG API] updateTask failed:", await response.text());
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error("[RAG API] Error in updateTask:", error);
     return false;
   }
 }
@@ -644,10 +702,19 @@ export default function KanbanPage() {
             .filter(Boolean)
             .join("\n\n");
 
+          // Pass projectId and taskMetadata to store in Neo4j as well
           await ragUploadDocument(
             corpus.name,
             `task-${taskId}`,
             taskContent,
+            projectId,
+            {
+              title: taskData.title,
+              description: taskData.description,
+              category: taskData.category,
+              priority: taskData.priority,
+              cleanArchitectureArea: taskData.cleanArchitectureArea,
+            }
           );
         }
       } catch (ragError) {
@@ -1274,6 +1341,41 @@ export default function KanbanPage() {
                 );
               } catch (error) {
                 console.error("Error moving task to backlog:", error);
+              }
+            }
+          }}
+          onUpdateTask={async (taskId: string, updates: { title?: string; description?: string; dependencies?: string[] }) => {
+            if (user?.uid && projectId) {
+              try {
+                // Update in Firestore
+                await executionPlanRepository.updateTask(
+                  user.uid,
+                  projectId,
+                  taskId,
+                  updates,
+                );
+
+                // Also update in RAG (Pinecone + Neo4j) if storage name is available
+                const ragStoreName = project?.taskRAGStore || migration?.ragFunctionalAndBusinessStoreName;
+                if (ragStoreName) {
+                  // Find the current task to get existing metadata
+                  const currentTask = tasks.find(t => t.id === taskId);
+                  await ragUpdateTask(
+                    ragStoreName,
+                    `task-${taskId}`,
+                    projectId,
+                    {
+                      title: updates.title,
+                      description: updates.description,
+                      dependencies: updates.dependencies,
+                      category: currentTask?.category,
+                      priority: currentTask?.priority,
+                      cleanArchitectureArea: currentTask?.cleanArchitectureArea,
+                    }
+                  );
+                }
+              } catch (error) {
+                console.error("Error updating task:", error);
               }
             }
           }}
