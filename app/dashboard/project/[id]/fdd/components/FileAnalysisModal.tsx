@@ -59,7 +59,6 @@ export function FileAnalysisModal({
     if (!isOpen || !fileId) return;
 
     const unsubscribe = fileAnalysisRepository.subscribeComments(
-      userId,
       projectId,
       migrationId,
       fileId,
@@ -74,7 +73,7 @@ export function FileAnalysisModal({
     return () => {
       unsubscribe();
     };
-  }, [isOpen, fileId, userId, projectId, migrationId]);
+  }, [isOpen, fileId, projectId, migrationId]);
 
   const handleAddComment = useCallback(async () => {
     if (!newComment.trim()) return;
@@ -82,7 +81,6 @@ export function FileAnalysisModal({
     setIsAddingComment(true);
     try {
       await fileAnalysisRepository.addComment(
-        userId,
         projectId,
         migrationId,
         fileId,
@@ -94,13 +92,12 @@ export function FileAnalysisModal({
     } finally {
       setIsAddingComment(false);
     }
-  }, [newComment, userId, projectId, migrationId, fileId]);
+  }, [newComment, projectId, migrationId, fileId]);
 
   const handleDeleteComment = useCallback(async (commentId: string) => {
     setDeletingCommentId(commentId);
     try {
       await fileAnalysisRepository.deleteComment(
-        userId,
         projectId,
         migrationId,
         fileId,
@@ -111,7 +108,7 @@ export function FileAnalysisModal({
     } finally {
       setDeletingCommentId(null);
     }
-  }, [userId, projectId, migrationId, fileId]);
+  }, [projectId, migrationId, fileId]);
 
   useEffect(() => {
     if (!isOpen || !fileId) return;
@@ -120,7 +117,6 @@ export function FileAnalysisModal({
       setLoading(true);
       try {
         const result = await fileAnalysisRepository.getFileWithAnalyses(
-          userId,
           projectId,
           migrationId,
           fileId

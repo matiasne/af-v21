@@ -228,10 +228,7 @@ export default function KanbanPage() {
 
   const projectId = params.id as string;
 
-  const { migration, loading: migrationLoading } = useMigration(
-    projectId,
-    projectOwnerId,
-  );
+  const { migration, loading: migrationLoading } = useMigration(projectId);
 
   const [selectedModel, setSelectedModel] = useState<string>(
     project?.executorModel || "claude-sonnet-4-5",

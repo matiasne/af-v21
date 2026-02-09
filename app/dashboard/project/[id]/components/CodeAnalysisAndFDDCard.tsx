@@ -205,14 +205,13 @@ export function CodeAnalysisAndFDDCard({
 
   // FDD data loading
   useEffect(() => {
-    if (!user?.uid || !projectId || !migrationId) {
+    if (!projectId || !migrationId) {
       setFddLoading(false);
       return;
     }
 
     setFddLoading(true);
     const unsubscribe = fddRepository.subscribeTableOfContents(
-      user.uid,
       projectId,
       migrationId,
       (updatedToc) => {
@@ -226,7 +225,7 @@ export function CodeAnalysisAndFDDCard({
     );
 
     return () => unsubscribe();
-  }, [user?.uid, projectId, migrationId]);
+  }, [projectId, migrationId]);
 
   const totalSections = toc?.sections.length || 0;
   const totalSubsections =

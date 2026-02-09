@@ -154,7 +154,6 @@ export default function SDDPage() {
     setTocLoading(true);
 
     const unsubscribe = sddRepository.subscribeTableOfContents(
-      user.uid,
       projectId,
       (updatedToc) => {
         setToc(updatedToc);
@@ -169,7 +168,7 @@ export default function SDDPage() {
     return () => {
       unsubscribe();
     };
-  }, [user?.uid, projectId]);
+  }, [projectId]);
 
   if (authLoading || projectsLoading) {
     return (

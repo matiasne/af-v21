@@ -16,12 +16,10 @@ import { TaskRepository } from "@/domain/repositories/TaskRepository";
 import { StepStatus } from "@/domain/entities/Project";
 
 export class FirebaseTaskRepository implements TaskRepository {
-  // Path: users/{userId}/projects/{projectId}/code-analysis-module/{migrationId}/tasks
-  private getTasksCollection(userId: string, projectId: string, migrationId: string) {
+  // Path: projects/{projectId}/code-analysis-module/{migrationId}/tasks
+  private getTasksCollection(projectId: string, migrationId: string) {
     return collection(
       db,
-      "users",
-      userId,
       "projects",
       projectId,
       "code-analysis-module",
@@ -31,15 +29,12 @@ export class FirebaseTaskRepository implements TaskRepository {
   }
 
   private getTaskDoc(
-    userId: string,
     projectId: string,
     migrationId: string,
     taskId: string
   ) {
     return doc(
       db,
-      "users",
-      userId,
       "projects",
       projectId,
       "code-analysis-module",
@@ -64,9 +59,9 @@ export class FirebaseTaskRepository implements TaskRepository {
     };
   }
 
-  async getTasks(userId: string, projectId: string, migrationId: string): Promise<Task[]> {
+  async getTasks(projectId: string, migrationId: string): Promise<Task[]> {
     const q = query(
-      this.getTasksCollection(userId, projectId, migrationId),
+      this.getTasksCollection(projectId, migrationId),
       orderBy("createdAt", "asc")
     );
     const querySnapshot = await getDocs(q);
@@ -77,13 +72,12 @@ export class FirebaseTaskRepository implements TaskRepository {
   }
 
   async getTasksByPhase(
-    userId: string,
     projectId: string,
     migrationId: string,
     phase: StepStatus
   ): Promise<Task[]> {
     const q = query(
-      this.getTasksCollection(userId, projectId, migrationId),
+      this.getTasksCollection(projectId, migrationId),
       where("phase", "==", phase),
       orderBy("createdAt", "asc")
     );
@@ -95,13 +89,12 @@ export class FirebaseTaskRepository implements TaskRepository {
   }
 
   async updateTaskColumn(
-    userId: string,
     projectId: string,
     migrationId: string,
     taskId: string,
     column: TaskColumn
   ): Promise<void> {
-    const docRef = this.getTaskDoc(userId, projectId, migrationId, taskId);
+    const docRef = this.getTaskDoc(projectId, migrationId, taskId);
     await updateDoc(docRef, {
       column,
       updatedAt: Date.now(),
@@ -109,14 +102,13 @@ export class FirebaseTaskRepository implements TaskRepository {
   }
 
   subscribeTasks(
-    userId: string,
     projectId: string,
     migrationId: string,
     onUpdate: (tasks: Task[]) => void,
     onError?: (error: Error) => void
   ): () => void {
     const q = query(
-      this.getTasksCollection(userId, projectId, migrationId),
+      this.getTasksCollection(projectId, migrationId),
       orderBy("createdAt", "asc")
     );
 

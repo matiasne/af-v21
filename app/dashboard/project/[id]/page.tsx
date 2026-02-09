@@ -553,12 +553,10 @@ export default function ProjectDashboardPage() {
 
   // Real-time subscription for code-analysis-module action
   useEffect(() => {
-    if (!projectId || !user?.uid) return;
+    if (!projectId) return;
 
     const codeAnalysisCol = collection(
       db,
-      "users",
-      user.uid,
       "projects",
       projectId,
       "code-analysis-module"
@@ -582,7 +580,7 @@ export default function ProjectDashboardPage() {
     });
 
     return () => unsubscribe();
-  }, [projectId, user?.uid]);
+  }, [projectId]);
 
   if (authLoading || projectsLoading) {
     return (

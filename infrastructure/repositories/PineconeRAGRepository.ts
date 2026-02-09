@@ -379,4 +379,12 @@ export class PineconeRAGRepository implements RAGRepository {
   }
 }
 
-export const ragRepository = new PineconeRAGRepository();
+// Lazy initialization to avoid build-time errors when env vars are not available
+let _ragRepository: PineconeRAGRepository | null = null;
+
+export const getRagRepository = (): PineconeRAGRepository => {
+  if (!_ragRepository) {
+    _ragRepository = new PineconeRAGRepository();
+  }
+  return _ragRepository;
+};

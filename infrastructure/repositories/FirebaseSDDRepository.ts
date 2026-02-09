@@ -9,9 +9,9 @@ import {
 import { SDDRepository } from "@/domain/repositories/SDDRepository";
 
 export class FirebaseSDDRepository implements SDDRepository {
-  // Path: users/{userId}/projects/{projectId}/sdd/toc
-  private getTocDoc(userId: string, projectId: string) {
-    return doc(db, "users", userId, "projects", projectId, "sdd", "toc");
+  // Path: projects/{projectId}/sdd/toc
+  private getTocDoc(projectId: string) {
+    return doc(db, "projects", projectId, "sdd", "toc");
   }
 
   private toSubsection(data: Record<string, unknown>): SDDSubsection {
@@ -48,10 +48,9 @@ export class FirebaseSDDRepository implements SDDRepository {
   }
 
   async getTableOfContents(
-    userId: string,
     projectId: string
   ): Promise<SDDTableOfContents | null> {
-    const docRef = this.getTocDoc(userId, projectId);
+    const docRef = this.getTocDoc(projectId);
     const docSnap = await getDoc(docRef);
 
     if (!docSnap.exists()) {
@@ -62,12 +61,11 @@ export class FirebaseSDDRepository implements SDDRepository {
   }
 
   subscribeTableOfContents(
-    userId: string,
     projectId: string,
     onUpdate: (toc: SDDTableOfContents | null) => void,
     onError?: (error: Error) => void
   ): () => void {
-    const docRef = this.getTocDoc(userId, projectId);
+    const docRef = this.getTocDoc(projectId);
 
     const unsubscribe: Unsubscribe = onSnapshot(
       docRef,

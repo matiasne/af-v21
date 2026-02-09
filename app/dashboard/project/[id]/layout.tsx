@@ -28,7 +28,7 @@ function ProjectLayoutContent({ children }: { children: ReactNode }) {
     projectOwnerId,
   } = useProjectChat();
 
-  const { migration } = useMigration(projectId, projectOwnerId);
+  const { migration } = useMigration(projectId);
 
   // Hide FloatingInput on grooming and graph pages
   const isGroomingPage = pathname?.includes("/grooming");

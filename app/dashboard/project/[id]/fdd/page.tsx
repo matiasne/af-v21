@@ -281,7 +281,7 @@ export default function FDDPage() {
   const sectionRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const projectId = params.id as string;
-  const { migration, initializing: migrationInitializing } = useMigration(projectId, projectOwnerId);
+  const { migration, initializing: migrationInitializing } = useMigration(projectId);
 
   // Scroll to section when selected from sidebar
   const scrollToSection = useCallback((sectionNumber: string) => {
@@ -371,7 +371,6 @@ export default function FDDPage() {
     setTocLoading(true);
 
     const unsubscribe = fddRepository.subscribeTableOfContents(
-      user.uid,
       projectId,
       migration.id,
       (updatedToc) => {

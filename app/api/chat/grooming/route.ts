@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { graphRAGService } from "@/application/services/GraphRAGService";
-import { ragRepository } from "@/infrastructure/repositories/PineconeRAGRepository";
+import { getRagRepository } from "@/infrastructure/repositories/PineconeRAGRepository";
 
 /**
  * Detect dependencies from task content using pattern matching
@@ -102,7 +102,7 @@ async function findTaskDependencies(
       // If not found in suggested tasks, search in existing tasks via Pinecone
       if (!foundInSuggested && ragStoreName) {
         try {
-          const searchResults = await ragRepository.searchFiles(reference, ragStoreName);
+          const searchResults = await getRagRepository().searchFiles(reference, ragStoreName);
           const bestMatch = searchResults.find((r) => r.relevanceScore > 0.6);
           if (bestMatch) {
             // Extract task title from content (first line usually contains "Task: title")
@@ -145,7 +145,7 @@ async function findTaskDependencies(
       // If not found in suggested tasks, search in existing tasks via Pinecone
       if (!foundInSuggested && ragStoreName) {
         try {
-          const searchResults = await ragRepository.searchFiles(reference, ragStoreName);
+          const searchResults = await getRagRepository().searchFiles(reference, ragStoreName);
           const bestMatch = searchResults.find((r) => r.relevanceScore > 0.6);
           if (bestMatch) {
             const titleMatch = bestMatch.content.match(/Task:\s*(.+)/);

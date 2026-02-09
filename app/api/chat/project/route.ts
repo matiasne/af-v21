@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { ragRepository } from "@/infrastructure/repositories/FirebaseRAGRepository";
+import { getRagRepository } from "@/infrastructure/repositories/FirebaseRAGRepository";
 import {
   ProjectChatService,
   ProjectChatRequest,
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const chatService = new ProjectChatService(apiKey, ragRepository);
+    const chatService = new ProjectChatService(apiKey, getRagRepository());
     const response = await chatService.chat(body);
 
     return NextResponse.json(response);

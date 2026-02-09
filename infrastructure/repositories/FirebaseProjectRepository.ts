@@ -357,7 +357,6 @@ export class FirebaseProjectRepository implements ProjectRepository {
   }
 
   async startCodeAnalysis(
-    userId: string,
     projectId: string,
     migrationId: string
   ): Promise<void> {
@@ -392,7 +391,6 @@ export class FirebaseProjectRepository implements ProjectRepository {
   }
 
   async stopCodeAnalysis(
-    userId: string,
     projectId: string,
     migrationId: string
   ): Promise<void> {
@@ -417,11 +415,10 @@ export class FirebaseProjectRepository implements ProjectRepository {
   }
 
   async resumeCodeAnalysis(
-    userId: string,
     projectId: string,
     migrationId: string
   ): Promise<void> {
-    console.log("[FirebaseProjectRepository] resumeCodeAnalysis called:", { userId, projectId, migrationId });
+    console.log("[FirebaseProjectRepository] resumeCodeAnalysis called:", { projectId, migrationId });
 
     const codeAnalysisCol = collection(
       db,

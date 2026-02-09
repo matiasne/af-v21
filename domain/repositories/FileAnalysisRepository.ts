@@ -3,14 +3,12 @@ import { AnalyzedFile, BusinessAnalysis, FunctionalAnalysis } from "../entities/
 export interface FileAnalysisRepository {
   // Get all files for a migration
   getFiles(
-    userId: string,
     projectId: string,
     migrationId: string
   ): Promise<AnalyzedFile[]>;
 
   // Subscribe to files list
   subscribeFiles(
-    userId: string,
     projectId: string,
     migrationId: string,
     onUpdate: (files: AnalyzedFile[]) => void,
@@ -19,7 +17,6 @@ export interface FileAnalysisRepository {
 
   // Get specific file with analyses
   getFileWithAnalyses(
-    userId: string,
     projectId: string,
     migrationId: string,
     fileId: string
@@ -31,7 +28,6 @@ export interface FileAnalysisRepository {
 
   // Skip a file from FDD enrichment
   skipFile(
-    userId: string,
     projectId: string,
     migrationId: string,
     fileId: string
@@ -39,7 +35,6 @@ export interface FileAnalysisRepository {
 
   // Add a comment to a file
   addComment(
-    userId: string,
     projectId: string,
     migrationId: string,
     fileId: string,
@@ -48,7 +43,6 @@ export interface FileAnalysisRepository {
 
   // Get comments for a file
   getComments(
-    userId: string,
     projectId: string,
     migrationId: string,
     fileId: string
@@ -56,7 +50,6 @@ export interface FileAnalysisRepository {
 
   // Subscribe to comments for a file
   subscribeComments(
-    userId: string,
     projectId: string,
     migrationId: string,
     fileId: string,
@@ -66,7 +59,6 @@ export interface FileAnalysisRepository {
 
   // Delete a comment
   deleteComment(
-    userId: string,
     projectId: string,
     migrationId: string,
     fileId: string,

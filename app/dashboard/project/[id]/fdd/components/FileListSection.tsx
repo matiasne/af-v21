@@ -37,11 +37,10 @@ export function FileListSection({ userId, projectId, migrationId }: FileListSect
       return;
     }
 
-    console.log("FileListSection: Subscribing to files with params:", { userId, projectId, migrationId });
+    console.log("FileListSection: Subscribing to files with params:", { projectId, migrationId });
     setLoading(true);
 
     const unsubscribe = fileAnalysisRepository.subscribeFiles(
-      userId,
       projectId,
       migrationId,
       (updatedFiles) => {
@@ -58,7 +57,7 @@ export function FileListSection({ userId, projectId, migrationId }: FileListSect
     return () => {
       unsubscribe();
     };
-  }, [userId, projectId, migrationId]);
+  }, [projectId, migrationId]);
 
   const filteredFiles = useMemo(() =>
     files.filter((file) =>
@@ -128,7 +127,7 @@ export function FileListSection({ userId, projectId, migrationId }: FileListSect
       e.stopPropagation();
       setSkippingFileId(fileId);
       try {
-        await fileAnalysisRepository.skipFile(userId, projectId, migrationId, fileId);
+        await fileAnalysisRepository.skipFile(projectId, migrationId, fileId);
       } catch (error) {
         console.error("Error skipping file:", error);
       } finally {

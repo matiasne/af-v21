@@ -10,12 +10,10 @@ import {
 import { FDDRepository } from "@/domain/repositories/FDDRepository";
 
 export class FirebaseFDDRepository implements FDDRepository {
-  // Path: users/{userId}/projects/{projectId}/code-analysis-module/{migrationId}/fdd/toc
-  private getTocDoc(userId: string, projectId: string, migrationId: string) {
+  // Path: projects/{projectId}/code-analysis-module/{migrationId}/fdd/toc
+  private getTocDoc(projectId: string, migrationId: string) {
     return doc(
       db,
-      "users",
-      userId,
       "projects",
       projectId,
       "code-analysis-module",
@@ -87,11 +85,10 @@ export class FirebaseFDDRepository implements FDDRepository {
   }
 
   async getTableOfContents(
-    userId: string,
     projectId: string,
     migrationId: string
   ): Promise<FDDTableOfContents | null> {
-    const docRef = this.getTocDoc(userId, projectId, migrationId);
+    const docRef = this.getTocDoc(projectId, migrationId);
     const docSnap = await getDoc(docRef);
 
     if (!docSnap.exists()) {
@@ -102,13 +99,12 @@ export class FirebaseFDDRepository implements FDDRepository {
   }
 
   subscribeTableOfContents(
-    userId: string,
     projectId: string,
     migrationId: string,
     onUpdate: (toc: FDDTableOfContents | null) => void,
     onError?: (error: Error) => void
   ): () => void {
-    const docRef = this.getTocDoc(userId, projectId, migrationId);
+    const docRef = this.getTocDoc(projectId, migrationId);
 
     const unsubscribe: Unsubscribe = onSnapshot(
       docRef,

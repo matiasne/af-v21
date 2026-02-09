@@ -31,7 +31,6 @@ export function SDDCard({
 
     setLoading(true);
     const unsubscribe = sddRepository.subscribeTableOfContents(
-      user.uid,
       projectId,
       (updatedToc) => {
         setToc(updatedToc);
@@ -44,7 +43,7 @@ export function SDDCard({
     );
 
     return () => unsubscribe();
-  }, [user?.uid, projectId]);
+  }, [projectId]);
 
   const totalSections = toc?.sections.length || 0;
   const totalSubsections = toc?.sections.reduce((acc, s) => acc + s.subsections.length, 0) || 0;

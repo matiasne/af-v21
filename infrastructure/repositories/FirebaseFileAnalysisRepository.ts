@@ -20,12 +20,10 @@ import {
 import { FileAnalysisRepository } from "@/domain/repositories/FileAnalysisRepository";
 
 export class FirebaseFileAnalysisRepository implements FileAnalysisRepository {
-  // Path: users/{userId}/projects/{projectId}/code-analysis-module/{migrationId}/files
-  private getFilesCollection(userId: string, projectId: string, migrationId: string) {
+  // Path: projects/{projectId}/code-analysis-module/{migrationId}/files
+  private getFilesCollection(projectId: string, migrationId: string) {
     return collection(
       db,
-      "users",
-      userId,
       "projects",
       projectId,
       "code-analysis-module",
@@ -35,15 +33,12 @@ export class FirebaseFileAnalysisRepository implements FileAnalysisRepository {
   }
 
   private getFileDoc(
-    userId: string,
     projectId: string,
     migrationId: string,
     fileId: string
   ) {
     return doc(
       db,
-      "users",
-      userId,
       "projects",
       projectId,
       "code-analysis-module",
@@ -144,7 +139,6 @@ export class FirebaseFileAnalysisRepository implements FileAnalysisRepository {
   }
 
   private async checkHasBusinessAnalysis(
-    userId: string,
     projectId: string,
     migrationId: string,
     fileId: string
@@ -152,8 +146,6 @@ export class FirebaseFileAnalysisRepository implements FileAnalysisRepository {
     try {
       const businessCol = collection(
         db,
-        "users",
-        userId,
         "projects",
         projectId,
         "code-analysis-module",
@@ -170,7 +162,6 @@ export class FirebaseFileAnalysisRepository implements FileAnalysisRepository {
   }
 
   private async checkHasFunctionalAnalysis(
-    userId: string,
     projectId: string,
     migrationId: string,
     fileId: string
@@ -178,8 +169,6 @@ export class FirebaseFileAnalysisRepository implements FileAnalysisRepository {
     try {
       const functionalCol = collection(
         db,
-        "users",
-        userId,
         "projects",
         projectId,
         "code-analysis-module",
@@ -196,13 +185,12 @@ export class FirebaseFileAnalysisRepository implements FileAnalysisRepository {
   }
 
   private async checkHasUserComments(
-    userId: string,
     projectId: string,
     migrationId: string,
     fileId: string
   ): Promise<boolean> {
     try {
-      const commentsCol = this.getCommentsCollection(userId, projectId, migrationId, fileId);
+      const commentsCol = this.getCommentsCollection(projectId, migrationId, fileId);
       const commentsSnap = await getDocs(commentsCol);
       return !commentsSnap.empty;
     } catch (error) {
@@ -211,18 +199,15 @@ export class FirebaseFileAnalysisRepository implements FileAnalysisRepository {
   }
 
   private async getFileEnrichment(
-    userId: string,
     projectId: string,
     migrationId: string,
     fileId: string
   ): Promise<FDDEnrichment | undefined> {
     try {
-      // Path: users/{userId}/projects/{projectId}/code-analysis-module/{migrationId}/files/{fileId}/fdd_enrichment
+      // Path: projects/{projectId}/code-analysis-module/{migrationId}/files/{fileId}/fdd_enrichment
       // This is a subcollection, so we need to get all documents and take the first one
       const enrichmentCol = collection(
         db,
-        "users",
-        userId,
         "projects",
         projectId,
         "code-analysis-module",
@@ -246,11 +231,10 @@ export class FirebaseFileAnalysisRepository implements FileAnalysisRepository {
   }
 
   async getFiles(
-    userId: string,
     projectId: string,
     migrationId: string
   ): Promise<AnalyzedFile[]> {
-    const filesCol = this.getFilesCollection(userId, projectId, migrationId);
+    const filesCol = this.getFilesCollection(projectId, migrationId);
 
     // Don't use orderBy to avoid Firebase index requirement
     // We'll sort in memory instead
@@ -272,15 +256,14 @@ export class FirebaseFileAnalysisRepository implements FileAnalysisRepository {
   }
 
   subscribeFiles(
-    userId: string,
     projectId: string,
     migrationId: string,
     onUpdate: (files: AnalyzedFile[]) => void,
     onError?: (error: Error) => void
   ): () => void {
-    const filesCol = this.getFilesCollection(userId, projectId, migrationId);
+    const filesCol = this.getFilesCollection(projectId, migrationId);
     console.log("FirebaseFileAnalysisRepository: Subscribing to collection path:",
-      `users/${userId}/projects/${projectId}/code-analysis-module/${migrationId}/files`);
+      `projects/${projectId}/code-analysis-module/${migrationId}/files`);
 
     // Don't use orderBy to avoid Firebase index requirement
     // We'll sort in memory instead
@@ -296,10 +279,10 @@ export class FirebaseFileAnalysisRepository implements FileAnalysisRepository {
 
         // Fetch enrichment status and analysis flags in parallel
         const [enrichment, hasBusinessAnalysis, hasFunctionalAnalysis, hasUserComments] = await Promise.all([
-          this.getFileEnrichment(userId, projectId, migrationId, docSnap.id),
-          this.checkHasBusinessAnalysis(userId, projectId, migrationId, docSnap.id),
-          this.checkHasFunctionalAnalysis(userId, projectId, migrationId, docSnap.id),
-          this.checkHasUserComments(userId, projectId, migrationId, docSnap.id),
+          this.getFileEnrichment(projectId, migrationId, docSnap.id),
+          this.checkHasBusinessAnalysis(projectId, migrationId, docSnap.id),
+          this.checkHasFunctionalAnalysis(projectId, migrationId, docSnap.id),
+          this.checkHasUserComments(projectId, migrationId, docSnap.id),
         ]);
 
         if (enrichment) {
@@ -333,7 +316,6 @@ export class FirebaseFileAnalysisRepository implements FileAnalysisRepository {
   }
 
   async getFileWithAnalyses(
-    userId: string,
     projectId: string,
     migrationId: string,
     fileId: string
@@ -344,9 +326,9 @@ export class FirebaseFileAnalysisRepository implements FileAnalysisRepository {
   } | null> {
     console.log("FirebaseFileAnalysisRepository: getFileWithAnalyses called with fileId:", fileId);
     console.log("FirebaseFileAnalysisRepository: Full path:",
-      `users/${userId}/projects/${projectId}/code-analysis-module/${migrationId}/files/${fileId}`);
+      `projects/${projectId}/code-analysis-module/${migrationId}/files/${fileId}`);
 
-    const fileDocRef = this.getFileDoc(userId, projectId, migrationId, fileId);
+    const fileDocRef = this.getFileDoc(projectId, migrationId, fileId);
     const fileSnap = await getDoc(fileDocRef);
 
     if (!fileSnap.exists()) {
@@ -362,7 +344,7 @@ export class FirebaseFileAnalysisRepository implements FileAnalysisRepository {
     );
 
     // Fetch enrichment on-demand
-    const fddEnrichment = await this.getFileEnrichment(userId, projectId, migrationId, fileId);
+    const fddEnrichment = await this.getFileEnrichment(projectId, migrationId, fileId);
     if (fddEnrichment) {
       file.fddEnrichment = fddEnrichment;
     }
@@ -372,8 +354,6 @@ export class FirebaseFileAnalysisRepository implements FileAnalysisRepository {
     try {
       const businessCol = collection(
         db,
-        "users",
-        userId,
         "projects",
         projectId,
         "code-analysis-module",
@@ -399,8 +379,6 @@ export class FirebaseFileAnalysisRepository implements FileAnalysisRepository {
     try {
       const functionalCol = collection(
         db,
-        "users",
-        userId,
         "projects",
         projectId,
         "code-analysis-module",
@@ -429,15 +407,12 @@ export class FirebaseFileAnalysisRepository implements FileAnalysisRepository {
   }
 
   async skipFile(
-    userId: string,
     projectId: string,
     migrationId: string,
     fileId: string
   ): Promise<void> {
     const enrichmentCol = collection(
       db,
-      "users",
-      userId,
       "projects",
       projectId,
       "code-analysis-module",
@@ -454,15 +429,12 @@ export class FirebaseFileAnalysisRepository implements FileAnalysisRepository {
   }
 
   private getCommentsCollection(
-    userId: string,
     projectId: string,
     migrationId: string,
     fileId: string
   ) {
     return collection(
       db,
-      "users",
-      userId,
       "projects",
       projectId,
       "code-analysis-module",
@@ -474,13 +446,12 @@ export class FirebaseFileAnalysisRepository implements FileAnalysisRepository {
   }
 
   async addComment(
-    userId: string,
     projectId: string,
     migrationId: string,
     fileId: string,
     comment: string
   ): Promise<string> {
-    const commentsCol = this.getCommentsCollection(userId, projectId, migrationId, fileId);
+    const commentsCol = this.getCommentsCollection(projectId, migrationId, fileId);
     const docRef = await addDoc(commentsCol, {
       comment,
       createdAt: Date.now(),
@@ -489,12 +460,11 @@ export class FirebaseFileAnalysisRepository implements FileAnalysisRepository {
   }
 
   async getComments(
-    userId: string,
     projectId: string,
     migrationId: string,
     fileId: string
   ): Promise<Array<{ id: string; comment: string; createdAt: number }>> {
-    const commentsCol = this.getCommentsCollection(userId, projectId, migrationId, fileId);
+    const commentsCol = this.getCommentsCollection(projectId, migrationId, fileId);
     const q = query(commentsCol, orderBy("createdAt", "desc"));
     const snapshot = await getDocs(q);
 
@@ -506,14 +476,13 @@ export class FirebaseFileAnalysisRepository implements FileAnalysisRepository {
   }
 
   subscribeComments(
-    userId: string,
     projectId: string,
     migrationId: string,
     fileId: string,
     onUpdate: (comments: Array<{ id: string; comment: string; createdAt: number }>) => void,
     onError?: (error: Error) => void
   ): () => void {
-    const commentsCol = this.getCommentsCollection(userId, projectId, migrationId, fileId);
+    const commentsCol = this.getCommentsCollection(projectId, migrationId, fileId);
     const q = query(commentsCol, orderBy("createdAt", "desc"));
 
     const unsubscribe = onSnapshot(
@@ -538,7 +507,6 @@ export class FirebaseFileAnalysisRepository implements FileAnalysisRepository {
   }
 
   async deleteComment(
-    userId: string,
     projectId: string,
     migrationId: string,
     fileId: string,
@@ -546,8 +514,6 @@ export class FirebaseFileAnalysisRepository implements FileAnalysisRepository {
   ): Promise<void> {
     const commentDoc = doc(
       db,
-      "users",
-      userId,
       "projects",
       projectId,
       "code-analysis-module",

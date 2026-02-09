@@ -52,7 +52,7 @@ export default function TechStackPage() {
     getConfigChatMessages,
     addConfigChatMessage,
     clearConfigChatMessages,
-  } = useMigration(projectId, projectOwnerId);
+  } = useMigration(projectId);
 
   // Create memoized migration config chat functions
   const migrationConfigChatFunctions = useMemo(() => {

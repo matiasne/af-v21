@@ -21,7 +21,7 @@ export default function FilesAnalysisPage() {
   const [project, setProject] = useState<Project | null>(null);
 
   const projectId = params.id as string;
-  const { migration, initializing: migrationInitializing } = useMigration(projectId, projectOwnerId);
+  const { migration, initializing: migrationInitializing } = useMigration(projectId);
 
   // Set page title and breadcrumbs
   useEffect(() => {

@@ -457,8 +457,8 @@ export class FirebaseRAGRepository implements RAGRepository {
   }
 }
 
-// Export the Pinecone-based repository as the default
-export { ragRepository } from "./PineconeRAGRepository";
+// Export the Pinecone-based repository getter as the default
+export { getRagRepository } from "./PineconeRAGRepository";
 
 // Keep the class for backwards compatibility if needed
 export const geminiRagRepository = new FirebaseRAGRepository();

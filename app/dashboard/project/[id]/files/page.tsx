@@ -44,7 +44,7 @@ export default function FilesPage() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const projectId = params.id as string;
-  const { migration } = useMigration(projectId, projectOwnerId);
+  const { migration } = useMigration(projectId);
 
   // Set page title
   useEffect(() => {

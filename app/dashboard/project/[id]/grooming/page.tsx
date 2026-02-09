@@ -189,10 +189,7 @@ export default function GroomingPage() {
   const [existingTasks, setExistingTasks] = useState<ExistingTask[]>([]);
   const [tasksLoading, setTasksLoading] = useState(true);
 
-  const { loading: migrationLoading } = useMigration(
-    projectId,
-    projectOwnerId
-  );
+  const { loading: migrationLoading } = useMigration(projectId);
 
   // Use the tasks RAG store for searching similar tasks during grooming
   const tasksRagStoreName = project?.taskRAGStore || `${projectId}-tasks-rag`;

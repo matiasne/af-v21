@@ -33,7 +33,6 @@ export function FDDCard({
 
     setLoading(true);
     const unsubscribe = fddRepository.subscribeTableOfContents(
-      user.uid,
       projectId,
       migrationId,
       (updatedToc) => {
@@ -47,7 +46,7 @@ export function FDDCard({
     );
 
     return () => unsubscribe();
-  }, [user?.uid, projectId, migrationId]);
+  }, [projectId, migrationId]);
 
   const totalSections = toc?.sections.length || 0;
   const totalSubsections = toc?.sections.reduce((acc, s) => acc + s.subsections.length, 0) || 0;

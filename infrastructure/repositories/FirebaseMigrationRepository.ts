@@ -26,20 +26,20 @@ import { StepStatus, ConfigChatMessage } from "@/domain/entities/Project";
 import { TechStackAnalysis, TechItem } from "@/domain/entities/TechStackAnalysis";
 
 export class FirebaseMigrationRepository implements MigrationRepository {
-  private getMigrationsCollection(userId: string, projectId: string) {
-    return collection(db, "users", userId, "projects", projectId, "code-analysis-module");
+  // Path: projects/{projectId}/code-analysis-module
+  private getMigrationsCollection(projectId: string) {
+    return collection(db, "projects", projectId, "code-analysis-module");
   }
 
-  private getMigrationDoc(userId: string, projectId: string, migrationId: string) {
-    return doc(db, "users", userId, "projects", projectId, "code-analysis-module", migrationId);
+  // Path: projects/{projectId}/code-analysis-module/{migrationId}
+  private getMigrationDoc(projectId: string, migrationId: string) {
+    return doc(db, "projects", projectId, "code-analysis-module", migrationId);
   }
 
-  // Path: users/{userId}/projects/{projectId}/code-analysis-module/{migrationId}/processResults
-  private getProcessResultsCollection(userId: string, projectId: string, migrationId: string) {
+  // Path: projects/{projectId}/code-analysis-module/{migrationId}/processResults
+  private getProcessResultsCollection(projectId: string, migrationId: string) {
     return collection(
       db,
-      "users",
-      userId,
       "projects",
       projectId,
       "code-analysis-module",
@@ -48,17 +48,14 @@ export class FirebaseMigrationRepository implements MigrationRepository {
     );
   }
 
-  // Path: users/{userId}/projects/{projectId}/code-analysis-module/{migrationId}/processResults/{processId}
+  // Path: projects/{projectId}/code-analysis-module/{migrationId}/processResults/{processId}
   private getProcessResultDoc(
-    userId: string,
     projectId: string,
     migrationId: string,
     processId: string
   ) {
     return doc(
       db,
-      "users",
-      userId,
       "projects",
       projectId,
       "code-analysis-module",
@@ -68,16 +65,13 @@ export class FirebaseMigrationRepository implements MigrationRepository {
     );
   }
 
-  // Path: users/{userId}/projects/{projectId}/code-analysis-module/{migrationId}/step_results
+  // Path: projects/{projectId}/code-analysis-module/{migrationId}/step_results
   private getStepResultsCollection(
-    userId: string,
     projectId: string,
     migrationId: string
   ) {
     return collection(
       db,
-      "users",
-      userId,
       "projects",
       projectId,
       "code-analysis-module",
@@ -227,9 +221,9 @@ export class FirebaseMigrationRepository implements MigrationRepository {
   }
 
   // Migration Actions
-  async getMigrations(userId: string, projectId: string): Promise<MigrationAction[]> {
+  async getMigrations(projectId: string): Promise<MigrationAction[]> {
     const q = query(
-      this.getMigrationsCollection(userId, projectId),
+      this.getMigrationsCollection(projectId),
       orderBy("updatedAt", "desc")
     );
     const querySnapshot = await getDocs(q);
@@ -240,11 +234,10 @@ export class FirebaseMigrationRepository implements MigrationRepository {
   }
 
   async getMigration(
-    userId: string,
     projectId: string,
     migrationId: string
   ): Promise<MigrationAction | null> {
-    const docRef = this.getMigrationDoc(userId, projectId, migrationId);
+    const docRef = this.getMigrationDoc(projectId, migrationId);
     const docSnap = await getDoc(docRef);
 
     if (!docSnap.exists()) {
@@ -255,12 +248,11 @@ export class FirebaseMigrationRepository implements MigrationRepository {
   }
 
   async createMigration(
-    userId: string,
     projectId: string,
     migration: Omit<MigrationAction, "id">
   ): Promise<string> {
     const docRef = await addDoc(
-      this.getMigrationsCollection(userId, projectId),
+      this.getMigrationsCollection(projectId),
       this.toFirestoreData(migration)
     );
 
@@ -268,12 +260,11 @@ export class FirebaseMigrationRepository implements MigrationRepository {
   }
 
   async updateMigration(
-    userId: string,
     projectId: string,
     migrationId: string,
     data: Partial<MigrationAction>
   ): Promise<void> {
-    const docRef = this.getMigrationDoc(userId, projectId, migrationId);
+    const docRef = this.getMigrationDoc(projectId, migrationId);
 
     await updateDoc(docRef, {
       ...this.toFirestoreData(data),
@@ -282,23 +273,21 @@ export class FirebaseMigrationRepository implements MigrationRepository {
   }
 
   async deleteMigration(
-    userId: string,
     projectId: string,
     migrationId: string
   ): Promise<void> {
-    const docRef = this.getMigrationDoc(userId, projectId, migrationId);
+    const docRef = this.getMigrationDoc(projectId, migrationId);
     await deleteDoc(docRef);
   }
 
   // Real-time subscription for migration
   subscribeMigration(
-    userId: string,
     projectId: string,
     migrationId: string,
     onUpdate: (migration: MigrationAction | null) => void,
     onError?: (error: Error) => void
   ): Unsubscribe {
-    const docRef = this.getMigrationDoc(userId, projectId, migrationId);
+    const docRef = this.getMigrationDoc(projectId, migrationId);
 
     return onSnapshot(
       docRef,
@@ -318,12 +307,11 @@ export class FirebaseMigrationRepository implements MigrationRepository {
 
   // Process Results
   async getProcessResults(
-    userId: string,
     projectId: string,
     migrationId: string
   ): Promise<ProcessResult[]> {
     const q = query(
-      this.getProcessResultsCollection(userId, projectId, migrationId),
+      this.getProcessResultsCollection(projectId, migrationId),
       orderBy("startDate", "desc")
     );
     const querySnapshot = await getDocs(q);
@@ -334,12 +322,11 @@ export class FirebaseMigrationRepository implements MigrationRepository {
   }
 
   async getLatestProcessResult(
-    userId: string,
     projectId: string,
     migrationId: string
   ): Promise<ProcessResult | null> {
     const q = query(
-      this.getProcessResultsCollection(userId, projectId, migrationId),
+      this.getProcessResultsCollection(projectId, migrationId),
       orderBy("startDate", "desc"),
       limit(1)
     );
@@ -355,14 +342,13 @@ export class FirebaseMigrationRepository implements MigrationRepository {
 
   // Real-time subscription for process result
   subscribeProcessResult(
-    userId: string,
     projectId: string,
     migrationId: string,
     processId: string,
     onUpdate: (result: ProcessResult | null) => void,
     onError?: (error: Error) => void
   ): Unsubscribe {
-    const docRef = this.getProcessResultDoc(userId, projectId, migrationId, processId);
+    const docRef = this.getProcessResultDoc(projectId, migrationId, processId);
 
     return onSnapshot(
       docRef,
@@ -382,12 +368,11 @@ export class FirebaseMigrationRepository implements MigrationRepository {
 
   // Step Results
   async getStepResults(
-    userId: string,
     projectId: string,
     migrationId: string
   ): Promise<StepResult[]> {
     const q = query(
-      this.getStepResultsCollection(userId, projectId, migrationId),
+      this.getStepResultsCollection(projectId, migrationId),
       orderBy("startDate", "asc")
     );
     const querySnapshot = await getDocs(q);
@@ -399,14 +384,13 @@ export class FirebaseMigrationRepository implements MigrationRepository {
 
   // Real-time subscription for step results
   subscribeStepResults(
-    userId: string,
     projectId: string,
     migrationId: string,
     onUpdate: (results: StepResult[]) => void,
     onError?: (error: Error) => void
   ): Unsubscribe {
     const q = query(
-      this.getStepResultsCollection(userId, projectId, migrationId),
+      this.getStepResultsCollection(projectId, migrationId),
       orderBy("startDate", "asc")
     );
 
@@ -425,16 +409,13 @@ export class FirebaseMigrationRepository implements MigrationRepository {
     );
   }
 
-  // Tech Stack Analysis - Path: users/{userId}/projects/{projectId}/code-analysis-module/{migrationId}/tech_stack/analysis
+  // Tech Stack Analysis - Path: projects/{projectId}/code-analysis-module/{migrationId}/tech_stack/analysis
   private getTechStackAnalysisDoc(
-    userId: string,
     projectId: string,
     migrationId: string
   ) {
     return doc(
       db,
-      "users",
-      userId,
       "projects",
       projectId,
       "code-analysis-module",
@@ -470,11 +451,10 @@ export class FirebaseMigrationRepository implements MigrationRepository {
 
   // Get tech stack analysis
   async getTechStackAnalysis(
-    userId: string,
     projectId: string,
     migrationId: string
   ): Promise<TechStackAnalysis | null> {
-    const docRef = this.getTechStackAnalysisDoc(userId, projectId, migrationId);
+    const docRef = this.getTechStackAnalysisDoc(projectId, migrationId);
     const docSnap = await getDoc(docRef);
 
     if (docSnap.exists()) {
@@ -485,13 +465,12 @@ export class FirebaseMigrationRepository implements MigrationRepository {
 
   // Real-time subscription for tech stack analysis
   subscribeTechStackAnalysis(
-    userId: string,
     projectId: string,
     migrationId: string,
     onUpdate: (analysis: TechStackAnalysis | null) => void,
     onError?: (error: Error) => void
   ): Unsubscribe {
-    const docRef = this.getTechStackAnalysisDoc(userId, projectId, migrationId);
+    const docRef = this.getTechStackAnalysisDoc(projectId, migrationId);
 
     return onSnapshot(
       docRef,
@@ -509,16 +488,13 @@ export class FirebaseMigrationRepository implements MigrationRepository {
     );
   }
 
-  // Config Chat Messages - Path: users/{userId}/projects/{projectId}/code-analysis-module/{migrationId}/configChatMessages
+  // Config Chat Messages - Path: projects/{projectId}/code-analysis-module/{migrationId}/configChatMessages
   private getConfigChatMessagesCollection(
-    userId: string,
     projectId: string,
     migrationId: string
   ) {
     return collection(
       db,
-      "users",
-      userId,
       "projects",
       projectId,
       "code-analysis-module",
@@ -528,12 +504,11 @@ export class FirebaseMigrationRepository implements MigrationRepository {
   }
 
   async getConfigChatMessages(
-    userId: string,
     projectId: string,
     migrationId: string
   ): Promise<ConfigChatMessage[]> {
     const q = query(
-      this.getConfigChatMessagesCollection(userId, projectId, migrationId),
+      this.getConfigChatMessagesCollection(projectId, migrationId),
       orderBy("timestamp", "asc")
     );
     const querySnapshot = await getDocs(q);
@@ -542,13 +517,12 @@ export class FirebaseMigrationRepository implements MigrationRepository {
   }
 
   async addConfigChatMessage(
-    userId: string,
     projectId: string,
     migrationId: string,
     message: Omit<ConfigChatMessage, "timestamp">
   ): Promise<string> {
     const docRef = await addDoc(
-      this.getConfigChatMessagesCollection(userId, projectId, migrationId),
+      this.getConfigChatMessagesCollection(projectId, migrationId),
       {
         ...message,
         timestamp: Date.now(),
@@ -559,12 +533,11 @@ export class FirebaseMigrationRepository implements MigrationRepository {
   }
 
   async clearConfigChatMessages(
-    userId: string,
     projectId: string,
     migrationId: string
   ): Promise<void> {
     const querySnapshot = await getDocs(
-      this.getConfigChatMessagesCollection(userId, projectId, migrationId)
+      this.getConfigChatMessagesCollection(projectId, migrationId)
     );
 
     const batch = writeBatch(db);

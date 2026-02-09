@@ -1,6 +1,6 @@
 import { RAGSearchResult } from "@/domain/repositories/RAGRepository";
 import { TaskNode, EpicNode, GraphSearchResult } from "@/domain/repositories/GraphRAGRepository";
-import { ragRepository } from "@/infrastructure/repositories/PineconeRAGRepository";
+import { getRagRepository } from "@/infrastructure/repositories/PineconeRAGRepository";
 import { graphRAGRepository } from "@/infrastructure/repositories/Neo4jGraphRAGRepository";
 
 export interface EnrichedRAGResult extends RAGSearchResult {
@@ -55,7 +55,7 @@ export class GraphRAGService {
     try {
       // Step 1: Vector search in Pinecone
       console.log("[GraphRAG Service] Step 1: Performing vector search...");
-      const vectorResults = await ragRepository.searchFiles(query, storeName);
+      const vectorResults = await getRagRepository().searchFiles(query, storeName);
 
       if (vectorResults.length === 0) {
         console.log("[GraphRAG Service] No vector results found");
@@ -203,7 +203,7 @@ export class GraphRAGService {
 
     try {
       // Store in Pinecone for vector search
-      const pineconeResult = await ragRepository.uploadDocument(
+      const pineconeResult = await getRagRepository().uploadDocument(
         corpusName,
         task.id,
         content
@@ -279,7 +279,7 @@ export class GraphRAGService {
 
     try {
       // Delete from Pinecone
-      await ragRepository.deleteDocumentByDisplayName(corpusName, taskId);
+      await getRagRepository().deleteDocumentByDisplayName(corpusName, taskId);
 
       // Delete from Neo4j
       await graphRAGRepository.deleteTask(taskId, projectId);

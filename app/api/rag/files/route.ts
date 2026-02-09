@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { ragRepository } from "@/infrastructure/repositories/FirebaseRAGRepository";
+import { getRagRepository } from "@/infrastructure/repositories/FirebaseRAGRepository";
 import { graphRAGRepository } from "@/infrastructure/repositories/Neo4jGraphRAGRepository";
 import { TaskNode, EpicNode, TaskRelationship } from "@/domain/repositories/GraphRAGRepository";
 
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
     // List all corpora if requested
     if (listCorpora === "true") {
       console.log("[RAG API] Listing all corpora");
-      const corpora = await ragRepository.listCorpora();
+      const corpora = await getRagRepository().listCorpora();
       return NextResponse.json({ corpora, count: corpora.length });
     }
 
@@ -97,8 +97,8 @@ export async function GET(request: NextRequest) {
 
     // Fetch corpus info and documents in parallel
     const [corpus, documents] = await Promise.all([
-      ragRepository.getCorpus(corpusName),
-      ragRepository.listDocuments(corpusName),
+      getRagRepository().getCorpus(corpusName),
+      getRagRepository().listDocuments(corpusName),
     ]);
 
     console.log("Corpus fetched:", corpus);
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
       }
 
       console.log("[RAG API] Getting or creating corpus:", corpusDisplayName);
-      const corpus = await ragRepository.getOrCreateCorpus(corpusDisplayName);
+      const corpus = await getRagRepository().getOrCreateCorpus(corpusDisplayName);
 
       if (!corpus) {
         return NextResponse.json(
@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
       );
 
       // Upload to Pinecone (vector store)
-      const document = await ragRepository.uploadDocument(
+      const document = await getRagRepository().uploadDocument(
         corpusName,
         displayName,
         content,
@@ -223,7 +223,7 @@ export async function POST(request: NextRequest) {
           // Auto-create SIMILAR_TO relationships by searching for similar tasks
           console.log("[RAG API] Searching for similar tasks to create relationships...");
           try {
-            const similarTasks = await ragRepository.searchFiles(content, corpusName);
+            const similarTasks = await getRagRepository().searchFiles(content, corpusName);
             console.log(`[RAG API] Found ${similarTasks.length} similar tasks from Pinecone`);
 
             // Create SIMILAR_TO relationships for tasks with high similarity (> 0.7)
@@ -299,7 +299,7 @@ export async function POST(request: NextRequest) {
                 }
               } else {
                 // Search for matching tasks in Pinecone by the reference (natural language detection)
-                const matchingTasks = await ragRepository.searchFiles(dep.targetReference, corpusName);
+                const matchingTasks = await getRagRepository().searchFiles(dep.targetReference, corpusName);
 
                 // Find the best match (highest score, not the current task)
                 const bestMatch = matchingTasks.find(
@@ -483,8 +483,8 @@ export async function POST(request: NextRequest) {
             .join("\n\n");
 
           // Delete old document and upload new one
-          await ragRepository.deleteDocumentByDisplayName(corpusName, displayName);
-          const document = await ragRepository.uploadDocument(corpusName, displayName, taskContent);
+          await getRagRepository().deleteDocumentByDisplayName(corpusName, displayName);
+          const document = await getRagRepository().uploadDocument(corpusName, displayName, taskContent);
 
           if (document) {
             console.log("[RAG API] Updated task in Pinecone:", displayName);
@@ -527,7 +527,7 @@ export async function POST(request: NextRequest) {
           // In a full implementation, we'd want to diff and remove old ones
           for (const dep of updates.dependencies) {
             // Try to find matching task
-            const matchingTasks = await ragRepository.searchFiles(dep, corpusName);
+            const matchingTasks = await getRagRepository().searchFiles(dep, corpusName);
             const bestMatch = matchingTasks.find(
               t => t.id !== displayName && t.relevanceScore > 0.5
             );
@@ -590,7 +590,7 @@ export async function DELETE(request: NextRequest) {
     // Delete entire corpus
     if (deleteCorpus === "true" && corpusName) {
       console.log("[RAG API] Deleting corpus:", corpusName);
-      const success = await ragRepository.deleteCorpus(corpusName);
+      const success = await getRagRepository().deleteCorpus(corpusName);
 
       if (!success) {
         return NextResponse.json(
@@ -616,7 +616,7 @@ export async function DELETE(request: NextRequest) {
       "from corpus:",
       corpusName,
     );
-    const success = await ragRepository.deleteDocumentByDisplayName(
+    const success = await getRagRepository().deleteDocumentByDisplayName(
       corpusName,
       displayName,
     );
