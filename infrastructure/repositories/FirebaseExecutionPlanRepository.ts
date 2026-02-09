@@ -398,7 +398,12 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
   ): Promise<void> {
     const taskRef = doc(db, "projects", projectId, "tasks", taskId);
 
-    const updateData: Record<string, unknown> = {
+    const updateData: {
+      updatedAt: number;
+      title?: string;
+      description?: string;
+      dependencies?: string[];
+    } = {
       updatedAt: Date.now(),
     };
 
