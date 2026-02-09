@@ -1879,9 +1879,9 @@ export default function GroomingPage() {
           <div className="px-4 pt-4 pb-3 border-b border-default-200 bg-default-100/50 dark:bg-default-200/20">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-secondary-100 dark:bg-secondary-500/20 rounded-lg">
+                <div className="p-2 bg-secondary-100 dark:bg-secondary-200/50 rounded-lg">
                   <svg
-                    className="w-5 h-5 text-secondary-600 dark:text-secondary-300"
+                    className="w-5 h-5 text-secondary-600 dark:text-secondary-500"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -2770,8 +2770,8 @@ export default function GroomingPage() {
         <ModalContent>
           {selectedTaskForDetail && (
             <>
-              <ModalHeader className="flex flex-col gap-1 pb-2">
-                <div className="flex items-center justify-between w-full">
+              <ModalHeader className="flex flex-col gap-1 pb-2 pr-12">
+                <div className="flex items-center gap-2 w-full">
                   {isEditingTask ? (
                     <Input
                       value={editedTaskTitle}
@@ -2782,19 +2782,19 @@ export default function GroomingPage() {
                       classNames={{ input: "text-lg font-semibold" }}
                     />
                   ) : (
-                    <span className="text-lg font-semibold">{selectedTaskForDetail.title}</span>
-                  )}
-                  {!isEditingTask && (
-                    <Button
-                      isIconOnly
-                      size="sm"
-                      variant="light"
-                      onPress={handleStartEditingTask}
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                      </svg>
-                    </Button>
+                    <>
+                      <span className="text-lg font-semibold">{selectedTaskForDetail.title}</span>
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        onPress={handleStartEditingTask}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                      </Button>
+                    </>
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 mt-1 flex-wrap">
@@ -3414,7 +3414,7 @@ function EpicCard({
               color="danger"
               variant="flat"
               onPress={onReject}
-              className="flex-1"
+              className="flex-[0.7]"
             >
               Reject
             </Button>
@@ -3423,7 +3423,7 @@ function EpicCard({
               color="success"
               onPress={onApprove}
               isLoading={isApproving}
-              className="flex-1"
+              className="flex-[1.3]"
             >
               {pendingTaskCount > 0
                 ? `Approve with ${pendingTaskCount} tasks`
