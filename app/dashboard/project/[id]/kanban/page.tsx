@@ -226,6 +226,10 @@ export default function KanbanPage() {
   const [inviteSuccess, setInviteSuccess] = useState(false);
   const [removingUserId, setRemovingUserId] = useState<string | null>(null);
 
+  // Boilerplate success banner state
+  const [showBoilerplateSuccess, setShowBoilerplateSuccess] = useState(false);
+  const [prevBoilerplateRunning, setPrevBoilerplateRunning] = useState(false);
+
   const projectId = params.id as string;
 
   const { migration, loading: migrationLoading } = useMigration(
@@ -421,6 +425,47 @@ export default function KanbanPage() {
 
   // Check if executor module has an error
   const isExecutorError = executorModuleData?.action === "error";
+
+  // Detect when boilerplate completes and show success banner
+  useEffect(() => {
+    if (prevBoilerplateRunning && !isBoilerplateRunning && executorModuleData?.boilerplateDone) {
+      setShowBoilerplateSuccess(true);
+      // Play success sound using Web Audio API
+      try {
+        const audioContext = new (window.AudioContext || (window as typeof window & { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        oscillator.frequency.value = 800;
+        oscillator.type = "sine";
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.3);
+
+        // Second tone for pleasant chime
+        setTimeout(() => {
+          const osc2 = audioContext.createOscillator();
+          const gain2 = audioContext.createGain();
+          osc2.connect(gain2);
+          gain2.connect(audioContext.destination);
+          osc2.frequency.value = 1000;
+          osc2.type = "sine";
+          gain2.gain.setValueAtTime(0.3, audioContext.currentTime);
+          gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+          osc2.start(audioContext.currentTime);
+          osc2.stop(audioContext.currentTime + 0.4);
+        }, 150);
+      } catch {
+        // Audio not supported, silently ignore
+      }
+    }
+    setPrevBoilerplateRunning(isBoilerplateRunning);
+  }, [isBoilerplateRunning, executorModuleData?.boilerplateDone, prevBoilerplateRunning]);
 
   // Handle retry executor module
   const handleRetryExecutor = async () => {
@@ -957,6 +1002,54 @@ export default function KanbanPage() {
         </div>
       )}
 
+      {/* Boilerplate Success Banner */}
+      {showBoilerplateSuccess && (
+        <div className="mb-4 p-4 bg-success-50 dark:bg-success-950/20 border border-success-200 dark:border-success-900 rounded-lg">
+          <div className="flex items-center gap-3">
+            <svg
+              className="w-5 h-5 text-success-600 dark:text-success-400 flex-shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-success-700 dark:text-success-400">
+                Boilerplate Created Successfully
+              </h3>
+              <p className="text-sm text-success-600 dark:text-success-300 mt-1">
+                Your project boilerplate is ready. You can now start moving tasks to To Do.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowBoilerplateSuccess(false)}
+              className="p-1 hover:bg-success-100 dark:hover:bg-success-900/30 rounded-full transition-colors"
+              aria-label="Close"
+            >
+              <svg
+                className="w-4 h-4 text-success-600 dark:text-success-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Needs Boilerplate Banner */}
       {needsBoilerplate && !hasNoTechStack && !isExecutorError && (
         <div className="mb-4 p-4 bg-secondary-50 dark:bg-secondary-950/20 border border-secondary-200 dark:border-secondary-900 rounded-lg">
@@ -1256,6 +1349,10 @@ export default function KanbanPage() {
                   taskId,
                   status,
                 );
+                // Hide success banner when task is moved to todo
+                if (status === "todo" && showBoilerplateSuccess) {
+                  setShowBoilerplateSuccess(false);
+                }
               } catch (error) {
                 console.error("Error updating task status:", error);
               }
@@ -1270,6 +1367,10 @@ export default function KanbanPage() {
                   taskIds,
                   "todo",
                 );
+                // Hide success banner when tasks are moved to todo
+                if (showBoilerplateSuccess) {
+                  setShowBoilerplateSuccess(false);
+                }
               } catch (error) {
                 console.error("Error moving tasks to todo:", error);
               }
