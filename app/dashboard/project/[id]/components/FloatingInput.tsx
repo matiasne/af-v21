@@ -139,6 +139,7 @@ export function FloatingInput({
         role: "assistant",
         content: "Sorry, I encountered an error. Please try again.",
       };
+
       onChatHistoryChange([...newHistory, errorMessage]);
     } finally {
       onLoadingChange(false);
@@ -168,81 +169,81 @@ export function FloatingInput({
 
       <div className="fixed bottom-0 left-0 right-0 z-50">
         {/* Floating Response Tooltip */}
-      {!hidePopups &&
-        showResponse &&
-        (lastAssistantMessage || isLoading) &&
-        !showHistory && (
-          <div
-            ref={responseRef}
-            className="absolute bottom-full left-0 right-0 mb-2 px-4"
-          >
-            <div className="container mx-auto max-w-4xl">
-              <div className="bg-content1 border border-default-200 rounded-xl shadow-lg p-4 max-h-64 overflow-y-auto">
-                {isLoading ? (
-                  <div className="flex items-center gap-3">
-                    <Spinner size="sm" color="primary" />
-                    <span className="text-default-500">Thinking...</span>
-                  </div>
-                ) : lastAssistantMessage ? (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <svg
-                        className="h-5 w-5 text-primary"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth={1.5}
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z"
-                        />
-                      </svg>
-                      <span className="text-sm font-medium text-primary">
-                        AI Assistant
-                      </span>
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="light"
-                        className="ml-auto"
-                        onPress={() => setShowResponse(false)}
-                      >
+        {!hidePopups &&
+          showResponse &&
+          (lastAssistantMessage || isLoading) &&
+          !showHistory && (
+            <div
+              ref={responseRef}
+              className="absolute bottom-full left-0 right-0 mb-2 px-4"
+            >
+              <div className="container mx-auto max-w-4xl">
+                <div className="bg-content1 border border-default-200 rounded-xl shadow-lg p-4 max-h-64 overflow-y-auto">
+                  {isLoading ? (
+                    <div className="flex items-center gap-3">
+                      <Spinner color="primary" size="sm" />
+                      <span className="text-default-500">Thinking...</span>
+                    </div>
+                  ) : lastAssistantMessage ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
                         <svg
-                          className="h-4 w-4"
+                          className="h-5 w-5 text-primary"
                           fill="none"
                           stroke="currentColor"
-                          strokeWidth={2}
+                          strokeWidth={1.5}
                           viewBox="0 0 24 24"
                         >
                           <path
+                            d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            d="M6 18L18 6M6 6l12 12"
                           />
                         </svg>
-                      </Button>
+                        <span className="text-sm font-medium text-primary">
+                          AI Assistant
+                        </span>
+                        <Button
+                          isIconOnly
+                          className="ml-auto"
+                          size="sm"
+                          variant="light"
+                          onPress={() => setShowResponse(false)}
+                        >
+                          <svg
+                            className="h-4 w-4"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              d="M6 18L18 6M6 6l12 12"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </Button>
+                      </div>
+                      <p className="text-default-700 whitespace-pre-wrap">
+                        {lastAssistantMessage.content}
+                      </p>
                     </div>
-                    <p className="text-default-700 whitespace-pre-wrap">
-                      {lastAssistantMessage.content}
-                    </p>
-                  </div>
-                ) : null}
+                  ) : null}
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-      {/* Chat History Panel */}
-      <div
-        ref={historyRef}
-        className={`absolute bottom-full left-0 right-0 mb-2 px-4 z-50 transition-all duration-300 ${
-          !hidePopups && showHistory
-            ? "opacity-100 translate-y-0"
-            : "opacity-0 translate-y-4 pointer-events-none"
-        }`}
-      >
+        {/* Chat History Panel */}
+        <div
+          ref={historyRef}
+          className={`absolute bottom-full left-0 right-0 mb-2 px-4 z-50 transition-all duration-300 ${
+            !hidePopups && showHistory
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 translate-y-4 pointer-events-none"
+          }`}
+        >
           <div className="container mx-auto max-w-4xl">
             <div className="bg-content1 border border-default-200 rounded-xl shadow-lg overflow-hidden">
               <div className="flex items-center justify-between p-4 border-b border-default-200">
@@ -255,9 +256,9 @@ export function FloatingInput({
                     viewBox="0 0 24 24"
                   >
                     <path
+                      d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
                     />
                   </svg>
                   <span className="text-sm font-medium">Chat History</span>
@@ -276,9 +277,9 @@ export function FloatingInput({
                     viewBox="0 0 24 24"
                   >
                     <path
+                      d="M6 18L18 6M6 6l12 12"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      d="M6 18L18 6M6 6l12 12"
                     />
                   </svg>
                 </Button>
@@ -312,9 +313,9 @@ export function FloatingInput({
                                 viewBox="0 0 24 24"
                               >
                                 <path
+                                  d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
-                                  d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"
                                 />
                               </svg>
                               <span className="text-xs font-medium text-primary">
@@ -332,7 +333,7 @@ export function FloatingInput({
                       <div className="flex justify-start">
                         <div className="bg-default-100 rounded-xl px-4 py-2">
                           <div className="flex items-center gap-2">
-                            <Spinner size="sm" color="primary" />
+                            <Spinner color="primary" size="sm" />
                             <span className="text-sm text-default-500">
                               Thinking...
                             </span>
@@ -348,145 +349,151 @@ export function FloatingInput({
           </div>
         </div>
 
-      {/* Input Bar */}
-      <div className="border-t border-default-200 bg-background/80 backdrop-blur-lg p-4">
-        <div className="container mx-auto max-w-4xl">
-          <div className="flex gap-2">
-            {!hidePopups && (
+        {/* Input Bar */}
+        <div className="border-t border-default-200 bg-background/80 backdrop-blur-lg p-4">
+          <div className="container mx-auto max-w-4xl">
+            <div className="flex gap-2">
+              {!hidePopups && (
+                <Button
+                  isIconOnly
+                  color={showHistory ? "primary" : "default"}
+                  isDisabled={chatHistory.length === 0 && !isLoading}
+                  variant={showHistory ? "solid" : "flat"}
+                  onPress={toggleHistory}
+                >
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </Button>
+              )}
+              {projectId && (
+                <>
+                  <Tooltip content="View migration process">
+                    <Button
+                      isIconOnly
+                      variant="flat"
+                      onPress={() =>
+                        router.push(`/dashboard/project/${projectId}`)
+                      }
+                    >
+                      <svg
+                        className="h-5 w-5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={1.5}
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </Button>
+                  </Tooltip>
+                  <Tooltip content="View task board">
+                    <Button
+                      isIconOnly
+                      variant="flat"
+                      onPress={() =>
+                        router.push(`/dashboard/project/${projectId}/kanban`)
+                      }
+                    >
+                      <svg
+                        className="h-5 w-5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={1.5}
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          d="M9 4.5v15m6-15v15m-10.875 0h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125Z"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </Button>
+                  </Tooltip>
+                  <Tooltip content="View FDD documents">
+                    <Button
+                      isIconOnly
+                      variant="flat"
+                      onPress={() =>
+                        router.push(`/dashboard/project/${projectId}/fdd`)
+                      }
+                    >
+                      <svg
+                        className="h-5 w-5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={1.5}
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </Button>
+                  </Tooltip>
+                </>
+              )}
+              <Input
+                classNames={{
+                  inputWrapper: "bg-default-100",
+                }}
+                isDisabled={isLoading}
+                placeholder="Ask a question or send a message..."
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                onFocus={() => {
+                  if (!hidePopups && lastAssistantMessage && !showHistory) {
+                    setShowResponse(true);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && message.trim() && !isLoading) {
+                    handleSend();
+                  }
+                }}
+              />
               <Button
                 isIconOnly
-                variant={showHistory ? "solid" : "flat"}
-                color={showHistory ? "primary" : "default"}
-                onPress={toggleHistory}
-                isDisabled={chatHistory.length === 0 && !isLoading}
+                color="primary"
+                isDisabled={!message.trim() || isLoading}
+                isLoading={isLoading}
+                onPress={handleSend}
               >
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={1.5}
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
-                  />
-                </svg>
+                {!isLoading && (
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                )}
               </Button>
-            )}
-            {projectId && (
-              <>
-                <Tooltip content="View migration process">
-                  <Button
-                    isIconOnly
-                    variant="flat"
-                    onPress={() => router.push(`/dashboard/project/${projectId}`)}
-                  >
-                    <svg
-                      className="h-5 w-5"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={1.5}
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
-                      />
-                    </svg>
-                  </Button>
-                </Tooltip>
-                <Tooltip content="View task board">
-                  <Button
-                    isIconOnly
-                    variant="flat"
-                    onPress={() => router.push(`/dashboard/project/${projectId}/kanban`)}
-                  >
-                    <svg
-                      className="h-5 w-5"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={1.5}
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M9 4.5v15m6-15v15m-10.875 0h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125Z"
-                      />
-                    </svg>
-                  </Button>
-                </Tooltip>
-                <Tooltip content="View FDD documents">
-                  <Button
-                    isIconOnly
-                    variant="flat"
-                    onPress={() => router.push(`/dashboard/project/${projectId}/fdd`)}
-                  >
-                    <svg
-                      className="h-5 w-5"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={1.5}
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"
-                      />
-                    </svg>
-                  </Button>
-                </Tooltip>
-              </>
-            )}
-            <Input
-              placeholder="Ask a question or send a message..."
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && message.trim() && !isLoading) {
-                  handleSend();
-                }
-              }}
-              onFocus={() => {
-                if (!hidePopups && lastAssistantMessage && !showHistory) {
-                  setShowResponse(true);
-                }
-              }}
-              classNames={{
-                inputWrapper: "bg-default-100",
-              }}
-              isDisabled={isLoading}
-            />
-            <Button
-              color="primary"
-              isDisabled={!message.trim() || isLoading}
-              isIconOnly
-              isLoading={isLoading}
-              onPress={handleSend}
-            >
-              {!isLoading && (
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={1.5}
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z"
-                  />
-                </svg>
-              )}
-            </Button>
+            </div>
           </div>
         </div>
-      </div>
       </div>
     </>
   );

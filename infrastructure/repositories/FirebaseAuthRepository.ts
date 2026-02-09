@@ -12,6 +12,7 @@ import {
 } from "firebase/auth";
 
 import { auth } from "../firebase/config";
+
 import { AuthRepository } from "@/domain/repositories/AuthRepository";
 import { User } from "@/domain/entities/User";
 
@@ -65,22 +66,28 @@ export class FirebaseAuthRepository implements AuthRepository {
 
   async setPassword(password: string): Promise<void> {
     const currentUser = auth.currentUser;
+
     if (!currentUser || !currentUser.email) {
       throw new Error("No user is currently signed in or user has no email");
     }
 
-    const credential = EmailAuthProvider.credential(currentUser.email, password);
+    const credential = EmailAuthProvider.credential(
+      currentUser.email,
+      password,
+    );
+
     await linkWithCredential(currentUser, credential);
   }
 
   hasPasswordProvider(): boolean {
     const currentUser = auth.currentUser;
+
     if (!currentUser) {
       return false;
     }
 
     return currentUser.providerData.some(
-      (provider) => provider.providerId === "password"
+      (provider) => provider.providerId === "password",
     );
   }
 }

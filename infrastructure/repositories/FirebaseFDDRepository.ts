@@ -1,6 +1,7 @@
 import { doc, getDoc, onSnapshot, Unsubscribe } from "firebase/firestore";
 
 import { db } from "../firebase/config";
+
 import {
   FDDTableOfContents,
   FDDSection,
@@ -19,7 +20,7 @@ export class FirebaseFDDRepository implements FDDRepository {
       "code-analysis-module",
       migrationId,
       "fdd",
-      "toc"
+      "toc",
     );
   }
 
@@ -37,7 +38,9 @@ export class FirebaseFDDRepository implements FDDRepository {
   }
 
   private toSection(data: Record<string, unknown>): FDDSection {
-    const subsectionsData = (data.subsections as Record<string, unknown>[]) || [];
+    const subsectionsData =
+      (data.subsections as Record<string, unknown>[]) || [];
+
     return {
       number: (data.number as string) || "",
       title: (data.title as string) || "",
@@ -68,7 +71,7 @@ export class FirebaseFDDRepository implements FDDRepository {
 
   private toTableOfContents(
     id: string,
-    data: Record<string, unknown>
+    data: Record<string, unknown>,
   ): FDDTableOfContents {
     const sectionsData = (data.sections as Record<string, unknown>[]) || [];
     const metadataData = data.metadata as Record<string, unknown> | undefined;
@@ -86,7 +89,7 @@ export class FirebaseFDDRepository implements FDDRepository {
 
   async getTableOfContents(
     projectId: string,
-    migrationId: string
+    migrationId: string,
   ): Promise<FDDTableOfContents | null> {
     const docRef = this.getTocDoc(projectId, migrationId);
     const docSnap = await getDoc(docRef);
@@ -95,14 +98,17 @@ export class FirebaseFDDRepository implements FDDRepository {
       return null;
     }
 
-    return this.toTableOfContents(docSnap.id, docSnap.data() as Record<string, unknown>);
+    return this.toTableOfContents(
+      docSnap.id,
+      docSnap.data() as Record<string, unknown>,
+    );
   }
 
   subscribeTableOfContents(
     projectId: string,
     migrationId: string,
     onUpdate: (toc: FDDTableOfContents | null) => void,
-    onError?: (error: Error) => void
+    onError?: (error: Error) => void,
   ): () => void {
     const docRef = this.getTocDoc(projectId, migrationId);
 
@@ -111,11 +117,15 @@ export class FirebaseFDDRepository implements FDDRepository {
       (docSnap) => {
         if (!docSnap.exists()) {
           onUpdate(null);
+
           return;
         }
 
         onUpdate(
-          this.toTableOfContents(docSnap.id, docSnap.data() as Record<string, unknown>)
+          this.toTableOfContents(
+            docSnap.id,
+            docSnap.data() as Record<string, unknown>,
+          ),
         );
       },
       (error) => {
@@ -123,7 +133,7 @@ export class FirebaseFDDRepository implements FDDRepository {
         if (onError) {
           onError(error);
         }
-      }
+      },
     );
 
     return unsubscribe;

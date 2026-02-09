@@ -8,7 +8,11 @@ import { Spinner } from "@heroui/spinner";
 import { ScrollShadow } from "@heroui/scroll-shadow";
 import { Accordion, AccordionItem } from "@heroui/accordion";
 
-import { Epic, Phase, ExecutionPlanTask } from "@/domain/entities/ExecutionPlan";
+import {
+  Epic,
+  Phase,
+  ExecutionPlanTask,
+} from "@/domain/entities/ExecutionPlan";
 import { executionPlanRepository } from "@/infrastructure/repositories/FirebaseExecutionPlanRepository";
 import { useAuth } from "@/infrastructure/context/AuthContext";
 
@@ -29,7 +33,7 @@ function PriorityChip({ priority }: { priority: string }) {
   };
 
   return (
-    <Chip size="sm" color={colorMap[priority] || "default"} variant="flat">
+    <Chip color={colorMap[priority] || "default"} size="sm" variant="flat">
       {priority}
     </Chip>
   );
@@ -47,7 +51,9 @@ function EpicsList({ epics }: { epics: Epic[] }) {
           <CardBody className="space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-mono text-default-400">{epic.id}</span>
+                <span className="text-xs font-mono text-default-400">
+                  {epic.id}
+                </span>
                 <PriorityChip priority={epic.priority} />
               </div>
             </div>
@@ -80,10 +86,12 @@ function PhasesList({ phases }: { phases: Phase[] }) {
         <Card key={phase.id} className="bg-default-50">
           <CardBody className="space-y-2">
             <div className="flex items-center gap-2">
-              <Chip size="sm" color="primary" variant="flat">
+              <Chip color="primary" size="sm" variant="flat">
                 Phase {phase.number}
               </Chip>
-              <span className="text-xs font-mono text-default-400">{phase.id}</span>
+              <span className="text-xs font-mono text-default-400">
+                {phase.id}
+              </span>
             </div>
             <h4 className="font-semibold">{phase.title}</h4>
             <p className="text-sm text-default-600">{phase.description}</p>
@@ -100,39 +108,47 @@ function TasksList({ tasks }: { tasks: ExecutionPlanTask[] }) {
   }
 
   return (
-    <Accordion variant="splitted" selectionMode="multiple">
+    <Accordion selectionMode="multiple" variant="splitted">
       {tasks.map((task) => (
         <AccordionItem
           key={task.id}
           aria-label={task.title}
-          title={
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono text-default-400">{task.id}</span>
-              <PriorityChip priority={task.priority} />
-              <span className="font-medium">{task.title}</span>
-            </div>
-          }
           subtitle={
             <div className="flex items-center gap-2 mt-1">
-              <Chip size="sm" variant="flat" color="secondary">
+              <Chip color="secondary" size="sm" variant="flat">
                 {task.epicId}
               </Chip>
-              <Chip size="sm" variant="flat" color="primary">
+              <Chip color="primary" size="sm" variant="flat">
                 {task.phaseId}
               </Chip>
-              <span className="text-xs text-default-400">{task.effortEstimate}</span>
+              <span className="text-xs text-default-400">
+                {task.effortEstimate}
+              </span>
+            </div>
+          }
+          title={
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono text-default-400">
+                {task.id}
+              </span>
+              <PriorityChip priority={task.priority} />
+              <span className="font-medium">{task.title}</span>
             </div>
           }
         >
           <div className="space-y-4 pb-2">
             <div>
-              <h5 className="text-sm font-medium text-default-700 mb-1">Description</h5>
+              <h5 className="text-sm font-medium text-default-700 mb-1">
+                Description
+              </h5>
               <p className="text-sm text-default-600">{task.description}</p>
             </div>
 
             {task.acceptanceCriteria.length > 0 && (
               <div>
-                <h5 className="text-sm font-medium text-default-700 mb-1">Acceptance Criteria</h5>
+                <h5 className="text-sm font-medium text-default-700 mb-1">
+                  Acceptance Criteria
+                </h5>
                 <ul className="list-disc list-inside text-sm text-default-600 space-y-1">
                   {task.acceptanceCriteria.map((criteria, idx) => (
                     <li key={idx}>{criteria}</li>
@@ -143,10 +159,17 @@ function TasksList({ tasks }: { tasks: ExecutionPlanTask[] }) {
 
             {task.deliverables.length > 0 && (
               <div>
-                <h5 className="text-sm font-medium text-default-700 mb-1">Deliverables</h5>
+                <h5 className="text-sm font-medium text-default-700 mb-1">
+                  Deliverables
+                </h5>
                 <div className="flex flex-wrap gap-1">
                   {task.deliverables.map((deliverable, idx) => (
-                    <Chip key={idx} size="sm" variant="bordered" className="font-mono text-xs">
+                    <Chip
+                      key={idx}
+                      className="font-mono text-xs"
+                      size="sm"
+                      variant="bordered"
+                    >
                       {deliverable}
                     </Chip>
                   ))}
@@ -156,10 +179,12 @@ function TasksList({ tasks }: { tasks: ExecutionPlanTask[] }) {
 
             {task.skillsRequired.length > 0 && (
               <div>
-                <h5 className="text-sm font-medium text-default-700 mb-1">Skills Required</h5>
+                <h5 className="text-sm font-medium text-default-700 mb-1">
+                  Skills Required
+                </h5>
                 <div className="flex flex-wrap gap-1">
                   {task.skillsRequired.map((skill, idx) => (
-                    <Chip key={idx} size="sm" color="warning" variant="flat">
+                    <Chip key={idx} color="warning" size="sm" variant="flat">
                       {skill}
                     </Chip>
                   ))}
@@ -169,7 +194,9 @@ function TasksList({ tasks }: { tasks: ExecutionPlanTask[] }) {
 
             {task.relatedRequirements.length > 0 && (
               <div>
-                <h5 className="text-sm font-medium text-default-700 mb-1">Related Requirements</h5>
+                <h5 className="text-sm font-medium text-default-700 mb-1">
+                  Related Requirements
+                </h5>
                 <div className="flex flex-wrap gap-1">
                   {task.relatedRequirements.map((req, idx) => (
                     <Chip key={idx} size="sm" variant="bordered">
@@ -215,7 +242,7 @@ export function ExecutionPlanPanel({
           setEpics(data);
           setLoading(false);
         },
-        () => setLoading(false)
+        () => setLoading(false),
       );
     } else if (type === "phases") {
       unsubscribe = executionPlanRepository.subscribePhases(
@@ -225,7 +252,7 @@ export function ExecutionPlanPanel({
           setPhases(data);
           setLoading(false);
         },
-        () => setLoading(false)
+        () => setLoading(false),
       );
     } else {
       unsubscribe = executionPlanRepository.subscribeTasks(
@@ -235,7 +262,7 @@ export function ExecutionPlanPanel({
           setTasks(data);
           setLoading(false);
         },
-        () => setLoading(false)
+        () => setLoading(false),
       );
     }
 
@@ -259,12 +286,7 @@ export function ExecutionPlanPanel({
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      size="3xl"
-      scrollBehavior="inside"
-    >
+    <Modal isOpen={isOpen} scrollBehavior="inside" size="3xl" onClose={onClose}>
       <ModalContent>
         <ModalHeader className="flex items-center gap-3">
           <span>{titles[type]}</span>

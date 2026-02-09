@@ -28,6 +28,7 @@ export function FDDCard({
   useEffect(() => {
     if (!user?.uid || !projectId || !migrationId) {
       setLoading(false);
+
       return;
     }
 
@@ -42,22 +43,25 @@ export function FDDCard({
       (error) => {
         console.error("Error loading FDD TOC:", error);
         setLoading(false);
-      }
+      },
     );
 
     return () => unsubscribe();
   }, [projectId, migrationId]);
 
   const totalSections = toc?.sections.length || 0;
-  const totalSubsections = toc?.sections.reduce((acc, s) => acc + s.subsections.length, 0) || 0;
-  const totalFileRefs = toc?.sections.reduce((acc, s) => {
-    const sectionRefs = s.fileReferences.length;
-    const subsectionRefs = s.subsections.reduce(
-      (subAcc, sub) => subAcc + sub.fileReferences.length,
-      0
-    );
-    return acc + sectionRefs + subsectionRefs;
-  }, 0) || 0;
+  const totalSubsections =
+    toc?.sections.reduce((acc, s) => acc + s.subsections.length, 0) || 0;
+  const totalFileRefs =
+    toc?.sections.reduce((acc, s) => {
+      const sectionRefs = s.fileReferences.length;
+      const subsectionRefs = s.subsections.reduce(
+        (subAcc, sub) => subAcc + sub.fileReferences.length,
+        0,
+      );
+
+      return acc + sectionRefs + subsectionRefs;
+    }, 0) || 0;
 
   return (
     <Card className="w-full">
@@ -72,15 +76,19 @@ export function FDDCard({
               viewBox="0 0 24 24"
             >
               <path
+                d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"
               />
             </svg>
           </div>
           <div>
-            <h3 className="text-lg font-semibold">Current Application Knowledge</h3>
-            <p className="text-xs text-default-500">Functional Design Document</p>
+            <h3 className="text-lg font-semibold">
+              Current Application Knowledge
+            </h3>
+            <p className="text-xs text-default-500">
+              Functional Design Document
+            </p>
           </div>
         </div>
         {totalSections > 0 && (
@@ -106,9 +114,9 @@ export function FDDCard({
                 viewBox="0 0 24 24"
               >
                 <path
+                  d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z"
                 />
               </svg>
             </div>
@@ -125,26 +133,34 @@ export function FDDCard({
                   <span className="text-sm text-secondary-600 dark:text-secondary font-medium">
                     Functional Design
                   </span>
-                  <span className="text-xs text-secondary-500 dark:text-secondary">v{toc.version}</span>
+                  <span className="text-xs text-secondary-500 dark:text-secondary">
+                    v{toc.version}
+                  </span>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <p className="text-2xl font-bold text-secondary-500 dark:text-secondary-50">
                       {totalSections}
                     </p>
-                    <p className="text-xs text-secondary-500 dark:text-secondary">Sections</p>
+                    <p className="text-xs text-secondary-500 dark:text-secondary">
+                      Sections
+                    </p>
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-secondary-700 dark:text-secondary-50">
                       {totalSubsections}
                     </p>
-                    <p className="text-xs text-secondary-500 dark:text-secondary">Subsections</p>
+                    <p className="text-xs text-secondary-500 dark:text-secondary">
+                      Subsections
+                    </p>
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-secondary-700 dark:text-secondary-50">
                       {totalFileRefs}
                     </p>
-                    <p className="text-xs text-secondary-500 dark:text-secondary">File Refs</p>
+                    <p className="text-xs text-secondary-500 dark:text-secondary">
+                      File Refs
+                    </p>
                   </div>
                 </div>
               </div>
@@ -155,7 +171,9 @@ export function FDDCard({
                   key={section.number}
                   className="flex items-center gap-2 text-sm text-default-600 dark:text-default-400"
                 >
-                  <span className="text-xs font-mono text-default-400">{section.number}</span>
+                  <span className="text-xs font-mono text-default-400">
+                    {section.number}
+                  </span>
                   <span className="truncate">{section.title}</span>
                 </div>
               ))}
@@ -168,9 +186,9 @@ export function FDDCard({
 
             {/* View FDD Button */}
             <Button
+              fullWidth
               color="secondary"
               variant="flat"
-              fullWidth
               onPress={onNavigateToFDD}
             >
               View Full Document

@@ -64,24 +64,35 @@ export interface GraphRAGRepository {
     targetTaskId: string,
     relationshipType: TaskRelationship["type"],
     projectId: string,
-    weight?: number
+    weight?: number,
   ): Promise<boolean>;
 
   /**
    * Link a task to an epic
    */
-  linkTaskToEpic(taskId: string, epicId: string, projectId: string): Promise<boolean>;
+  linkTaskToEpic(
+    taskId: string,
+    epicId: string,
+    projectId: string,
+  ): Promise<boolean>;
 
   /**
    * Get a task with all its relationships
    */
-  getTaskWithRelationships(taskId: string, projectId: string): Promise<GraphSearchResult | null>;
+  getTaskWithRelationships(
+    taskId: string,
+    projectId: string,
+  ): Promise<GraphSearchResult | null>;
 
   /**
    * Find related tasks for a given task ID
    * Returns tasks that are directly connected through any relationship
    */
-  findRelatedTasks(taskId: string, projectId: string, depth?: number): Promise<TaskNode[]>;
+  findRelatedTasks(
+    taskId: string,
+    projectId: string,
+    depth?: number,
+  ): Promise<TaskNode[]>;
 
   /**
    * Find tasks in the same epic
@@ -94,7 +105,7 @@ export interface GraphRAGRepository {
    */
   enrichWithGraphContext(
     taskIds: string[],
-    projectId: string
+    projectId: string,
   ): Promise<Map<string, GraphSearchResult>>;
 
   /**
@@ -104,7 +115,7 @@ export interface GraphRAGRepository {
     sourceTaskId: string,
     targetTaskId: string,
     relationshipType: string,
-    projectId: string
+    projectId: string,
   ): Promise<boolean>;
 
   /**

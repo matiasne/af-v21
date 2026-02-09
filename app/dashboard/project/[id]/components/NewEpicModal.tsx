@@ -32,11 +32,18 @@ const PRIORITY_OPTIONS: { id: "high" | "medium" | "low"; label: string }[] = [
   { id: "low", label: "Low" },
 ];
 
-export default function NewEpicModal({ isOpen, onClose, onSubmit, tasks }: NewEpicModalProps) {
+export default function NewEpicModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  tasks,
+}: NewEpicModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<"high" | "medium" | "low">("medium");
-  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(
+    new Set(),
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Filter tasks that don't have an epic assigned yet
@@ -44,6 +51,7 @@ export default function NewEpicModal({ isOpen, onClose, onSubmit, tasks }: NewEp
 
   const handleToggleTask = (taskId: string) => {
     const newSet = new Set(selectedTaskIds);
+
     if (newSet.has(taskId)) {
       newSet.delete(taskId);
     } else {
@@ -85,12 +93,12 @@ export default function NewEpicModal({ isOpen, onClose, onSubmit, tasks }: NewEp
 
   return (
     <Modal
-      isOpen={isOpen}
-      onClose={handleClose}
-      size="2xl"
-      isDismissable={!isSubmitting}
       hideCloseButton={isSubmitting}
+      isDismissable={!isSubmitting}
+      isOpen={isOpen}
       scrollBehavior="inside"
+      size="2xl"
+      onClose={handleClose}
     >
       <ModalContent>
         <ModalHeader className="flex flex-col gap-1">
@@ -102,31 +110,32 @@ export default function NewEpicModal({ isOpen, onClose, onSubmit, tasks }: NewEp
 
         <ModalBody className="gap-4">
           <Input
+            isRequired
+            isDisabled={isSubmitting}
             label="Title"
             placeholder="Enter epic title"
             value={title}
             onValueChange={setTitle}
-            isRequired
-            isDisabled={isSubmitting}
           />
 
           <Textarea
+            isDisabled={isSubmitting}
             label="Description"
+            minRows={3}
             placeholder="Describe the epic and its goals..."
             value={description}
             onValueChange={setDescription}
-            minRows={3}
-            isDisabled={isSubmitting}
           />
 
           <Select
+            isDisabled={isSubmitting}
             label="Priority"
             selectedKeys={[priority]}
             onSelectionChange={(keys) => {
               const selected = Array.from(keys)[0] as "high" | "medium" | "low";
+
               if (selected) setPriority(selected);
             }}
-            isDisabled={isSubmitting}
           >
             {PRIORITY_OPTIONS.map((option) => (
               <SelectItem key={option.id}>{option.label}</SelectItem>
@@ -137,7 +146,8 @@ export default function NewEpicModal({ isOpen, onClose, onSubmit, tasks }: NewEp
           {unassignedTasks.length > 0 && (
             <div className="space-y-2">
               <label className="text-sm text-default-700">
-                Assign Tasks <span className="text-default-400">(optional)</span>
+                Assign Tasks{" "}
+                <span className="text-default-400">(optional)</span>
               </label>
               <div className="max-h-48 overflow-y-auto border border-default-200 rounded-lg p-2 space-y-1">
                 {unassignedTasks.map((task) => (
@@ -163,18 +173,22 @@ export default function NewEpicModal({ isOpen, onClose, onSubmit, tasks }: NewEp
                           viewBox="0 0 24 24"
                         >
                           <path
+                            d="M5 13l4 4L19 7"
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             strokeWidth={3}
-                            d="M5 13l4 4L19 7"
                           />
                         </svg>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{task.title}</p>
+                      <p className="text-sm font-medium truncate">
+                        {task.title}
+                      </p>
                       {task.description && (
-                        <p className="text-xs text-default-500 truncate">{task.description}</p>
+                        <p className="text-xs text-default-500 truncate">
+                          {task.description}
+                        </p>
                       )}
                     </div>
                   </div>
@@ -182,7 +196,8 @@ export default function NewEpicModal({ isOpen, onClose, onSubmit, tasks }: NewEp
               </div>
               {selectedTaskIds.size > 0 && (
                 <p className="text-xs text-default-500">
-                  {selectedTaskIds.size} task{selectedTaskIds.size !== 1 ? "s" : ""} selected
+                  {selectedTaskIds.size} task
+                  {selectedTaskIds.size !== 1 ? "s" : ""} selected
                 </p>
               )}
             </div>
@@ -191,17 +206,17 @@ export default function NewEpicModal({ isOpen, onClose, onSubmit, tasks }: NewEp
 
         <ModalFooter>
           <Button
+            isDisabled={isSubmitting}
             variant="light"
             onPress={handleClose}
-            isDisabled={isSubmitting}
           >
             Cancel
           </Button>
           <Button
             color="primary"
-            onPress={handleSubmit}
-            isLoading={isSubmitting}
             isDisabled={!title.trim()}
+            isLoading={isSubmitting}
+            onPress={handleSubmit}
           >
             Create Epic
           </Button>

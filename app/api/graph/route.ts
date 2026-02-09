@@ -5,6 +5,7 @@ const getNeo4jDriver = () => {
   const uri = process.env.NEO4J_URI || "bolt://localhost:7687";
   const user = process.env.NEO4J_USERNAME || process.env.NEO4J_USER || "neo4j";
   const password = process.env.NEO4J_PASSWORD || "";
+
   return neo4j.driver(uri, neo4j.auth.basic(user, password));
 };
 
@@ -38,12 +39,14 @@ export async function GET(request: NextRequest) {
   if (!projectId) {
     return NextResponse.json(
       { error: "projectId query parameter is required" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
   const driver = getNeo4jDriver();
-  const session = driver.session({ database: process.env.NEO4J_DATABASE || "neo4j" });
+  const session = driver.session({
+    database: process.env.NEO4J_DATABASE || "neo4j",
+  });
 
   try {
     console.log("[Graph API] Fetching graph data for project:", projectId);
@@ -55,7 +58,7 @@ export async function GET(request: NextRequest) {
       WHERE n.projectId = $projectId AND (n:Task OR n:Epic)
       RETURN n, labels(n) as labels
       `,
-      { projectId }
+      { projectId },
     );
 
     const nodes: GraphNodeData[] = nodesResult.records.map((record) => {
@@ -83,7 +86,7 @@ export async function GET(request: NextRequest) {
       WHERE a.projectId = $projectId AND b.projectId = $projectId
       RETURN a.id as source, b.id as target, type(r) as type, r.weight as weight
       `,
-      { projectId }
+      { projectId },
     );
 
     const edges: GraphEdgeData[] = edgesResult.records.map((record, index) => ({
@@ -104,9 +107,10 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("[Graph API] Error fetching graph data:", error);
+
     return NextResponse.json(
       { error: "Failed to fetch graph data" },
-      { status: 500 }
+      { status: 500 },
     );
   } finally {
     await session.close();

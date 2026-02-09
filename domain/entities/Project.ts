@@ -94,7 +94,10 @@ export const ANALYSIS_PHASE_STEPS: StepStatus[] = [
 export const MIGRATION_PHASE_STEPS: StepStatus[] = [];
 
 // Phase configurations
-export const PHASE_CONFIGS: Record<StepPhase, { label: string; description: string }> = {
+export const PHASE_CONFIGS: Record<
+  StepPhase,
+  { label: string; description: string }
+> = {
   analysis: {
     label: "Project Analysis & Documentation",
     description: "Analyzing the legacy codebase and generating documentation",
@@ -124,6 +127,7 @@ export function isProcessingStep(step: StepStatus): boolean {
 export function getStepPhase(step: StepStatus): StepPhase | null {
   if (ANALYSIS_PHASE_STEPS.includes(step)) return "analysis";
   if (MIGRATION_PHASE_STEPS.includes(step)) return "migration";
+
   return null;
 }
 
@@ -145,7 +149,10 @@ export interface PhaseInfo {
   progress: number;
 }
 
-export function getPhaseInfo(currentStep: StepStatus, completedSteps: string[]): PhaseInfo[] {
+export function getPhaseInfo(
+  currentStep: StepStatus,
+  completedSteps: string[],
+): PhaseInfo[] {
   const phases: StepPhase[] = ["analysis", "migration"];
 
   return phases.map((phase) => {
@@ -155,7 +162,8 @@ export function getPhaseInfo(currentStep: StepStatus, completedSteps: string[]):
     const currentInPhase = steps.includes(currentStep) ? currentStep : null;
     const isCompleted = phaseCompletedSteps.length === steps.length;
     const isInProgress = currentInPhase !== null && !isCompleted;
-    const progress = steps.length > 0 ? (phaseCompletedSteps.length / steps.length) * 100 : 0;
+    const progress =
+      steps.length > 0 ? (phaseCompletedSteps.length / steps.length) * 100 : 0;
 
     return {
       phase,
@@ -181,18 +189,24 @@ export interface ConfigChatMessage {
 export type UIType = "migration" | "start_from_doc" | "chat_planning";
 
 // UI Type configurations
-export const UI_TYPE_CONFIGS: Record<UIType, { label: string; description: string }> = {
+export const UI_TYPE_CONFIGS: Record<
+  UIType,
+  { label: string; description: string }
+> = {
   migration: {
     label: "Migration",
-    description: "Migrate your legacy codebase to a new tech stack with automated analysis and execution plans.",
+    description:
+      "Migrate your legacy codebase to a new tech stack with automated analysis and execution plans.",
   },
   start_from_doc: {
     label: "Start from Documentation",
-    description: "Begin with existing documentation to generate requirements and implementation plans.",
+    description:
+      "Begin with existing documentation to generate requirements and implementation plans.",
   },
   chat_planning: {
     label: "Chat Planning",
-    description: "Use conversational AI to plan and design your project architecture interactively.",
+    description:
+      "Use conversational AI to plan and design your project architecture interactively.",
   },
 };
 

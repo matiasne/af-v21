@@ -15,6 +15,13 @@ import {
   ModalFooter,
 } from "@heroui/modal";
 
+import {
+  KanbanBoard,
+  TaskList,
+  TechStackEditModal,
+  NewEpicModal,
+} from "../components";
+
 import { useAuth } from "@/infrastructure/context/AuthContext";
 import { useProjects } from "@/infrastructure/hooks/useProjects";
 import { useMigration } from "@/infrastructure/hooks/useMigration";
@@ -34,21 +41,30 @@ import { ProcessorInfo } from "@/domain/entities/ProcessorInfo";
 import { RAGCorpus, RAGFile } from "@/domain/entities/RAGFile";
 
 // RAG API helper functions
-async function ragGetOrCreateCorpus(corpusDisplayName: string): Promise<RAGCorpus | null> {
+async function ragGetOrCreateCorpus(
+  corpusDisplayName: string,
+): Promise<RAGCorpus | null> {
   try {
     const response = await fetch("/api/rag/files", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "getOrCreateCorpus", corpusDisplayName }),
     });
+
     if (!response.ok) {
-      console.error("[RAG API] getOrCreateCorpus failed:", await response.text());
+      console.error(
+        "[RAG API] getOrCreateCorpus failed:",
+        await response.text(),
+      );
+
       return null;
     }
     const data = await response.json();
+
     return data.corpus;
   } catch (error) {
     console.error("[RAG API] Error in getOrCreateCorpus:", error);
+
     return null;
   }
 }
@@ -67,7 +83,7 @@ async function ragUploadDocument(
   displayName: string,
   content: string,
   projectId?: string,
-  taskMetadata?: TaskMetadataForRAG
+  taskMetadata?: TaskMetadataForRAG,
 ): Promise<RAGFile | null> {
   try {
     const response = await fetch("/api/rag/files", {
@@ -82,31 +98,42 @@ async function ragUploadDocument(
         taskMetadata,
       }),
     });
+
     if (!response.ok) {
       console.error("[RAG API] uploadDocument failed:", await response.text());
+
       return null;
     }
     const data = await response.json();
+
     return data.document;
   } catch (error) {
     console.error("[RAG API] Error in uploadDocument:", error);
+
     return null;
   }
 }
 
-async function ragDeleteDocument(corpusName: string, displayName: string): Promise<boolean> {
+async function ragDeleteDocument(
+  corpusName: string,
+  displayName: string,
+): Promise<boolean> {
   try {
     const response = await fetch(
       `/api/rag/files?corpusName=${encodeURIComponent(corpusName)}&displayName=${encodeURIComponent(displayName)}`,
-      { method: "DELETE" }
+      { method: "DELETE" },
     );
+
     if (!response.ok) {
       console.error("[RAG API] deleteDocument failed:", await response.text());
+
       return false;
     }
+
     return true;
   } catch (error) {
     console.error("[RAG API] Error in deleteDocument:", error);
+
     return false;
   }
 }
@@ -122,7 +149,7 @@ async function ragUpdateTask(
     category?: string;
     priority?: string;
     cleanArchitectureArea?: string;
-  }
+  },
 ): Promise<boolean> {
   try {
     const response = await fetch("/api/rag/files", {
@@ -136,22 +163,20 @@ async function ragUpdateTask(
         updates,
       }),
     });
+
     if (!response.ok) {
       console.error("[RAG API] updateTask failed:", await response.text());
+
       return false;
     }
+
     return true;
   } catch (error) {
     console.error("[RAG API] Error in updateTask:", error);
+
     return false;
   }
 }
-import {
-  KanbanBoard,
-  TaskList,
-  TechStackEditModal,
-  NewEpicModal,
-} from "../components";
 import NewTaskModal from "../components/NewTaskModal";
 
 type ViewMode = "kanban" | "list";
@@ -251,6 +276,7 @@ export default function KanbanPage() {
   useEffect(() => {
     if (projects.length > 0 && projectId) {
       const foundProject = projects.find((p) => p.id === projectId);
+
       if (foundProject) {
         setProject(foundProject);
       } else {
@@ -336,6 +362,7 @@ export default function KanbanPage() {
     if (!user?.uid || !projectId) {
       setTasks([]);
       setTasksLoading(false);
+
       return;
     }
 
@@ -363,6 +390,7 @@ export default function KanbanPage() {
   useEffect(() => {
     if (!user?.uid || !projectId) {
       setEpics([]);
+
       return;
     }
 
@@ -437,6 +465,7 @@ export default function KanbanPage() {
     const blob = new Blob([dataStr], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
+
     link.href = url;
     link.download = `tasks-${project?.name || projectId}-${new Date().toISOString().split("T")[0]}.json`;
     document.body.appendChild(link);
@@ -558,6 +587,7 @@ export default function KanbanPage() {
         const assistantMessage = data.message;
 
         const updatedHistory = [...newHistory, assistantMessage];
+
         setConfigChatHistory(updatedHistory);
         handleConfigChatHistoryChange(updatedHistory);
 
@@ -584,6 +614,7 @@ export default function KanbanPage() {
           content: "Sorry, I encountered an error. Please try again.",
         };
         const errorHistory = [...newHistory, errorMessage];
+
         setConfigChatHistory(errorHistory);
         handleConfigChatHistoryChange(errorHistory);
       } finally {
@@ -607,6 +638,7 @@ export default function KanbanPage() {
   const handleRemoveTech = useCallback(
     (tech: string) => {
       const updatedStack = currentTechStack.filter((t) => t !== tech);
+
       setNewTechStack(updatedStack);
       if (projectId) {
         updateProject(projectId, {
@@ -681,9 +713,11 @@ export default function KanbanPage() {
 
       // Store task in RAG for semantic search
       const ragStoreName = project?.taskRAGStore || `${projectId}-tasks-rag`;
+
       try {
         // Get or create the corpus
         const corpus = await ragGetOrCreateCorpus(ragStoreName);
+
         if (corpus) {
           // Format task content for RAG
           const taskContent = [
@@ -711,7 +745,7 @@ export default function KanbanPage() {
               category: taskData.category,
               priority: taskData.priority,
               cleanArchitectureArea: taskData.cleanArchitectureArea,
-            }
+            },
           );
         }
       } catch (ragError) {
@@ -772,6 +806,7 @@ export default function KanbanPage() {
 
     // Fuzzy matching: check if all characters in query appear in order
     let queryIndex = 0;
+
     for (
       let i = 0;
       i < lowerText.length && queryIndex < lowerQuery.length;
@@ -781,6 +816,7 @@ export default function KanbanPage() {
         queryIndex++;
       }
     }
+
     return queryIndex === lowerQuery.length;
   };
 
@@ -796,6 +832,7 @@ export default function KanbanPage() {
         !searchQuery ||
         fuzzyMatch(task.title, searchQuery) ||
         fuzzyMatch(task.description || "", searchQuery);
+
       return matchesEpic && matchesSearch;
     });
   }, [tasks, selectedEpic, searchQuery]);
@@ -827,10 +864,8 @@ export default function KanbanPage() {
         <div className="flex gap-2">
           {/* Configuration Button */}
           <Button
-            size="sm"
             color="default"
-            variant="flat"
-            onPress={() => setIsConfigModalOpen(true)}
+            size="sm"
             startContent={
               <svg
                 className="w-4 h-4"
@@ -839,19 +874,21 @@ export default function KanbanPage() {
                 viewBox="0 0 24 24"
               >
                 <path
+                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
                 />
                 <path
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
                 />
               </svg>
             }
+            variant="flat"
+            onPress={() => setIsConfigModalOpen(true)}
           >
             Configuration
           </Button>
@@ -869,10 +906,10 @@ export default function KanbanPage() {
               viewBox="0 0 24 24"
             >
               <path
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
             <div className="flex-1">
@@ -887,10 +924,10 @@ export default function KanbanPage() {
             </div>
             <Button
               color="danger"
-              variant="flat"
-              size="sm"
-              onPress={handleRetryExecutor}
               isLoading={isRetryingExecutor}
+              size="sm"
+              variant="flat"
+              onPress={handleRetryExecutor}
             >
               Retry
             </Button>
@@ -909,10 +946,10 @@ export default function KanbanPage() {
               viewBox="0 0 24 24"
             >
               <path
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
               />
             </svg>
             <div className="flex-1">
@@ -926,8 +963,8 @@ export default function KanbanPage() {
             </div>
             <Button
               color="warning"
-              variant="flat"
               size="sm"
+              variant="flat"
               onPress={() => setIsTechStackModalOpen(true)}
             >
               Configure Tech Stack
@@ -940,7 +977,7 @@ export default function KanbanPage() {
       {isBoilerplateRunning && !isExecutorError && (
         <div className="mb-4 p-4 bg-primary-50 dark:bg-primary-950/20 border border-primary-200 dark:border-primary-900 rounded-lg">
           <div className="flex items-center gap-3">
-            <Spinner size="sm" color="primary" />
+            <Spinner color="primary" size="sm" />
             <div className="flex-1">
               <h3 className="text-sm font-semibold text-primary-700 dark:text-primary-400">
                 Creating Boilerplate
@@ -965,10 +1002,10 @@ export default function KanbanPage() {
               viewBox="0 0 24 24"
             >
               <path
+                d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
               />
             </svg>
             <div className="flex-1">
@@ -981,10 +1018,10 @@ export default function KanbanPage() {
             </div>
             <Button
               color="secondary"
-              variant="flat"
-              size="sm"
-              onPress={handleStartBoilerplate}
               isLoading={isStartingBoilerplate}
+              size="sm"
+              variant="flat"
+              onPress={handleStartBoilerplate}
             >
               Start Boilerplate
             </Button>
@@ -998,10 +1035,8 @@ export default function KanbanPage() {
         <div className="flex items-center gap-2">
           {/* New Epic Button */}
           <Button
-            size="sm"
             color="secondary"
-            variant="flat"
-            onPress={() => setIsNewEpicModalOpen(true)}
+            size="sm"
             startContent={
               <svg
                 className="w-4 h-4"
@@ -1010,25 +1045,23 @@ export default function KanbanPage() {
                 viewBox="0 0 24 24"
               >
                 <path
+                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
                 />
               </svg>
             }
+            variant="flat"
+            onPress={() => setIsNewEpicModalOpen(true)}
           >
             New Epic
           </Button>
 
           {/* Grooming Session Button */}
           <Button
-            size="sm"
             color="secondary"
-            variant="flat"
-            onPress={() =>
-              router.push(`/dashboard/project/${projectId}/grooming`)
-            }
+            size="sm"
             startContent={
               <svg
                 className="w-4 h-4"
@@ -1037,12 +1070,16 @@ export default function KanbanPage() {
                 viewBox="0 0 24 24"
               >
                 <path
+                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
                 />
               </svg>
+            }
+            variant="flat"
+            onPress={() =>
+              router.push(`/dashboard/project/${projectId}/grooming`)
             }
           >
             Start Grooming
@@ -1050,10 +1087,8 @@ export default function KanbanPage() {
 
           {/* New Task Button */}
           <Button
-            size="sm"
             color="primary"
-            variant="solid"
-            onPress={() => setIsNewTaskModalOpen(true)}
+            size="sm"
             startContent={
               <svg
                 className="w-4 h-4"
@@ -1062,13 +1097,15 @@ export default function KanbanPage() {
                 viewBox="0 0 24 24"
               >
                 <path
+                  d="M12 4v16m8-8H4"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M12 4v16m8-8H4"
                 />
               </svg>
             }
+            variant="solid"
+            onPress={() => setIsNewTaskModalOpen(true)}
           >
             New Task
           </Button>
@@ -1079,12 +1116,12 @@ export default function KanbanPage() {
           {/* View Tabs */}
           <div className="flex rounded-lg bg-default-100 p-1">
             <button
-              onClick={() => setViewMode("kanban")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 viewMode === "kanban"
                   ? "bg-white dark:bg-default-200 text-foreground shadow-sm"
                   : "text-default-500 hover:text-foreground"
               }`}
+              onClick={() => setViewMode("kanban")}
             >
               <svg
                 className="w-4 h-4"
@@ -1093,21 +1130,21 @@ export default function KanbanPage() {
                 viewBox="0 0 24 24"
               >
                 <path
+                  d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"
                 />
               </svg>
               Kanban
             </button>
             <button
-              onClick={() => setViewMode("list")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 viewMode === "list"
                   ? "bg-white dark:bg-default-200 text-foreground shadow-sm"
                   : "text-default-500 hover:text-foreground"
               }`}
+              onClick={() => setViewMode("list")}
             >
               <svg
                 className="w-4 h-4"
@@ -1116,10 +1153,10 @@ export default function KanbanPage() {
                 viewBox="0 0 24 24"
               >
                 <path
+                  d="M4 6h16M4 10h16M4 14h16M4 18h16"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M4 6h16M4 10h16M4 14h16M4 18h16"
                 />
               </svg>
               List
@@ -1128,11 +1165,9 @@ export default function KanbanPage() {
 
           {/* Export Tasks Button */}
           <Button
-            size="sm"
             color="default"
-            variant="flat"
-            onPress={handleDownloadTasks}
             isDisabled={tasks.length === 0}
+            size="sm"
             startContent={
               <svg
                 className="w-4 h-4"
@@ -1141,13 +1176,15 @@ export default function KanbanPage() {
                 viewBox="0 0 24 24"
               >
                 <path
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
                 />
               </svg>
             }
+            variant="flat"
+            onPress={handleDownloadTasks}
           >
             Export
           </Button>
@@ -1157,14 +1194,10 @@ export default function KanbanPage() {
       {/* Filters */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Input
-          type="text"
-          placeholder="Search..."
-          value={searchQuery}
-          onValueChange={setSearchQuery}
-          className="w-40"
-          size="sm"
           isClearable
-          onClear={() => setSearchQuery("")}
+          className="w-40"
+          placeholder="Search..."
+          size="sm"
           startContent={
             <svg
               className="w-3 h-3 text-default-400"
@@ -1173,25 +1206,30 @@ export default function KanbanPage() {
               viewBox="0 0 24 24"
             >
               <path
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
               />
             </svg>
           }
+          type="text"
+          value={searchQuery}
+          onClear={() => setSearchQuery("")}
+          onValueChange={setSearchQuery}
         />
         <Select
+          className="w-40"
           placeholder="Epic"
           selectedKeys={new Set([selectedEpic])}
+          size="sm"
           onSelectionChange={(keys) => {
             const selected = Array.from(keys)[0] as string;
+
             if (selected) {
               setSelectedEpic(selected);
             }
           }}
-          className="w-40"
-          size="sm"
         >
           {[
             { id: "all", title: "All Epics" },
@@ -1206,8 +1244,8 @@ export default function KanbanPage() {
         {/* Clear all filters button */}
         {(searchQuery || selectedEpic !== "all") && (
           <Button
-            size="sm"
             color="default"
+            size="sm"
             variant="flat"
             onPress={() => {
               setSearchQuery("");
@@ -1242,19 +1280,32 @@ export default function KanbanPage() {
         </div>
       ) : viewMode === "kanban" ? (
         <KanbanBoard
-          tasks={filteredTasks}
           epics={epics}
-          onMoveTask={async (taskId: string, status: TaskStatus) => {
+          tasks={filteredTasks}
+          onDeleteTask={async (taskId: string) => {
             if (user?.uid && projectId) {
               try {
-                await executionPlanRepository.updateTaskStatus(
+                // Delete from Firestore
+                await executionPlanRepository.deleteTask(
                   user.uid,
                   projectId,
                   taskId,
-                  status,
                 );
+
+                // Also delete from RAG if storage name is available
+                if (migration?.ragFunctionalAndBusinessStoreName) {
+                  try {
+                    await ragDeleteDocument(
+                      migration.ragFunctionalAndBusinessStoreName,
+                      `task-${taskId}`,
+                    );
+                  } catch (ragError) {
+                    console.error("Error deleting task from RAG:", ragError);
+                    // Don't throw - task is already deleted from Firestore
+                  }
+                }
               } catch (error) {
-                console.error("Error updating task status:", error);
+                console.error("Error deleting task:", error);
               }
             }
           }}
@@ -1286,44 +1337,17 @@ export default function KanbanPage() {
               }
             }
           }}
-          onUpdateTaskEpic={async (taskId: string, epicId: string) => {
+          onMoveTask={async (taskId: string, status: TaskStatus) => {
             if (user?.uid && projectId) {
               try {
-                await executionPlanRepository.assignTasksToEpic(
-                  user.uid,
-                  projectId,
-                  epicId,
-                  [taskId],
-                );
-              } catch (error) {
-                console.error("Error updating task epic:", error);
-              }
-            }
-          }}
-          onDeleteTask={async (taskId: string) => {
-            if (user?.uid && projectId) {
-              try {
-                // Delete from Firestore
-                await executionPlanRepository.deleteTask(
+                await executionPlanRepository.updateTaskStatus(
                   user.uid,
                   projectId,
                   taskId,
+                  status,
                 );
-
-                // Also delete from RAG if storage name is available
-                if (migration?.ragFunctionalAndBusinessStoreName) {
-                  try {
-                    await ragDeleteDocument(
-                      migration.ragFunctionalAndBusinessStoreName,
-                      `task-${taskId}`,
-                    );
-                  } catch (ragError) {
-                    console.error("Error deleting task from RAG:", ragError);
-                    // Don't throw - task is already deleted from Firestore
-                  }
-                }
               } catch (error) {
-                console.error("Error deleting task:", error);
+                console.error("Error updating task status:", error);
               }
             }
           }}
@@ -1341,7 +1365,14 @@ export default function KanbanPage() {
               }
             }
           }}
-          onUpdateTask={async (taskId: string, updates: { title?: string; description?: string; dependencies?: string[] }) => {
+          onUpdateTask={async (
+            taskId: string,
+            updates: {
+              title?: string;
+              description?: string;
+              dependencies?: string[];
+            },
+          ) => {
             if (user?.uid && projectId) {
               try {
                 // Update in Firestore
@@ -1353,10 +1384,14 @@ export default function KanbanPage() {
                 );
 
                 // Also update in RAG (Pinecone + Neo4j) if storage name is available
-                const ragStoreName = project?.taskRAGStore || migration?.ragFunctionalAndBusinessStoreName;
+                const ragStoreName =
+                  project?.taskRAGStore ||
+                  migration?.ragFunctionalAndBusinessStoreName;
+
                 if (ragStoreName) {
                   // Find the current task to get existing metadata
-                  const currentTask = tasks.find(t => t.id === taskId);
+                  const currentTask = tasks.find((t) => t.id === taskId);
+
                   await ragUpdateTask(
                     ragStoreName,
                     `task-${taskId}`,
@@ -1368,7 +1403,7 @@ export default function KanbanPage() {
                       category: currentTask?.category,
                       priority: currentTask?.priority,
                       cleanArchitectureArea: currentTask?.cleanArchitectureArea,
-                    }
+                    },
                   );
                 }
               } catch (error) {
@@ -1376,11 +1411,6 @@ export default function KanbanPage() {
               }
             }
           }}
-        />
-      ) : (
-        <TaskList
-          tasks={filteredTasks}
-          epics={epics}
           onUpdateTaskEpic={async (taskId: string, epicId: string) => {
             if (user?.uid && projectId) {
               try {
@@ -1395,60 +1425,11 @@ export default function KanbanPage() {
               }
             }
           }}
-          onReorderTasks={async (taskOrders) => {
-            if (user?.uid && projectId) {
-              try {
-                await executionPlanRepository.updateTasksOrder(
-                  user.uid,
-                  projectId,
-                  taskOrders,
-                );
-              } catch (error) {
-                console.error("Error reordering tasks:", error);
-              }
-            }
-          }}
-          onDeleteTask={async (taskId: string) => {
-            if (user?.uid && projectId) {
-              try {
-                // Delete from Firestore
-                await executionPlanRepository.deleteTask(
-                  user.uid,
-                  projectId,
-                  taskId,
-                );
-
-                // Also delete from RAG if storage name is available
-                if (migration?.ragFunctionalAndBusinessStoreName) {
-                  try {
-                    await ragDeleteDocument(
-                      migration.ragFunctionalAndBusinessStoreName,
-                      `task-${taskId}`,
-                    );
-                  } catch (ragError) {
-                    console.error("Error deleting task from RAG:", ragError);
-                    // Don't throw - task is already deleted from Firestore
-                  }
-                }
-              } catch (error) {
-                console.error("Error deleting task:", error);
-              }
-            }
-          }}
-          onMoveToBacklog={async (taskId: string) => {
-            if (user?.uid && projectId) {
-              try {
-                await executionPlanRepository.updateTaskStatus(
-                  user.uid,
-                  projectId,
-                  taskId,
-                  "backlog",
-                );
-              } catch (error) {
-                console.error("Error moving task to backlog:", error);
-              }
-            }
-          }}
+        />
+      ) : (
+        <TaskList
+          epics={epics}
+          tasks={filteredTasks}
           onDeleteEpic={async (epicId: string, deleteTasksToo: boolean) => {
             if (user?.uid && projectId) {
               try {
@@ -1460,6 +1441,7 @@ export default function KanbanPage() {
                   const epicTasks = tasks.filter(
                     (task) => task.epicId === epicId,
                   );
+
                   for (const task of epicTasks) {
                     try {
                       await ragDeleteDocument(
@@ -1486,15 +1468,83 @@ export default function KanbanPage() {
               }
             }
           }}
+          onDeleteTask={async (taskId: string) => {
+            if (user?.uid && projectId) {
+              try {
+                // Delete from Firestore
+                await executionPlanRepository.deleteTask(
+                  user.uid,
+                  projectId,
+                  taskId,
+                );
+
+                // Also delete from RAG if storage name is available
+                if (migration?.ragFunctionalAndBusinessStoreName) {
+                  try {
+                    await ragDeleteDocument(
+                      migration.ragFunctionalAndBusinessStoreName,
+                      `task-${taskId}`,
+                    );
+                  } catch (ragError) {
+                    console.error("Error deleting task from RAG:", ragError);
+                    // Don't throw - task is already deleted from Firestore
+                  }
+                }
+              } catch (error) {
+                console.error("Error deleting task:", error);
+              }
+            }
+          }}
+          onMoveToBacklog={async (taskId: string) => {
+            if (user?.uid && projectId) {
+              try {
+                await executionPlanRepository.updateTaskStatus(
+                  user.uid,
+                  projectId,
+                  taskId,
+                  "backlog",
+                );
+              } catch (error) {
+                console.error("Error moving task to backlog:", error);
+              }
+            }
+          }}
+          onReorderTasks={async (taskOrders) => {
+            if (user?.uid && projectId) {
+              try {
+                await executionPlanRepository.updateTasksOrder(
+                  user.uid,
+                  projectId,
+                  taskOrders,
+                );
+              } catch (error) {
+                console.error("Error reordering tasks:", error);
+              }
+            }
+          }}
+          onUpdateTaskEpic={async (taskId: string, epicId: string) => {
+            if (user?.uid && projectId) {
+              try {
+                await executionPlanRepository.assignTasksToEpic(
+                  user.uid,
+                  projectId,
+                  epicId,
+                  [taskId],
+                );
+              } catch (error) {
+                console.error("Error updating task epic:", error);
+              }
+            }
+          }}
         />
       )}
 
       {/* Configuration Modal */}
       <Modal
         isOpen={isConfigModalOpen}
-        onClose={() => setIsConfigModalOpen(false)}
-        size="md"
         scrollBehavior="inside"
+        size="md"
+        onClose={() => setIsConfigModalOpen(false)}
       >
         <ModalContent>
           <ModalHeader>
@@ -1508,6 +1558,13 @@ export default function KanbanPage() {
                   Processor Host
                 </label>
                 <Select
+                  className="w-full"
+                  description={
+                    processors.filter((p) => p.status === "running").length ===
+                    0
+                      ? "No processors available. Make sure a processor is running."
+                      : "Select the processor server that will handle task execution"
+                  }
                   label="Select Processor"
                   placeholder="Select a processor"
                   selectedKeys={
@@ -1517,17 +1574,11 @@ export default function KanbanPage() {
                   }
                   onSelectionChange={(keys) => {
                     const selected = Array.from(keys)[0] as string;
+
                     if (selected) {
                       handleProcessorHostChange(selected);
                     }
                   }}
-                  className="w-full"
-                  description={
-                    processors.filter((p) => p.status === "running").length ===
-                    0
-                      ? "No processors available. Make sure a processor is running."
-                      : "Select the processor server that will handle task execution"
-                  }
                 >
                   {processors
                     .filter((p) => p.status === "running")
@@ -1555,15 +1606,16 @@ export default function KanbanPage() {
                   Claude Model for Task Execution
                 </label>
                 <Select
+                  className="w-full"
                   label="Select Model"
                   selectedKeys={new Set([selectedModel])}
                   onSelectionChange={(keys) => {
                     const selected = Array.from(keys)[0] as string;
+
                     if (selected) {
                       handleModelChange(selected);
                     }
                   }}
-                  className="w-full"
                 >
                   {CLAUDE_MODELS.map((model) => (
                     <SelectItem key={model.id} textValue={model.label}>
@@ -1584,10 +1636,8 @@ export default function KanbanPage() {
                 </label>
                 <div className="flex gap-2">
                   <Button
-                    size="sm"
-                    variant={theme === "light" ? "solid" : "flat"}
                     color={theme === "light" ? "primary" : "default"}
-                    onPress={() => setTheme("light")}
+                    size="sm"
                     startContent={
                       <svg
                         className="w-4 h-4"
@@ -1596,21 +1646,21 @@ export default function KanbanPage() {
                         viewBox="0 0 24 24"
                       >
                         <path
+                          d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={2}
-                          d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
                         />
                       </svg>
                     }
+                    variant={theme === "light" ? "solid" : "flat"}
+                    onPress={() => setTheme("light")}
                   >
                     Light
                   </Button>
                   <Button
-                    size="sm"
-                    variant={theme === "dark" ? "solid" : "flat"}
                     color={theme === "dark" ? "primary" : "default"}
-                    onPress={() => setTheme("dark")}
+                    size="sm"
                     startContent={
                       <svg
                         className="w-4 h-4"
@@ -1619,21 +1669,21 @@ export default function KanbanPage() {
                         viewBox="0 0 24 24"
                       >
                         <path
+                          d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={2}
-                          d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
                         />
                       </svg>
                     }
+                    variant={theme === "dark" ? "solid" : "flat"}
+                    onPress={() => setTheme("dark")}
                   >
                     Dark
                   </Button>
                   <Button
-                    size="sm"
-                    variant={theme === "system" ? "solid" : "flat"}
                     color={theme === "system" ? "primary" : "default"}
-                    onPress={() => setTheme("system")}
+                    size="sm"
                     startContent={
                       <svg
                         className="w-4 h-4"
@@ -1642,13 +1692,15 @@ export default function KanbanPage() {
                         viewBox="0 0 24 24"
                       >
                         <path
+                          d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={2}
-                          d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
                         />
                       </svg>
                     }
+                    variant={theme === "system" ? "solid" : "flat"}
+                    onPress={() => setTheme("system")}
                   >
                     System
                   </Button>
@@ -1666,26 +1718,26 @@ export default function KanbanPage() {
                 <div className="flex flex-col gap-3">
                   <div className="flex gap-2">
                     <Input
-                      type="email"
-                      placeholder="Enter email address"
-                      value={inviteEmail}
-                      onValueChange={setInviteEmail}
                       className="flex-1"
-                      size="sm"
                       isDisabled={isInviting}
+                      placeholder="Enter email address"
+                      size="sm"
+                      type="email"
+                      value={inviteEmail}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           handleInviteUser();
                         }
                       }}
+                      onValueChange={setInviteEmail}
                     />
                     <Button
                       color="primary"
+                      isDisabled={!inviteEmail.trim()}
+                      isLoading={isInviting}
+                      size="sm"
                       variant="flat"
                       onPress={handleInviteUser}
-                      isLoading={isInviting}
-                      isDisabled={!inviteEmail.trim()}
-                      size="sm"
                     >
                       Invite
                     </Button>
@@ -1723,14 +1775,14 @@ export default function KanbanPage() {
                                 {share.role}
                               </span>
                               <Button
-                                size="sm"
-                                variant="light"
-                                color="danger"
                                 isIconOnly
                                 className="min-w-6 w-6 h-6"
-                                onPress={() => handleRemoveUser(share.userId)}
+                                color="danger"
                                 isLoading={removingUserId === share.userId}
+                                size="sm"
                                 title="Remove user"
+                                variant="light"
+                                onPress={() => handleRemoveUser(share.userId)}
                               >
                                 <svg
                                   className="w-3 h-3"
@@ -1739,10 +1791,10 @@ export default function KanbanPage() {
                                   viewBox="0 0 24 24"
                                 >
                                   <path
+                                    d="M6 18L18 6M6 6l12 12"
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
                                     strokeWidth={2}
-                                    d="M6 18L18 6M6 6l12 12"
                                   />
                                 </svg>
                               </Button>
@@ -1763,11 +1815,11 @@ export default function KanbanPage() {
                 <div className="flex flex-col gap-3">
                   <div>
                     <Button
+                      className="w-full"
                       color="primary"
+                      isLoading={isForceResuming}
                       variant="flat"
                       onPress={handleForceResume}
-                      isLoading={isForceResuming}
-                      className="w-full"
                     >
                       Force Resume
                     </Button>
@@ -1777,11 +1829,11 @@ export default function KanbanPage() {
                   </div>
                   <div>
                     <Button
+                      className="w-full"
                       color="danger"
+                      isLoading={isRestarting}
                       variant="flat"
                       onPress={handleRestartAll}
-                      isLoading={isRestarting}
-                      className="w-full"
                     >
                       Restart All
                     </Button>
@@ -1804,10 +1856,10 @@ export default function KanbanPage() {
 
       {/* Boilerplate Modal */}
       <Modal
-        isOpen={isBoilerplateModalOpen}
-        onClose={() => setIsBoilerplateModalOpen(false)}
-        size="lg"
         isDismissable={false}
+        isOpen={isBoilerplateModalOpen}
+        size="lg"
+        onClose={() => setIsBoilerplateModalOpen(false)}
       >
         <ModalContent>
           <ModalHeader>
@@ -1853,8 +1905,8 @@ export default function KanbanPage() {
             </Button>
             <Button
               color="primary"
-              onPress={handleStartBoilerplate}
               isLoading={isStartingBoilerplate}
+              onPress={handleStartBoilerplate}
             >
               Start Boilerplate
             </Button>
@@ -1864,10 +1916,10 @@ export default function KanbanPage() {
 
       {/* Restart In Progress Modal */}
       <Modal
+        hideCloseButton
+        isDismissable={false}
         isOpen={isProjectRestarting}
         size="md"
-        isDismissable={false}
-        hideCloseButton
       >
         <ModalContent>
           <ModalHeader>
@@ -1875,7 +1927,7 @@ export default function KanbanPage() {
           </ModalHeader>
           <ModalBody>
             <div className="flex flex-col items-center gap-4 py-4">
-              <Spinner size="lg" color="primary" />
+              <Spinner color="primary" size="lg" />
               <p className="text-default-700 text-center">
                 The project is being restarted. Please wait while the system
                 resets the boilerplate and executor module.
@@ -1892,8 +1944,6 @@ export default function KanbanPage() {
       {/* New Task Modal */}
       <NewTaskModal
         isOpen={isNewTaskModalOpen}
-        onClose={() => setIsNewTaskModalOpen(false)}
-        onSubmit={handleCreateTask}
         projectContext={
           project
             ? {
@@ -1903,28 +1953,30 @@ export default function KanbanPage() {
               }
             : undefined
         }
+        onClose={() => setIsNewTaskModalOpen(false)}
+        onSubmit={handleCreateTask}
       />
 
       {/* Tech Stack Configuration Modal */}
       <TechStackEditModal
-        isOpen={isTechStackModalOpen}
-        onOpenChange={setIsTechStackModalOpen}
-        techStack={currentTechStack}
-        messages={configChatHistory}
         isLoading={isConfigChatLoading}
+        isOpen={isTechStackModalOpen}
+        messages={configChatHistory}
         suggestions={suggestions}
-        onSendMessage={handleSendMessage}
-        onRemoveTech={handleRemoveTech}
+        techStack={currentTechStack}
         onClearAll={handleClearAllTech}
+        onOpenChange={setIsTechStackModalOpen}
+        onRemoveTech={handleRemoveTech}
         onSave={handleSaveTechStack}
+        onSendMessage={handleSendMessage}
       />
 
       {/* New Epic Modal */}
       <NewEpicModal
         isOpen={isNewEpicModalOpen}
+        tasks={tasks}
         onClose={() => setIsNewEpicModalOpen(false)}
         onSubmit={handleCreateEpic}
-        tasks={tasks}
       />
     </div>
   );

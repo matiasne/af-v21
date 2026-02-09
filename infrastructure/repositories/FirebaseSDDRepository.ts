@@ -1,6 +1,7 @@
 import { doc, getDoc, onSnapshot, Unsubscribe } from "firebase/firestore";
 
 import { db } from "../firebase/config";
+
 import {
   SDDTableOfContents,
   SDDSection,
@@ -24,7 +25,9 @@ export class FirebaseSDDRepository implements SDDRepository {
   }
 
   private toSection(data: Record<string, unknown>): SDDSection {
-    const subsectionsData = (data.subsections as Record<string, unknown>[]) || [];
+    const subsectionsData =
+      (data.subsections as Record<string, unknown>[]) || [];
+
     return {
       number: (data.number as string) || "",
       title: (data.title as string) || "",
@@ -37,6 +40,7 @@ export class FirebaseSDDRepository implements SDDRepository {
 
   private toTableOfContents(data: Record<string, unknown>): SDDTableOfContents {
     const sectionsData = (data.sections as Record<string, unknown>[]) || [];
+
     return {
       title: (data.title as string) || "",
       version: (data.version as string) || "",
@@ -48,7 +52,7 @@ export class FirebaseSDDRepository implements SDDRepository {
   }
 
   async getTableOfContents(
-    projectId: string
+    projectId: string,
   ): Promise<SDDTableOfContents | null> {
     const docRef = this.getTocDoc(projectId);
     const docSnap = await getDoc(docRef);
@@ -63,7 +67,7 @@ export class FirebaseSDDRepository implements SDDRepository {
   subscribeTableOfContents(
     projectId: string,
     onUpdate: (toc: SDDTableOfContents | null) => void,
-    onError?: (error: Error) => void
+    onError?: (error: Error) => void,
   ): () => void {
     const docRef = this.getTocDoc(projectId);
 
@@ -72,17 +76,20 @@ export class FirebaseSDDRepository implements SDDRepository {
       (docSnap) => {
         if (!docSnap.exists()) {
           onUpdate(null);
+
           return;
         }
 
-        onUpdate(this.toTableOfContents(docSnap.data() as Record<string, unknown>));
+        onUpdate(
+          this.toTableOfContents(docSnap.data() as Record<string, unknown>),
+        );
       },
       (error) => {
         console.error("Error subscribing to SDD TOC:", error);
         if (onError) {
           onError(error);
         }
-      }
+      },
     );
 
     return unsubscribe;

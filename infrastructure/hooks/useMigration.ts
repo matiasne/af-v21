@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 
 import { FirebaseMigrationRepository } from "../repositories/FirebaseMigrationRepository";
+
 import {
   MigrationAction,
   ProcessResult,
@@ -142,6 +143,7 @@ export function useMigration(projectId: string): UseMigrationReturn {
           setLoading(false);
         },
       );
+
       unsubscribeMigrationRef.current = unsub;
     },
     [projectId],
@@ -224,10 +226,13 @@ export function useMigration(projectId: string): UseMigrationReturn {
 
     try {
       const migrations = await migrationRepository.getMigrations(projectId);
+
       setAllMigrations(migrations);
+
       return migrations;
     } catch (err) {
       console.error("Error fetching migrations:", err);
+
       return [];
     }
   }, [projectId]);
@@ -247,6 +252,7 @@ export function useMigration(projectId: string): UseMigrationReturn {
         if (existingMigrations.length > 0) {
           // Subscribe to the most recent migration
           const latestMigration = existingMigrations[0];
+
           subscribeTo(latestMigration.id);
         }
       } catch (err) {
@@ -293,12 +299,16 @@ export function useMigration(projectId: string): UseMigrationReturn {
 
   const isCompleted = useMemo(() => currentStep === "completed", [currentStep]);
 
-  const isError = useMemo(() => migration?.action === "error", [migration?.action]);
+  const isError = useMemo(
+    () => migration?.action === "error",
+    [migration?.action],
+  );
 
   const totalStepsCount = PROCESSING_STEPS.length;
 
   const completedStepsCount = useMemo(() => {
     if (!processResult) return 0;
+
     return processResult.stepsCompleted.length;
   }, [processResult]);
 
@@ -327,6 +337,7 @@ export function useMigration(projectId: string): UseMigrationReturn {
     // If current step is not in the list (e.g., configuration, queue, error), return 0
     if (currentIndex === -1) {
       if (currentStep === "completed") return 100;
+
       return 0;
     }
 
@@ -358,7 +369,9 @@ export function useMigration(projectId: string): UseMigrationReturn {
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Failed to create migration";
+
         setError(errorMessage);
+
         return null;
       } finally {
         setLoading(false);
@@ -374,6 +387,7 @@ export function useMigration(projectId: string): UseMigrationReturn {
           hasProjectId: !!projectId,
           hasMigrationId: !!migration?.id,
         });
+
         return;
       }
 
@@ -394,6 +408,7 @@ export function useMigration(projectId: string): UseMigrationReturn {
         console.error("[useMigration] updateMigration error:", err);
         const errorMessage =
           err instanceof Error ? err.message : "Failed to update migration";
+
         setError(errorMessage);
       }
     },
@@ -439,6 +454,7 @@ export function useMigration(projectId: string): UseMigrationReturn {
   const setStepAgent = useCallback(
     async (step: StepStatus, agent: StepAgentConfig): Promise<void> => {
       const newStepAgents = { ...migration?.stepAgents, [step]: agent };
+
       await updateMigration({ stepAgents: newStepAgents });
     },
     [updateMigration, migration?.stepAgents],
@@ -447,6 +463,7 @@ export function useMigration(projectId: string): UseMigrationReturn {
   const removeStepAgent = useCallback(
     async (step: StepStatus): Promise<void> => {
       const newStepAgents = { ...migration?.stepAgents };
+
       delete newStepAgents[step];
       await updateMigration({ stepAgents: newStepAgents });
     },
@@ -498,6 +515,7 @@ export function useMigration(projectId: string): UseMigrationReturn {
       );
     } catch (err) {
       console.error("Error getting config chat messages:", err);
+
       return [];
     }
   }, [projectId, migration?.id]);
@@ -516,6 +534,7 @@ export function useMigration(projectId: string): UseMigrationReturn {
         );
       } catch (err) {
         console.error("Error adding config chat message:", err);
+
         return null;
       }
     },

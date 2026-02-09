@@ -37,6 +37,7 @@ export function LegacyTechStackCard({
             <div className="flex flex-wrap gap-2">
               {legacyTechStack.map((tech) => {
                 const { icon: Icon, color } = getTechIcon(tech);
+
                 return (
                   <Chip
                     key={tech}

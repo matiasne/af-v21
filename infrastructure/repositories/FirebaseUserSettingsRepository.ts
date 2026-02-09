@@ -1,6 +1,7 @@
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 
 import { db } from "../firebase/config";
+
 import {
   UserSettings,
   ProjectDashboardSettings,
@@ -35,7 +36,7 @@ export class FirebaseUserSettingsRepository implements UserSettingsRepository {
 
   async saveUserSettings(
     userId: string,
-    settings: Partial<UserSettings>
+    settings: Partial<UserSettings>,
   ): Promise<void> {
     const docRef = this.getUserSettingsDoc(userId);
 
@@ -46,13 +47,13 @@ export class FirebaseUserSettingsRepository implements UserSettingsRepository {
         userId,
         updatedAt: Date.now(),
       },
-      { merge: true }
+      { merge: true },
     );
   }
 
   async updateProjectDashboardSettings(
     userId: string,
-    settings: ProjectDashboardSettings
+    settings: ProjectDashboardSettings,
   ): Promise<void> {
     const docRef = this.getUserSettingsDoc(userId);
     const docSnap = await getDoc(docRef);

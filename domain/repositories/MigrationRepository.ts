@@ -1,12 +1,26 @@
-import { MigrationAction, ProcessResult, StepResult } from "../entities/MigrationAction";
+import {
+  MigrationAction,
+  ProcessResult,
+  StepResult,
+} from "../entities/MigrationAction";
 import { ConfigChatMessage } from "../entities/Project";
 
 export interface MigrationRepository {
   // Migration Actions
   getMigrations(projectId: string): Promise<MigrationAction[]>;
-  getMigration(projectId: string, migrationId: string): Promise<MigrationAction | null>;
-  createMigration(projectId: string, migration: Omit<MigrationAction, "id">): Promise<string>;
-  updateMigration(projectId: string, migrationId: string, data: Partial<MigrationAction>): Promise<void>;
+  getMigration(
+    projectId: string,
+    migrationId: string,
+  ): Promise<MigrationAction | null>;
+  createMigration(
+    projectId: string,
+    migration: Omit<MigrationAction, "id">,
+  ): Promise<string>;
+  updateMigration(
+    projectId: string,
+    migrationId: string,
+    data: Partial<MigrationAction>,
+  ): Promise<void>;
   deleteMigration(projectId: string, migrationId: string): Promise<void>;
 
   // Real-time subscription
@@ -14,12 +28,18 @@ export interface MigrationRepository {
     projectId: string,
     migrationId: string,
     onUpdate: (migration: MigrationAction | null) => void,
-    onError?: (error: Error) => void
+    onError?: (error: Error) => void,
   ): () => void;
 
   // Process Results
-  getProcessResults(projectId: string, migrationId: string): Promise<ProcessResult[]>;
-  getLatestProcessResult(projectId: string, migrationId: string): Promise<ProcessResult | null>;
+  getProcessResults(
+    projectId: string,
+    migrationId: string,
+  ): Promise<ProcessResult[]>;
+  getLatestProcessResult(
+    projectId: string,
+    migrationId: string,
+  ): Promise<ProcessResult | null>;
 
   // Real-time subscription for process results
   subscribeProcessResult(
@@ -27,7 +47,7 @@ export interface MigrationRepository {
     migrationId: string,
     processId: string,
     onUpdate: (result: ProcessResult | null) => void,
-    onError?: (error: Error) => void
+    onError?: (error: Error) => void,
   ): () => void;
 
   // Step Results (directly under migration, not under processResults)
@@ -38,21 +58,21 @@ export interface MigrationRepository {
     projectId: string,
     migrationId: string,
     onUpdate: (results: StepResult[]) => void,
-    onError?: (error: Error) => void
+    onError?: (error: Error) => void,
   ): () => void;
 
   // Config chat messages (for tech stack configuration)
   getConfigChatMessages(
     projectId: string,
-    migrationId: string
+    migrationId: string,
   ): Promise<ConfigChatMessage[]>;
   addConfigChatMessage(
     projectId: string,
     migrationId: string,
-    message: Omit<ConfigChatMessage, "timestamp">
+    message: Omit<ConfigChatMessage, "timestamp">,
   ): Promise<string>;
   clearConfigChatMessages(
     projectId: string,
-    migrationId: string
+    migrationId: string,
   ): Promise<void>;
 }

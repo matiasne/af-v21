@@ -15,6 +15,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "../firebase/config";
+
 import {
   MigrationAction,
   ProcessResult,
@@ -23,7 +24,10 @@ import {
 } from "@/domain/entities/MigrationAction";
 import { MigrationRepository } from "@/domain/repositories/MigrationRepository";
 import { StepStatus, ConfigChatMessage } from "@/domain/entities/Project";
-import { TechStackAnalysis, TechItem } from "@/domain/entities/TechStackAnalysis";
+import {
+  TechStackAnalysis,
+  TechItem,
+} from "@/domain/entities/TechStackAnalysis";
 
 export class FirebaseMigrationRepository implements MigrationRepository {
   // Path: projects/{projectId}/code-analysis-module
@@ -44,7 +48,7 @@ export class FirebaseMigrationRepository implements MigrationRepository {
       projectId,
       "code-analysis-module",
       migrationId,
-      "processResults"
+      "processResults",
     );
   }
 
@@ -52,7 +56,7 @@ export class FirebaseMigrationRepository implements MigrationRepository {
   private getProcessResultDoc(
     projectId: string,
     migrationId: string,
-    processId: string
+    processId: string,
   ) {
     return doc(
       db,
@@ -61,29 +65,31 @@ export class FirebaseMigrationRepository implements MigrationRepository {
       "code-analysis-module",
       migrationId,
       "processResults",
-      processId
+      processId,
     );
   }
 
   // Path: projects/{projectId}/code-analysis-module/{migrationId}/step_results
-  private getStepResultsCollection(
-    projectId: string,
-    migrationId: string
-  ) {
+  private getStepResultsCollection(projectId: string, migrationId: string) {
     return collection(
       db,
       "projects",
       projectId,
       "code-analysis-module",
       migrationId,
-      "step_results"
+      "step_results",
     );
   }
 
   // Convert Firestore data to MigrationAction
-  private toMigrationAction(id: string, data: Record<string, unknown>): MigrationAction {
+  private toMigrationAction(
+    id: string,
+    data: Record<string, unknown>,
+  ): MigrationAction {
     const stepAgents: Record<string, StepAgentConfig> = {};
-    const stepAgentsData = data.stepAgents as Record<string, Record<string, unknown>> | undefined;
+    const stepAgentsData = data.stepAgents as
+      | Record<string, Record<string, unknown>>
+      | undefined;
 
     if (stepAgentsData) {
       for (const [step, config] of Object.entries(stepAgentsData)) {
@@ -95,10 +101,14 @@ export class FirebaseMigrationRepository implements MigrationRepository {
     }
 
     let defaultAgent: StepAgentConfig | undefined;
-    const defaultAgentData = data.defaultAgent as Record<string, unknown> | undefined;
+    const defaultAgentData = data.defaultAgent as
+      | Record<string, unknown>
+      | undefined;
+
     if (defaultAgentData) {
       defaultAgent = {
-        provider: (defaultAgentData.provider as "claude" | "openrouter") || "claude",
+        provider:
+          (defaultAgentData.provider as "claude" | "openrouter") || "claude",
         model: defaultAgentData.model as string | undefined,
       };
     }
@@ -109,11 +119,17 @@ export class FirebaseMigrationRepository implements MigrationRepository {
       currentStep: (data.currentStep as StepStatus) || "queue",
       updatedAt: (data.updatedAt as number) || Date.now(),
       description: data.description as string | undefined,
-      action: data.action as "start" | "stop" | "resume" | "running" | undefined,
+      action: data.action as
+        | "start"
+        | "stop"
+        | "resume"
+        | "running"
+        | undefined,
       startFrom: data.startFrom as StepStatus | undefined,
       executeOnly: data.executeOnly as StepStatus | undefined,
       ignoreSteps: (data.ignoreSteps as StepStatus[]) || [],
-      ragFunctionalAndBusinessStoreName: data.ragFunctionalandBussinessStoreName as string | undefined,
+      ragFunctionalAndBusinessStoreName:
+        data.ragFunctionalandBussinessStoreName as string | undefined,
       sddRagStoreName: data.sddRagStoreName as string | undefined,
       stepAgents,
       defaultAgent,
@@ -125,16 +141,20 @@ export class FirebaseMigrationRepository implements MigrationRepository {
   // Helper to remove undefined values from an object (Firestore doesn't accept undefined)
   private removeUndefinedValues<T extends Record<string, unknown>>(obj: T): T {
     const result = {} as T;
+
     for (const [key, value] of Object.entries(obj)) {
       if (value !== undefined) {
         (result as Record<string, unknown>)[key] = value;
       }
     }
+
     return result;
   }
 
   // Convert MigrationAction to Firestore data
-  private toFirestoreData(migration: Partial<MigrationAction>): Record<string, unknown> {
+  private toFirestoreData(
+    migration: Partial<MigrationAction>,
+  ): Record<string, unknown> {
     const data: Record<string, unknown> = {};
 
     if (migration.name !== undefined) {
@@ -162,7 +182,8 @@ export class FirebaseMigrationRepository implements MigrationRepository {
       data.ignoreSteps = migration.ignoreSteps;
     }
     if (migration.ragFunctionalAndBusinessStoreName !== undefined) {
-      data.ragFunctionalandBussinessStoreName = migration.ragFunctionalAndBusinessStoreName;
+      data.ragFunctionalandBussinessStoreName =
+        migration.ragFunctionalAndBusinessStoreName;
     }
     if (migration.sddRagStoreName !== undefined) {
       data.sddRagStoreName = migration.sddRagStoreName;
@@ -170,14 +191,19 @@ export class FirebaseMigrationRepository implements MigrationRepository {
     if (migration.stepAgents !== undefined) {
       // Clean undefined values from each step agent config
       const cleanedStepAgents: Record<string, Record<string, unknown>> = {};
+
       for (const [step, config] of Object.entries(migration.stepAgents)) {
-        cleanedStepAgents[step] = this.removeUndefinedValues(config as unknown as Record<string, unknown>);
+        cleanedStepAgents[step] = this.removeUndefinedValues(
+          config as unknown as Record<string, unknown>,
+        );
       }
       data.stepAgents = cleanedStepAgents;
     }
     if (migration.defaultAgent !== undefined) {
       // Clean undefined values from default agent config
-      data.defaultAgent = this.removeUndefinedValues(migration.defaultAgent as unknown as Record<string, unknown>);
+      data.defaultAgent = this.removeUndefinedValues(
+        migration.defaultAgent as unknown as Record<string, unknown>,
+      );
     }
     if (migration.processorHost !== undefined) {
       data.processorHost = migration.processorHost;
@@ -190,12 +216,16 @@ export class FirebaseMigrationRepository implements MigrationRepository {
   }
 
   // Convert Firestore data to ProcessResult
-  private toProcessResult(id: string, data: Record<string, unknown>): ProcessResult {
+  private toProcessResult(
+    id: string,
+    data: Record<string, unknown>,
+  ): ProcessResult {
     return {
       id,
       startDate: (data.startDate as number) || Date.now(),
       finishDate: data.finishDate as number | undefined,
-      status: (data.status as "in_progress" | "completed" | "error") || "in_progress",
+      status:
+        (data.status as "in_progress" | "completed" | "error") || "in_progress",
       currentStep: data.currentStep as StepStatus | undefined,
       stepsCompleted: (data.stepsCompleted as string[]) || [],
       outputs: (data.outputs as Record<string, unknown>) || {},
@@ -213,7 +243,8 @@ export class FirebaseMigrationRepository implements MigrationRepository {
       startDate: (data.startDate as number) || Date.now(),
       finishDate: data.finishDate as number | undefined,
       duration: data.duration as number | undefined,
-      status: (data.status as "in_progress" | "completed" | "error") || "in_progress",
+      status:
+        (data.status as "in_progress" | "completed" | "error") || "in_progress",
       metadata: data.metadata as Record<string, unknown> | undefined,
       error: data.error as string | undefined,
       errorDetails: data.errorDetails as string | undefined,
@@ -224,18 +255,18 @@ export class FirebaseMigrationRepository implements MigrationRepository {
   async getMigrations(projectId: string): Promise<MigrationAction[]> {
     const q = query(
       this.getMigrationsCollection(projectId),
-      orderBy("updatedAt", "desc")
+      orderBy("updatedAt", "desc"),
     );
     const querySnapshot = await getDocs(q);
 
     return querySnapshot.docs.map((doc) =>
-      this.toMigrationAction(doc.id, doc.data() as Record<string, unknown>)
+      this.toMigrationAction(doc.id, doc.data() as Record<string, unknown>),
     );
   }
 
   async getMigration(
     projectId: string,
-    migrationId: string
+    migrationId: string,
   ): Promise<MigrationAction | null> {
     const docRef = this.getMigrationDoc(projectId, migrationId);
     const docSnap = await getDoc(docRef);
@@ -244,16 +275,19 @@ export class FirebaseMigrationRepository implements MigrationRepository {
       return null;
     }
 
-    return this.toMigrationAction(docSnap.id, docSnap.data() as Record<string, unknown>);
+    return this.toMigrationAction(
+      docSnap.id,
+      docSnap.data() as Record<string, unknown>,
+    );
   }
 
   async createMigration(
     projectId: string,
-    migration: Omit<MigrationAction, "id">
+    migration: Omit<MigrationAction, "id">,
   ): Promise<string> {
     const docRef = await addDoc(
       this.getMigrationsCollection(projectId),
-      this.toFirestoreData(migration)
+      this.toFirestoreData(migration),
     );
 
     return docRef.id;
@@ -262,7 +296,7 @@ export class FirebaseMigrationRepository implements MigrationRepository {
   async updateMigration(
     projectId: string,
     migrationId: string,
-    data: Partial<MigrationAction>
+    data: Partial<MigrationAction>,
   ): Promise<void> {
     const docRef = this.getMigrationDoc(projectId, migrationId);
 
@@ -272,11 +306,9 @@ export class FirebaseMigrationRepository implements MigrationRepository {
     });
   }
 
-  async deleteMigration(
-    projectId: string,
-    migrationId: string
-  ): Promise<void> {
+  async deleteMigration(projectId: string, migrationId: string): Promise<void> {
     const docRef = this.getMigrationDoc(projectId, migrationId);
+
     await deleteDoc(docRef);
   }
 
@@ -285,7 +317,7 @@ export class FirebaseMigrationRepository implements MigrationRepository {
     projectId: string,
     migrationId: string,
     onUpdate: (migration: MigrationAction | null) => void,
-    onError?: (error: Error) => void
+    onError?: (error: Error) => void,
   ): Unsubscribe {
     const docRef = this.getMigrationDoc(projectId, migrationId);
 
@@ -293,7 +325,12 @@ export class FirebaseMigrationRepository implements MigrationRepository {
       docRef,
       (docSnap) => {
         if (docSnap.exists()) {
-          onUpdate(this.toMigrationAction(docSnap.id, docSnap.data() as Record<string, unknown>));
+          onUpdate(
+            this.toMigrationAction(
+              docSnap.id,
+              docSnap.data() as Record<string, unknown>,
+            ),
+          );
         } else {
           onUpdate(null);
         }
@@ -301,34 +338,34 @@ export class FirebaseMigrationRepository implements MigrationRepository {
       (error) => {
         console.error("Error subscribing to migration:", error);
         onError?.(error);
-      }
+      },
     );
   }
 
   // Process Results
   async getProcessResults(
     projectId: string,
-    migrationId: string
+    migrationId: string,
   ): Promise<ProcessResult[]> {
     const q = query(
       this.getProcessResultsCollection(projectId, migrationId),
-      orderBy("startDate", "desc")
+      orderBy("startDate", "desc"),
     );
     const querySnapshot = await getDocs(q);
 
     return querySnapshot.docs.map((doc) =>
-      this.toProcessResult(doc.id, doc.data() as Record<string, unknown>)
+      this.toProcessResult(doc.id, doc.data() as Record<string, unknown>),
     );
   }
 
   async getLatestProcessResult(
     projectId: string,
-    migrationId: string
+    migrationId: string,
   ): Promise<ProcessResult | null> {
     const q = query(
       this.getProcessResultsCollection(projectId, migrationId),
       orderBy("startDate", "desc"),
-      limit(1)
+      limit(1),
     );
     const querySnapshot = await getDocs(q);
 
@@ -337,6 +374,7 @@ export class FirebaseMigrationRepository implements MigrationRepository {
     }
 
     const doc = querySnapshot.docs[0];
+
     return this.toProcessResult(doc.id, doc.data() as Record<string, unknown>);
   }
 
@@ -346,7 +384,7 @@ export class FirebaseMigrationRepository implements MigrationRepository {
     migrationId: string,
     processId: string,
     onUpdate: (result: ProcessResult | null) => void,
-    onError?: (error: Error) => void
+    onError?: (error: Error) => void,
   ): Unsubscribe {
     const docRef = this.getProcessResultDoc(projectId, migrationId, processId);
 
@@ -354,7 +392,12 @@ export class FirebaseMigrationRepository implements MigrationRepository {
       docRef,
       (docSnap) => {
         if (docSnap.exists()) {
-          onUpdate(this.toProcessResult(docSnap.id, docSnap.data() as Record<string, unknown>));
+          onUpdate(
+            this.toProcessResult(
+              docSnap.id,
+              docSnap.data() as Record<string, unknown>,
+            ),
+          );
         } else {
           onUpdate(null);
         }
@@ -362,23 +405,23 @@ export class FirebaseMigrationRepository implements MigrationRepository {
       (error) => {
         console.error("Error subscribing to process result:", error);
         onError?.(error);
-      }
+      },
     );
   }
 
   // Step Results
   async getStepResults(
     projectId: string,
-    migrationId: string
+    migrationId: string,
   ): Promise<StepResult[]> {
     const q = query(
       this.getStepResultsCollection(projectId, migrationId),
-      orderBy("startDate", "asc")
+      orderBy("startDate", "asc"),
     );
     const querySnapshot = await getDocs(q);
 
     return querySnapshot.docs.map((doc) =>
-      this.toStepResult(doc.id, doc.data() as Record<string, unknown>)
+      this.toStepResult(doc.id, doc.data() as Record<string, unknown>),
     );
   }
 
@@ -387,33 +430,31 @@ export class FirebaseMigrationRepository implements MigrationRepository {
     projectId: string,
     migrationId: string,
     onUpdate: (results: StepResult[]) => void,
-    onError?: (error: Error) => void
+    onError?: (error: Error) => void,
   ): Unsubscribe {
     const q = query(
       this.getStepResultsCollection(projectId, migrationId),
-      orderBy("startDate", "asc")
+      orderBy("startDate", "asc"),
     );
 
     return onSnapshot(
       q,
       (querySnapshot) => {
         const results = querySnapshot.docs.map((doc) =>
-          this.toStepResult(doc.id, doc.data() as Record<string, unknown>)
+          this.toStepResult(doc.id, doc.data() as Record<string, unknown>),
         );
+
         onUpdate(results);
       },
       (error) => {
         console.error("Error subscribing to step results:", error);
         onError?.(error);
-      }
+      },
     );
   }
 
   // Tech Stack Analysis - Path: projects/{projectId}/code-analysis-module/{migrationId}/tech_stack/analysis
-  private getTechStackAnalysisDoc(
-    projectId: string,
-    migrationId: string
-  ) {
+  private getTechStackAnalysisDoc(projectId: string, migrationId: string) {
     return doc(
       db,
       "projects",
@@ -421,15 +462,19 @@ export class FirebaseMigrationRepository implements MigrationRepository {
       "code-analysis-module",
       migrationId,
       "tech_stack",
-      "analysis"
+      "analysis",
     );
   }
 
-  private toTechStackAnalysis(data: Record<string, unknown>): TechStackAnalysis {
+  private toTechStackAnalysis(
+    data: Record<string, unknown>,
+  ): TechStackAnalysis {
     const toTechItems = (items: unknown[]): TechItem[] => {
       if (!items || !Array.isArray(items)) return [];
+
       return items.map((item) => {
         const itemData = item as Record<string, unknown>;
+
         return {
           name: (itemData.name as string) || "",
           extensions: (itemData.extensions as string[]) || [],
@@ -452,14 +497,17 @@ export class FirebaseMigrationRepository implements MigrationRepository {
   // Get tech stack analysis
   async getTechStackAnalysis(
     projectId: string,
-    migrationId: string
+    migrationId: string,
   ): Promise<TechStackAnalysis | null> {
     const docRef = this.getTechStackAnalysisDoc(projectId, migrationId);
     const docSnap = await getDoc(docRef);
 
     if (docSnap.exists()) {
-      return this.toTechStackAnalysis(docSnap.data() as Record<string, unknown>);
+      return this.toTechStackAnalysis(
+        docSnap.data() as Record<string, unknown>,
+      );
     }
+
     return null;
   }
 
@@ -468,7 +516,7 @@ export class FirebaseMigrationRepository implements MigrationRepository {
     projectId: string,
     migrationId: string,
     onUpdate: (analysis: TechStackAnalysis | null) => void,
-    onError?: (error: Error) => void
+    onError?: (error: Error) => void,
   ): Unsubscribe {
     const docRef = this.getTechStackAnalysisDoc(projectId, migrationId);
 
@@ -476,7 +524,9 @@ export class FirebaseMigrationRepository implements MigrationRepository {
       docRef,
       (docSnap) => {
         if (docSnap.exists()) {
-          onUpdate(this.toTechStackAnalysis(docSnap.data() as Record<string, unknown>));
+          onUpdate(
+            this.toTechStackAnalysis(docSnap.data() as Record<string, unknown>),
+          );
         } else {
           onUpdate(null);
         }
@@ -484,14 +534,14 @@ export class FirebaseMigrationRepository implements MigrationRepository {
       (error) => {
         console.error("Error subscribing to tech stack analysis:", error);
         onError?.(error);
-      }
+      },
     );
   }
 
   // Config Chat Messages - Path: projects/{projectId}/code-analysis-module/{migrationId}/configChatMessages
   private getConfigChatMessagesCollection(
     projectId: string,
-    migrationId: string
+    migrationId: string,
   ) {
     return collection(
       db,
@@ -499,17 +549,17 @@ export class FirebaseMigrationRepository implements MigrationRepository {
       projectId,
       "code-analysis-module",
       migrationId,
-      "configChatMessages"
+      "configChatMessages",
     );
   }
 
   async getConfigChatMessages(
     projectId: string,
-    migrationId: string
+    migrationId: string,
   ): Promise<ConfigChatMessage[]> {
     const q = query(
       this.getConfigChatMessagesCollection(projectId, migrationId),
-      orderBy("timestamp", "asc")
+      orderBy("timestamp", "asc"),
     );
     const querySnapshot = await getDocs(q);
 
@@ -519,14 +569,14 @@ export class FirebaseMigrationRepository implements MigrationRepository {
   async addConfigChatMessage(
     projectId: string,
     migrationId: string,
-    message: Omit<ConfigChatMessage, "timestamp">
+    message: Omit<ConfigChatMessage, "timestamp">,
   ): Promise<string> {
     const docRef = await addDoc(
       this.getConfigChatMessagesCollection(projectId, migrationId),
       {
         ...message,
         timestamp: Date.now(),
-      }
+      },
     );
 
     return docRef.id;
@@ -534,13 +584,14 @@ export class FirebaseMigrationRepository implements MigrationRepository {
 
   async clearConfigChatMessages(
     projectId: string,
-    migrationId: string
+    migrationId: string,
   ): Promise<void> {
     const querySnapshot = await getDocs(
-      this.getConfigChatMessagesCollection(projectId, migrationId)
+      this.getConfigChatMessagesCollection(projectId, migrationId),
     );
 
     const batch = writeBatch(db);
+
     querySnapshot.docs.forEach((doc) => {
       batch.delete(doc.ref);
     });

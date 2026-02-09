@@ -19,8 +19,12 @@ export default function FDDDocViewerPage() {
   const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const { projects, loading: projectsLoading } = useProjects();
-  const { setProjectContext, setCurrentProjectId, setIsConfiguration, setPageTitle } =
-    useProjectChat();
+  const {
+    setProjectContext,
+    setCurrentProjectId,
+    setIsConfiguration,
+    setPageTitle,
+  } = useProjectChat();
   const [project, setProject] = useState<Project | null>(null);
   const [markdownContent, setMarkdownContent] = useState<string | null>(null);
   const [contentLoading, setContentLoading] = useState(true);
@@ -36,6 +40,7 @@ export default function FDDDocViewerPage() {
   // Set page title
   useEffect(() => {
     setPageTitle(`FDD: ${title}`);
+
     return () => setPageTitle(null);
   }, [setPageTitle, title]);
 
@@ -50,6 +55,7 @@ export default function FDDDocViewerPage() {
   useEffect(() => {
     if (projects.length > 0 && projectId) {
       const foundProject = projects.find((p) => p.id === projectId);
+
       if (foundProject) {
         setProject(foundProject);
       } else {
@@ -80,6 +86,7 @@ export default function FDDDocViewerPage() {
   useEffect(() => {
     if (!docUrl) {
       setContentLoading(false);
+
       return;
     }
 
@@ -95,10 +102,13 @@ export default function FDDDocViewerPage() {
         }
 
         const content = await response.text();
+
         setMarkdownContent(content);
       } catch (err) {
         console.error("Error fetching markdown:", err);
-        setError(err instanceof Error ? err.message : "Failed to load document");
+        setError(
+          err instanceof Error ? err.message : "Failed to load document",
+        );
       } finally {
         setContentLoading(false);
       }
@@ -145,16 +155,18 @@ export default function FDDDocViewerPage() {
       {/* Header */}
       <div className="mb-6">
         <Button
-          variant="light"
-          size="sm"
-          onPress={() => router.push(`/dashboard/project/${projectId}/fdd`)}
           className="mb-4"
+          size="sm"
+          variant="light"
+          onPress={() => router.push(`/dashboard/project/${projectId}/fdd`)}
         >
           ← Back to FDD
         </Button>
         <div className="flex items-center gap-3">
           {sectionNumber && (
-            <span className="text-2xl font-mono text-secondary">{sectionNumber}</span>
+            <span className="text-2xl font-mono text-secondary">
+              {sectionNumber}
+            </span>
           )}
           <h1 className="text-2xl font-bold">{title}</h1>
         </div>
@@ -179,16 +191,17 @@ export default function FDDDocViewerPage() {
                   viewBox="0 0 24 24"
                 >
                   <path
+                    d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
                   />
                 </svg>
               </div>
               <p className="text-danger mb-2">Failed to load document</p>
               <p className="text-sm text-default-400 mb-4">{error}</p>
               <p className="text-xs text-default-400">
-                The document may not have been generated yet. Run the &quot;Generate Legacy FDD&quot; step in the migration process.
+                The document may not have been generated yet. Run the
+                &quot;Generate Legacy FDD&quot; step in the migration process.
               </p>
             </div>
           ) : !markdownContent ? (

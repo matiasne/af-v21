@@ -11,6 +11,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "../firebase/config";
+
 import { Task, TaskColumn } from "@/domain/entities/Task";
 import { TaskRepository } from "@/domain/repositories/TaskRepository";
 import { StepStatus } from "@/domain/entities/Project";
@@ -24,15 +25,11 @@ export class FirebaseTaskRepository implements TaskRepository {
       projectId,
       "code-analysis-module",
       migrationId,
-      "tasks"
+      "tasks",
     );
   }
 
-  private getTaskDoc(
-    projectId: string,
-    migrationId: string,
-    taskId: string
-  ) {
+  private getTaskDoc(projectId: string, migrationId: string, taskId: string) {
     return doc(
       db,
       "projects",
@@ -40,7 +37,7 @@ export class FirebaseTaskRepository implements TaskRepository {
       "code-analysis-module",
       migrationId,
       "tasks",
-      taskId
+      taskId,
     );
   }
 
@@ -62,29 +59,29 @@ export class FirebaseTaskRepository implements TaskRepository {
   async getTasks(projectId: string, migrationId: string): Promise<Task[]> {
     const q = query(
       this.getTasksCollection(projectId, migrationId),
-      orderBy("createdAt", "asc")
+      orderBy("createdAt", "asc"),
     );
     const querySnapshot = await getDocs(q);
 
     return querySnapshot.docs.map((doc) =>
-      this.toTask(doc.id, doc.data() as Record<string, unknown>)
+      this.toTask(doc.id, doc.data() as Record<string, unknown>),
     );
   }
 
   async getTasksByPhase(
     projectId: string,
     migrationId: string,
-    phase: StepStatus
+    phase: StepStatus,
   ): Promise<Task[]> {
     const q = query(
       this.getTasksCollection(projectId, migrationId),
       where("phase", "==", phase),
-      orderBy("createdAt", "asc")
+      orderBy("createdAt", "asc"),
     );
     const querySnapshot = await getDocs(q);
 
     return querySnapshot.docs.map((doc) =>
-      this.toTask(doc.id, doc.data() as Record<string, unknown>)
+      this.toTask(doc.id, doc.data() as Record<string, unknown>),
     );
   }
 
@@ -92,9 +89,10 @@ export class FirebaseTaskRepository implements TaskRepository {
     projectId: string,
     migrationId: string,
     taskId: string,
-    column: TaskColumn
+    column: TaskColumn,
   ): Promise<void> {
     const docRef = this.getTaskDoc(projectId, migrationId, taskId);
+
     await updateDoc(docRef, {
       column,
       updatedAt: Date.now(),
@@ -105,19 +103,20 @@ export class FirebaseTaskRepository implements TaskRepository {
     projectId: string,
     migrationId: string,
     onUpdate: (tasks: Task[]) => void,
-    onError?: (error: Error) => void
+    onError?: (error: Error) => void,
   ): () => void {
     const q = query(
       this.getTasksCollection(projectId, migrationId),
-      orderBy("createdAt", "asc")
+      orderBy("createdAt", "asc"),
     );
 
     const unsubscribe: Unsubscribe = onSnapshot(
       q,
       (querySnapshot) => {
         const tasks = querySnapshot.docs.map((doc) =>
-          this.toTask(doc.id, doc.data() as Record<string, unknown>)
+          this.toTask(doc.id, doc.data() as Record<string, unknown>),
         );
+
         onUpdate(tasks);
       },
       (error) => {
@@ -125,7 +124,7 @@ export class FirebaseTaskRepository implements TaskRepository {
         if (onError) {
           onError(error);
         }
-      }
+      },
     );
 
     return unsubscribe;

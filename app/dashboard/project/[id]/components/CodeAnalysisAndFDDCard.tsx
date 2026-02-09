@@ -8,13 +8,14 @@ import { Chip } from "@heroui/chip";
 import { Spinner } from "@heroui/spinner";
 import { Divider } from "@heroui/divider";
 
+import { GradientBorderWrapper } from "./GradientBorderWrapper";
+
 import { MigrationAction, StepResult } from "@/domain/entities/MigrationAction";
 import {
   StepStatus,
   getStepLabel,
   PROCESSING_STEPS,
 } from "@/domain/entities/Project";
-import { GradientBorderWrapper } from "./GradientBorderWrapper";
 import { FDDTableOfContents } from "@/domain/entities/FDD";
 import { fddRepository } from "@/infrastructure/repositories/FirebaseFDDRepository";
 import { useAuth } from "@/infrastructure/context/AuthContext";
@@ -63,6 +64,7 @@ function CodeLoader({
     const interval = setInterval(() => {
       setActiveLine((prev) => (prev + 1) % codeLines.length);
     }, 150);
+
     return () => clearInterval(interval);
   }, []);
 
@@ -74,9 +76,9 @@ function CodeLoader({
 
   return (
     <div
+      aria-label="Loading"
       className={`rounded-lg bg-muted/50  backdrop-blur-sm ${sizeClasses[size].container} ${className || ""}`}
       role="status"
-      aria-label="Loading"
     >
       {/* Code lines */}
       <div className={`flex flex-col ${sizeClasses[size].gap}`}>
@@ -197,7 +199,9 @@ export function CodeAnalysisAndFDDCard({
 
   // Migration status logic
   // Consider analysis started if migration has action OR if code-analysis-module has a status
-  const hasStarted = !!migration?.action || (!!codeAnalysisStatus && codeAnalysisStatus !== "configuration");
+  const hasStarted =
+    !!migration?.action ||
+    (!!codeAnalysisStatus && codeAnalysisStatus !== "configuration");
   const completedStepsCount = stepResults.filter(
     (r) => r.status === "completed",
   ).length;
@@ -207,6 +211,7 @@ export function CodeAnalysisAndFDDCard({
   useEffect(() => {
     if (!projectId || !migrationId) {
       setFddLoading(false);
+
       return;
     }
 
@@ -239,6 +244,7 @@ export function CodeAnalysisAndFDDCard({
     section.subsections.forEach((subsection) => {
       subsection.fileReferences.forEach((file) => fileSet.add(file));
     });
+
     return fileSet;
   }, new Set<string>());
   const totalFiles = uniqueFiles?.size || 0;
@@ -247,53 +253,54 @@ export function CodeAnalysisAndFDDCard({
   const getStatusChip = () => {
     if (isLoading) {
       return (
-        <Chip size="sm" color="default" variant="flat">
+        <Chip color="default" size="sm" variant="flat">
           Loading...
         </Chip>
       );
     }
     if (isCompleted) {
       return (
-        <Chip size="sm" color="success" variant="flat">
+        <Chip color="success" size="sm" variant="flat">
           Completed
         </Chip>
       );
     }
     if (isError) {
       return (
-        <Chip size="sm" color="danger" variant="flat">
+        <Chip color="danger" size="sm" variant="flat">
           Error
         </Chip>
       );
     }
     if (isStopped) {
       return (
-        <Chip size="sm" color="warning" variant="flat">
+        <Chip color="warning" size="sm" variant="flat">
           Stopped
         </Chip>
       );
     }
     if (isPaused) {
       return (
-        <Chip size="sm" color="secondary" variant="flat">
+        <Chip color="secondary" size="sm" variant="flat">
           Paused
         </Chip>
       );
     }
     if (isProcessing) {
       return (
-        <Chip size="sm" color="primary" variant="flat">
+        <Chip color="primary" size="sm" variant="flat">
           Running
         </Chip>
       );
     }
     if (!hasStarted) {
       return (
-        <Chip size="sm" color="default" variant="flat">
+        <Chip color="default" size="sm" variant="flat">
           Not Started
         </Chip>
       );
     }
+
     return null;
   };
 
@@ -329,9 +336,9 @@ export function CodeAnalysisAndFDDCard({
                 viewBox="0 0 24 24"
               >
                 <path
+                  d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"
                 />
               </svg>
             </div>
@@ -356,7 +363,7 @@ export function CodeAnalysisAndFDDCard({
                 <span className="font-medium">{Math.round(progress)}%</span>
               </div>
               <Progress
-                value={progress}
+                className="w-full"
                 color={
                   isCompleted
                     ? "success"
@@ -369,7 +376,7 @@ export function CodeAnalysisAndFDDCard({
                           : "primary"
                 }
                 size="md"
-                className="w-full"
+                value={progress}
               />
               <p className="text-xs text-default-400">
                 {completedStepsCount} of {totalSteps} steps completed
@@ -400,9 +407,9 @@ export function CodeAnalysisAndFDDCard({
                           viewBox="0 0 24 24"
                         >
                           <path
+                            d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"
                           />
                         </svg>
                       </div>
@@ -426,7 +433,9 @@ export function CodeAnalysisAndFDDCard({
                           <p className="text-2xl font-bold text-secondary-700 dark:text-secondary-700">
                             {totalSections}
                           </p>
-                          <p className="text-xs text-secondary-500 dark:text-secondary-600">Sections</p>
+                          <p className="text-xs text-secondary-500 dark:text-secondary-600">
+                            Sections
+                          </p>
                         </div>
                         <div>
                           <p className="text-2xl font-bold text-secondary-700 dark:text-secondary-700">
@@ -440,7 +449,9 @@ export function CodeAnalysisAndFDDCard({
                           <p className="text-2xl font-bold text-secondary-700 dark:text-secondary-700">
                             {totalFiles}
                           </p>
-                          <p className="text-xs text-secondary-500 dark:text-secondary-600">Files</p>
+                          <p className="text-xs text-secondary-500 dark:text-secondary-600">
+                            Files
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -484,9 +495,9 @@ export function CodeAnalysisAndFDDCard({
                       viewBox="0 0 24 24"
                     >
                       <path
+                        d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z"
                       />
                     </svg>
                   </div>
@@ -521,9 +532,9 @@ export function CodeAnalysisAndFDDCard({
                             viewBox="0 0 24 24"
                           >
                             <path
+                              d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
                               strokeLinecap="round"
                               strokeLinejoin="round"
-                              d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
                             />
                           </svg>
                           <div>
@@ -551,9 +562,9 @@ export function CodeAnalysisAndFDDCard({
                           viewBox="0 0 24 24"
                         >
                           <path
+                            d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"
                           />
                         </svg>
                         <p className="text-sm text-warning-600 dark:text-warning-400">
@@ -561,10 +572,8 @@ export function CodeAnalysisAndFDDCard({
                         </p>
                       </div>
                       <Button
-                        color="warning"
-                        variant="flat"
                         fullWidth
-                        onPress={handleResumeAnalysis}
+                        color="warning"
                         isLoading={isResuming}
                         startContent={
                           !isResuming && (
@@ -576,13 +585,15 @@ export function CodeAnalysisAndFDDCard({
                               viewBox="0 0 24 24"
                             >
                               <path
+                                d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
-                                d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z"
                               />
                             </svg>
                           )
                         }
+                        variant="flat"
+                        onPress={handleResumeAnalysis}
                       >
                         Resume Analysis
                       </Button>
@@ -601,9 +612,9 @@ export function CodeAnalysisAndFDDCard({
                           viewBox="0 0 24 24"
                         >
                           <path
+                            d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"
                           />
                         </svg>
                         <p className="text-sm text-secondary-600 dark:text-secondary-400">
@@ -625,9 +636,9 @@ export function CodeAnalysisAndFDDCard({
                           viewBox="0 0 24 24"
                         >
                           <path
+                            d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
                           />
                         </svg>
                         <div className="flex-1">
@@ -660,10 +671,8 @@ export function CodeAnalysisAndFDDCard({
                         </div>
                       </div>
                       <Button
-                        color="danger"
-                        variant="flat"
                         fullWidth
-                        onPress={handleResumeAnalysis}
+                        color="danger"
                         isLoading={isResuming}
                         startContent={
                           !isResuming && (
@@ -675,13 +684,15 @@ export function CodeAnalysisAndFDDCard({
                               viewBox="0 0 24 24"
                             >
                               <path
+                                d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
-                                d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
                               />
                             </svg>
                           )
                         }
+                        variant="flat"
+                        onPress={handleResumeAnalysis}
                       >
                         Retry
                       </Button>
@@ -698,9 +709,9 @@ export function CodeAnalysisAndFDDCard({
                           viewBox="0 0 24 24"
                         >
                           <path
-                            fillRule="evenodd"
-                            d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z"
                             clipRule="evenodd"
+                            d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z"
+                            fillRule="evenodd"
                           />
                         </svg>
                         <p className="text-sm text-success-600 dark:text-success-400">
@@ -722,9 +733,8 @@ export function CodeAnalysisAndFDDCard({
             codeAnalysisStatus !== "error" && (
               <div className="pt-4">
                 <Button
-                  color="primary"
                   fullWidth
-                  onPress={onStartAnalysis}
+                  color="primary"
                   isDisabled={
                     !githubUrl || !newTechStack || newTechStack.length === 0
                   }
@@ -737,12 +747,13 @@ export function CodeAnalysisAndFDDCard({
                       viewBox="0 0 24 24"
                     >
                       <path
+                        d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z"
                       />
                     </svg>
                   }
+                  onPress={onStartAnalysis}
                 >
                   Start Analysis
                 </Button>
@@ -755,9 +766,9 @@ export function CodeAnalysisAndFDDCard({
             codeAnalysisStatus !== "configuration" && (
               <div className="flex gap-2 pt-2">
                 <Button
+                  className="flex-1"
                   color="primary"
                   variant={isProcessing ? "solid" : "flat"}
-                  className="flex-1"
                   onPress={onNavigateToMigration}
                 >
                   {isProcessing
@@ -768,18 +779,18 @@ export function CodeAnalysisAndFDDCard({
                 </Button>
                 {toc && totalSections > 0 && (
                   <Button
+                    className="flex-1"
                     color="secondary"
                     variant="flat"
-                    className="flex-1"
                     onPress={onNavigateToFDD}
                   >
                     View Documents Generated
                   </Button>
                 )}
                 <Button
+                  className="flex-1"
                   color="default"
                   variant="flat"
-                  className="flex-1"
                   onPress={onNavigateToFilesAnalysis}
                 >
                   Files Analysis
@@ -792,8 +803,6 @@ export function CodeAnalysisAndFDDCard({
                   codeAnalysisStatus !== "error" && (
                     <Button
                       color="danger"
-                      variant="flat"
-                      onPress={handleStopAnalysis}
                       isLoading={isStopping}
                       startContent={
                         !isStopping && (
@@ -805,13 +814,15 @@ export function CodeAnalysisAndFDDCard({
                             viewBox="0 0 24 24"
                           >
                             <path
+                              d="M5.25 7.5A2.25 2.25 0 017.5 5.25h9a2.25 2.25 0 012.25 2.25v9a2.25 2.25 0 01-2.25 2.25h-9a2.25 2.25 0 01-2.25-2.25v-9z"
                               strokeLinecap="round"
                               strokeLinejoin="round"
-                              d="M5.25 7.5A2.25 2.25 0 017.5 5.25h9a2.25 2.25 0 012.25 2.25v9a2.25 2.25 0 01-2.25 2.25h-9a2.25 2.25 0 01-2.25-2.25v-9z"
                             />
                           </svg>
                         )
                       }
+                      variant="flat"
+                      onPress={handleStopAnalysis}
                     >
                       Stop
                     </Button>

@@ -28,7 +28,9 @@ interface ProjectContext {
 // Type for migration config chat functions passed from useMigration
 interface MigrationConfigChatFunctions {
   getConfigChatMessages: () => Promise<ConfigChatMessage[]>;
-  addConfigChatMessage: (message: Omit<ConfigChatMessage, "timestamp">) => Promise<string | null>;
+  addConfigChatMessage: (
+    message: Omit<ConfigChatMessage, "timestamp">,
+  ) => Promise<string | null>;
 }
 
 interface ProjectChatContextType {
@@ -73,31 +75,32 @@ interface ProjectChatContextType {
   pageTitle: string | null;
   setPageTitle: (title: string | null) => void;
   breadcrumbs: Array<{ label: string; href?: string }>;
-  setBreadcrumbs: (breadcrumbs: Array<{ label: string; href?: string }>) => void;
+  setBreadcrumbs: (
+    breadcrumbs: Array<{ label: string; href?: string }>,
+  ) => void;
   backUrl: string | null;
   setBackUrl: (url: string | null) => void;
 
   // Migration config chat functions
-  setMigrationConfigChatFunctions: (functions: MigrationConfigChatFunctions | null) => void;
+  setMigrationConfigChatFunctions: (
+    functions: MigrationConfigChatFunctions | null,
+  ) => void;
 
   // Handlers
   handleChatHistoryChange: (messages: ChatMessage[]) => void;
   handleTechStackChange: (
     techStack: string[],
     isComplete: boolean,
-    newSuggestions?: string[]
+    newSuggestions?: string[],
   ) => void;
 }
 
 const ProjectChatContext = createContext<ProjectChatContextType | undefined>(
-  undefined
+  undefined,
 );
 
 export function ProjectChatProvider({ children }: { children: ReactNode }) {
-  const {
-    getGeneralChatMessages,
-    addGeneralChatMessage,
-  } = useProjects();
+  const { getGeneralChatMessages, addGeneralChatMessage } = useProjects();
 
   // General chat state (for FloatingInput)
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
@@ -119,13 +122,15 @@ export function ProjectChatProvider({ children }: { children: ReactNode }) {
 
   // Project context
   const [projectContext, setProjectContext] = useState<ProjectContext | null>(
-    null
+    null,
   );
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [projectOwnerId, setProjectOwnerId] = useState<string | null>(null);
   const [isConfiguration, setIsConfiguration] = useState(false);
   const [pageTitle, setPageTitle] = useState<string | null>(null);
-  const [breadcrumbs, setBreadcrumbs] = useState<Array<{ label: string; href?: string }>>([]);
+  const [breadcrumbs, setBreadcrumbs] = useState<
+    Array<{ label: string; href?: string }>
+  >([]);
   const [backUrl, setBackUrl] = useState<string | null>(null);
 
   const previousMessagesLength = useRef(0);
@@ -136,6 +141,7 @@ export function ProjectChatProvider({ children }: { children: ReactNode }) {
       if (!currentProjectId) {
         setChatHistory([]);
         previousMessagesLength.current = 0;
+
         return;
       }
 
@@ -145,6 +151,7 @@ export function ProjectChatProvider({ children }: { children: ReactNode }) {
         role: msg.role as "user" | "assistant",
         content: msg.content,
       }));
+
       setChatHistory(formattedGeneralMessages);
       previousMessagesLength.current = generalMessages.length;
     };
@@ -158,14 +165,17 @@ export function ProjectChatProvider({ children }: { children: ReactNode }) {
       if (!migrationConfigChatFunctions) {
         setConfigChatHistory([]);
         previousConfigMessagesLength.current = 0;
+
         return;
       }
 
-      const configMessages = await migrationConfigChatFunctions.getConfigChatMessages();
+      const configMessages =
+        await migrationConfigChatFunctions.getConfigChatMessages();
       const formattedConfigMessages = configMessages.map((msg) => ({
         role: msg.role as "user" | "assistant",
         content: msg.content,
       }));
+
       setConfigChatHistory(formattedConfigMessages);
       previousConfigMessagesLength.current = configMessages.length;
     };
@@ -184,6 +194,7 @@ export function ProjectChatProvider({ children }: { children: ReactNode }) {
         messages.length > previousMessagesLength.current
       ) {
         const newMessages = messages.slice(previousMessagesLength.current);
+
         previousMessagesLength.current = messages.length;
 
         // Fire and forget - don't await
@@ -197,7 +208,7 @@ export function ProjectChatProvider({ children }: { children: ReactNode }) {
         })();
       }
     },
-    [currentProjectId, addGeneralChatMessage]
+    [currentProjectId, addGeneralChatMessage],
   );
 
   const handleConfigChatHistoryChange = useCallback(
@@ -213,7 +224,10 @@ export function ProjectChatProvider({ children }: { children: ReactNode }) {
         migrationConfigChatFunctions &&
         newMessages.length > previousConfigMessagesLength.current
       ) {
-        const messagesToPersist = newMessages.slice(previousConfigMessagesLength.current);
+        const messagesToPersist = newMessages.slice(
+          previousConfigMessagesLength.current,
+        );
+
         previousConfigMessagesLength.current = newMessages.length;
 
         // Fire and forget - don't await
@@ -227,20 +241,20 @@ export function ProjectChatProvider({ children }: { children: ReactNode }) {
         })();
       }
     },
-    [migrationConfigChatFunctions]
+    [migrationConfigChatFunctions],
   );
 
   const handleTechStackChange = useCallback(
     async (
       techStack: string[],
       isComplete: boolean,
-      newSuggestions: string[] = []
+      newSuggestions: string[] = [],
     ) => {
       setCurrentTechStack(techStack);
       setIsTechStackComplete(isComplete);
       setSuggestions(newSuggestions);
     },
-    []
+    [],
   );
 
   return (
@@ -287,14 +301,17 @@ export function ProjectChatProvider({ children }: { children: ReactNode }) {
 
 export function useProjectChat() {
   const context = useContext(ProjectChatContext);
+
   if (context === undefined) {
     throw new Error("useProjectChat must be used within a ProjectChatProvider");
   }
+
   return context;
 }
 
 // Safe version that returns null if not within provider (for use in navbar, etc.)
 export function useProjectChatSafe() {
   const context = useContext(ProjectChatContext);
+
   return context ?? null;
 }

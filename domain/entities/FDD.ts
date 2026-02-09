@@ -47,6 +47,7 @@ export interface FDDTableOfContents {
 // Helper function to sanitize filename (matching backend logic)
 export function sanitizeFilename(name: string): string {
   let filename = name.toLowerCase();
+
   filename = filename.replace(/ /g, "_");
   filename = filename.replace(/,/g, "");
   filename = filename.replace(/\./g, "");
@@ -56,17 +57,20 @@ export function sanitizeFilename(name: string): string {
   filename = filename.replace(/\(/g, "");
   filename = filename.replace(/\)/g, "");
   filename = filename.replace(/&/g, "and");
+
   return filename;
 }
 
 // Generate filename for a section
 export function getSectionFilename(section: FDDSection): string {
   const paddedNumber = section.number.padStart(2, "0");
+
   return `${paddedNumber}_${sanitizeFilename(section.title)}.md`;
 }
 
 // Generate filename for a subsection
 export function getSubsectionFilename(subsection: FDDSubsection): string {
   const normalizedNumber = subsection.number.replace(/\./g, "_");
+
   return `${normalizedNumber}_${sanitizeFilename(subsection.title)}.md`;
 }

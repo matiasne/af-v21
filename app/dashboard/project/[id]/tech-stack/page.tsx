@@ -5,20 +5,23 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@heroui/button";
 import { Spinner } from "@heroui/spinner";
 
+import { ConfigurationChat } from "../components";
+
 import { useAuth } from "@/infrastructure/context/AuthContext";
 import { useProjects } from "@/infrastructure/hooks/useProjects";
 import { useMigration } from "@/infrastructure/hooks/useMigration";
 import { useProjectChat } from "@/infrastructure/context/ProjectChatContext";
 import { Project } from "@/domain/entities/Project";
 
-import { ConfigurationChat } from "../components";
-
 export default function TechStackPage() {
   const params = useParams();
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const { loading: projectsLoading, updateProject, subscribeToProject } =
-    useProjects();
+  const {
+    loading: projectsLoading,
+    updateProject,
+    subscribeToProject,
+  } = useProjects();
 
   const projectId = params.id as string;
 
@@ -40,7 +43,6 @@ export default function TechStackPage() {
     setIsConfiguration,
     setMigrationConfigChatFunctions,
     projectContext,
-    projectOwnerId,
   } = useProjectChat();
 
   // Get migration for config chat
@@ -57,6 +59,7 @@ export default function TechStackPage() {
   // Create memoized migration config chat functions
   const migrationConfigChatFunctions = useMemo(() => {
     if (!migration?.id) return null;
+
     return {
       getConfigChatMessages,
       addConfigChatMessage,
@@ -66,6 +69,7 @@ export default function TechStackPage() {
   // Set migration config chat functions when available
   useEffect(() => {
     setMigrationConfigChatFunctions(migrationConfigChatFunctions);
+
     return () => setMigrationConfigChatFunctions(null);
   }, [migrationConfigChatFunctions, setMigrationConfigChatFunctions]);
 
@@ -81,7 +85,13 @@ export default function TechStackPage() {
     };
 
     ensureMigrationExists();
-  }, [user?.uid, projectId, hasMigrations, migrationInitializing, createNewMigration]);
+  }, [
+    user?.uid,
+    projectId,
+    hasMigrations,
+    migrationInitializing,
+    createNewMigration,
+  ]);
 
   const [project, setProject] = useState<Project | null>(null);
 
@@ -116,6 +126,7 @@ export default function TechStackPage() {
   // Set configuration mode for this page
   useEffect(() => {
     setIsConfiguration(true);
+
     return () => setIsConfiguration(false);
   }, [setIsConfiguration]);
 
@@ -142,6 +153,7 @@ export default function TechStackPage() {
   const handleRemoveTech = useCallback(
     (tech: string) => {
       const updatedStack = newTechStack.filter((t) => t !== tech);
+
       setNewTechStack(updatedStack);
       if (projectId) {
         updateProject(projectId, {
@@ -153,7 +165,13 @@ export default function TechStackPage() {
         });
       }
     },
-    [newTechStack, projectId, updateProject, project?.analysis, setNewTechStack]
+    [
+      newTechStack,
+      projectId,
+      updateProject,
+      project?.analysis,
+      setNewTechStack,
+    ],
   );
 
   const handleClearAllTech = useCallback(async () => {
@@ -219,6 +237,7 @@ export default function TechStackPage() {
         const assistantMessage = data.message;
 
         const updatedHistory = [...newHistory, assistantMessage];
+
         setConfigChatHistory(updatedHistory);
         handleConfigChatHistoryChange(updatedHistory);
 
@@ -250,6 +269,7 @@ export default function TechStackPage() {
           content: "Sorry, I encountered an error. Please try again.",
         };
         const errorHistory = [...newHistory, errorMessage];
+
         setConfigChatHistory(errorHistory);
         handleConfigChatHistoryChange(errorHistory);
       } finally {
@@ -269,7 +289,7 @@ export default function TechStackPage() {
       project?.analysis,
       setSuggestions,
       setIsTechStackComplete,
-    ]
+    ],
   );
 
   if (authLoading || projectsLoading) {
@@ -282,6 +302,7 @@ export default function TechStackPage() {
 
   if (!user) {
     router.push("/auth/login");
+
     return null;
   }
 
@@ -297,8 +318,6 @@ export default function TechStackPage() {
     <div className="min-h-screen p-8">
       <div className="mb-6 flex items-center gap-4">
         <Button
-          variant="light"
-          onPress={() => router.push(`/dashboard/project/${projectId}`)}
           startContent={
             <svg
               className="h-4 w-4"
@@ -308,12 +327,14 @@ export default function TechStackPage() {
               viewBox="0 0 24 24"
             >
               <path
+                d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"
               />
             </svg>
           }
+          variant="light"
+          onPress={() => router.push(`/dashboard/project/${projectId}`)}
         >
           Back to Project
         </Button>
@@ -322,14 +343,14 @@ export default function TechStackPage() {
 
       <div className="space-y-6">
         <ConfigurationChat
-          messages={configChatHistory}
-          isLoading={isConfigChatLoading}
-          techStack={newTechStack}
-          suggestions={suggestions}
           isComplete={isTechStackComplete}
-          onSave={handleSaveTechStack}
-          onRemoveTech={handleRemoveTech}
+          isLoading={isConfigChatLoading}
+          messages={configChatHistory}
+          suggestions={suggestions}
+          techStack={newTechStack}
           onClearAll={handleClearAllTech}
+          onRemoveTech={handleRemoveTech}
+          onSave={handleSaveTechStack}
           onSendMessage={handleSendMessage}
         />
       </div>

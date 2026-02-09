@@ -32,7 +32,9 @@ export class FirebaseRAGRepository implements RAGRepository {
 
       if (!response.ok) {
         const errorText = await response.text();
+
         console.error("File search error:", errorText);
+
         return [];
       }
 
@@ -43,10 +45,13 @@ export class FirebaseRAGRepository implements RAGRepository {
       }
 
       return data.relevantChunks.map(
-        (chunk: {
-          chunk?: { data?: { stringValue?: string } };
-          chunkRelevanceScore?: number;
-        }, index: number): RAGSearchResult => ({
+        (
+          chunk: {
+            chunk?: { data?: { stringValue?: string } };
+            chunkRelevanceScore?: number;
+          },
+          index: number,
+        ): RAGSearchResult => ({
           id: `gemini-chunk-${index}`,
           content: chunk.chunk?.data?.stringValue || "",
           relevanceScore: chunk.chunkRelevanceScore || 0,
@@ -54,6 +59,7 @@ export class FirebaseRAGRepository implements RAGRepository {
       );
     } catch (error) {
       console.error("Error searching project files:", error);
+
       return [];
     }
   }
@@ -72,7 +78,9 @@ export class FirebaseRAGRepository implements RAGRepository {
 
       if (!response.ok) {
         const errorText = await response.text();
+
         console.error("Get corpus error:", errorText);
+
         return null;
       }
 
@@ -86,6 +94,7 @@ export class FirebaseRAGRepository implements RAGRepository {
       };
     } catch (error) {
       console.error("Error getting corpus:", error);
+
       return null;
     }
   }
@@ -103,6 +112,7 @@ export class FirebaseRAGRepository implements RAGRepository {
         const url = new URL(
           `https://generativelanguage.googleapis.com/v1beta/${corpusName}/documents`,
         );
+
         url.searchParams.set("key", this.apiKey);
         url.searchParams.set("pageSize", "100");
         if (pageToken) {
@@ -124,12 +134,14 @@ export class FirebaseRAGRepository implements RAGRepository {
 
         if (!response.ok) {
           const errorText = await response.text();
+
           console.error("[RAG Repository] List documents error:", errorText);
           console.error("[RAG Repository] Response status:", response.status);
           break;
         }
 
         const data = await response.json();
+
         console.log(`[RAG Repository] Response data:`, data);
 
         if (data.documents && Array.isArray(data.documents)) {
@@ -151,12 +163,14 @@ export class FirebaseRAGRepository implements RAGRepository {
               customMetadata: doc.customMetadata?.reduce(
                 (acc: Record<string, string>, item) => {
                   acc[item.key] = item.stringValue;
+
                   return acc;
                 },
                 {},
               ),
             }),
           );
+
           allDocuments.push(...documents);
         } else {
           console.log("[RAG Repository] No documents found in response");
@@ -168,9 +182,11 @@ export class FirebaseRAGRepository implements RAGRepository {
       console.log(
         `[RAG Repository] Total documents fetched: ${allDocuments.length}`,
       );
+
       return allDocuments;
     } catch (error) {
       console.error("[RAG Repository] Error listing documents:", error);
+
       return [];
     }
   }
@@ -194,6 +210,7 @@ export class FirebaseRAGRepository implements RAGRepository {
         console.log(
           `[RAG Repository] Document with displayName "${displayName}" not found`,
         );
+
         return false;
       }
 
@@ -212,14 +229,18 @@ export class FirebaseRAGRepository implements RAGRepository {
 
       if (!response.ok) {
         const errorText = await response.text();
+
         console.error("[RAG Repository] Delete document error:", errorText);
+
         return false;
       }
 
       console.log(`[RAG Repository] Document deleted successfully`);
+
       return true;
     } catch (error) {
       console.error("[RAG Repository] Error deleting document:", error);
+
       return false;
     }
   }
@@ -245,15 +266,18 @@ export class FirebaseRAGRepository implements RAGRepository {
 
       if (listResponse.ok) {
         const listData = await listResponse.json();
+
         if (listData.corpora && Array.isArray(listData.corpora)) {
           const existingCorpus = listData.corpora.find(
             (c: { displayName?: string }) =>
               c.displayName === corpusDisplayName,
           );
+
           if (existingCorpus) {
             console.log(
               `[RAG Repository] Found existing corpus: ${existingCorpus.name}`,
             );
+
             return {
               name: existingCorpus.name,
               displayName: existingCorpus.displayName || corpusDisplayName,
@@ -281,11 +305,14 @@ export class FirebaseRAGRepository implements RAGRepository {
 
       if (!createResponse.ok) {
         const errorText = await createResponse.text();
+
         console.error("[RAG Repository] Create corpus error:", errorText);
+
         return null;
       }
 
       const createData = await createResponse.json();
+
       console.log(`[RAG Repository] Created corpus: ${createData.name}`);
 
       return {
@@ -299,6 +326,7 @@ export class FirebaseRAGRepository implements RAGRepository {
         "[RAG Repository] Error getting or creating corpus:",
         error,
       );
+
       return null;
     }
   }
@@ -318,6 +346,7 @@ export class FirebaseRAGRepository implements RAGRepository {
       const existingDoc = existingDocs.find(
         (doc) => doc.displayName === displayName,
       );
+
       if (existingDoc) {
         console.log(`[RAG Repository] Document already exists, deleting first`);
         await this.deleteDocumentByDisplayName(corpusName, displayName);
@@ -343,11 +372,14 @@ export class FirebaseRAGRepository implements RAGRepository {
 
       if (!response.ok) {
         const errorText = await response.text();
+
         console.error("[RAG Repository] Create document error:", errorText);
+
         return null;
       }
 
       const docData = await response.json();
+
       console.log(`[RAG Repository] Created document: ${docData.name}`);
 
       // Now create a chunk with the content
@@ -368,6 +400,7 @@ export class FirebaseRAGRepository implements RAGRepository {
 
       if (!chunkResponse.ok) {
         const errorText = await chunkResponse.text();
+
         console.error("[RAG Repository] Create chunk error:", errorText);
         // Document was created but chunk failed - still return the document
       } else {
@@ -382,6 +415,7 @@ export class FirebaseRAGRepository implements RAGRepository {
       };
     } catch (error) {
       console.error("[RAG Repository] Error uploading document:", error);
+
       return null;
     }
   }
@@ -401,11 +435,14 @@ export class FirebaseRAGRepository implements RAGRepository {
 
       if (!response.ok) {
         const errorText = await response.text();
+
         console.error("[RAG Repository] List corpora error:", errorText);
+
         return [];
       }
 
       const data = await response.json();
+
       if (!data.corpora || !Array.isArray(data.corpora)) {
         return [];
       }
@@ -425,6 +462,7 @@ export class FirebaseRAGRepository implements RAGRepository {
       );
     } catch (error) {
       console.error("[RAG Repository] Error listing corpora:", error);
+
       return [];
     }
   }
@@ -444,14 +482,18 @@ export class FirebaseRAGRepository implements RAGRepository {
 
       if (!response.ok) {
         const errorText = await response.text();
+
         console.error("[RAG Repository] Delete corpus error:", errorText);
+
         return false;
       }
 
       console.log(`[RAG Repository] Corpus deleted successfully`);
+
       return true;
     } catch (error) {
       console.error("[RAG Repository] Error deleting corpus:", error);
+
       return false;
     }
   }

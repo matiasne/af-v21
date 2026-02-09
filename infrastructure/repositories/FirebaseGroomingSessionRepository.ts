@@ -3,7 +3,6 @@ import {
   doc,
   getDocs,
   getDoc,
-  setDoc,
   updateDoc,
   deleteDoc,
   addDoc,
@@ -14,6 +13,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "../firebase/config";
+
 import {
   GroomingSession,
   GroomingSessionMessage,
@@ -22,7 +22,9 @@ import {
 } from "@/domain/entities/GroomingSession";
 import { GroomingSessionRepository } from "@/domain/repositories/GroomingSessionRepository";
 
-export class FirebaseGroomingSessionRepository implements GroomingSessionRepository {
+export class FirebaseGroomingSessionRepository
+  implements GroomingSessionRepository
+{
   // Path: users/{userId}/projects/{projectId}/grooming_sessions
   private getSessionsCollection(userId: string, projectId: string) {
     return collection(
@@ -31,12 +33,16 @@ export class FirebaseGroomingSessionRepository implements GroomingSessionReposit
       userId,
       "projects",
       projectId,
-      "grooming_sessions"
+      "grooming_sessions",
     );
   }
 
   // Path: users/{userId}/projects/{projectId}/grooming_sessions/{sessionId}/messages
-  private getMessagesCollection(userId: string, projectId: string, sessionId: string) {
+  private getMessagesCollection(
+    userId: string,
+    projectId: string,
+    sessionId: string,
+  ) {
     return collection(
       db,
       "users",
@@ -45,11 +51,14 @@ export class FirebaseGroomingSessionRepository implements GroomingSessionReposit
       projectId,
       "grooming_sessions",
       sessionId,
-      "messages"
+      "messages",
     );
   }
 
-  private toGroomingSession(id: string, data: Record<string, unknown>): GroomingSession {
+  private toGroomingSession(
+    id: string,
+    data: Record<string, unknown>,
+  ): GroomingSession {
     return {
       id,
       projectId: (data.projectId as string) || "",
@@ -74,7 +83,7 @@ export class FirebaseGroomingSessionRepository implements GroomingSessionReposit
   async createSession(
     userId: string,
     projectId: string,
-    title: string
+    title: string,
   ): Promise<string> {
     const colRef = this.getSessionsCollection(userId, projectId);
     const now = Date.now();
@@ -91,13 +100,14 @@ export class FirebaseGroomingSessionRepository implements GroomingSessionReposit
     };
 
     const docRef = await addDoc(colRef, newSession);
+
     return docRef.id;
   }
 
   async getSession(
     userId: string,
     projectId: string,
-    sessionId: string
+    sessionId: string,
   ): Promise<GroomingSession | null> {
     const docRef = doc(
       db,
@@ -106,29 +116,33 @@ export class FirebaseGroomingSessionRepository implements GroomingSessionReposit
       "projects",
       projectId,
       "grooming_sessions",
-      sessionId
+      sessionId,
     );
 
     const docSnap = await getDoc(docRef);
+
     if (!docSnap.exists()) {
       return null;
     }
 
-    return this.toGroomingSession(docSnap.id, docSnap.data() as Record<string, unknown>);
+    return this.toGroomingSession(
+      docSnap.id,
+      docSnap.data() as Record<string, unknown>,
+    );
   }
 
   async getSessions(
     userId: string,
-    projectId: string
+    projectId: string,
   ): Promise<GroomingSession[]> {
     const q = query(
       this.getSessionsCollection(userId, projectId),
-      orderBy("updatedAt", "desc")
+      orderBy("updatedAt", "desc"),
     );
     const querySnapshot = await getDocs(q);
 
     return querySnapshot.docs.map((doc) =>
-      this.toGroomingSession(doc.id, doc.data() as Record<string, unknown>)
+      this.toGroomingSession(doc.id, doc.data() as Record<string, unknown>),
     );
   }
 
@@ -136,7 +150,12 @@ export class FirebaseGroomingSessionRepository implements GroomingSessionReposit
     userId: string,
     projectId: string,
     sessionId: string,
-    data: Partial<Pick<GroomingSession, "title" | "status" | "pinned" | "suggestedTasks" | "suggestedEpics">>
+    data: Partial<
+      Pick<
+        GroomingSession,
+        "title" | "status" | "pinned" | "suggestedTasks" | "suggestedEpics"
+      >
+    >,
   ): Promise<void> {
     const docRef = doc(
       db,
@@ -145,7 +164,7 @@ export class FirebaseGroomingSessionRepository implements GroomingSessionReposit
       "projects",
       projectId,
       "grooming_sessions",
-      sessionId
+      sessionId,
     );
 
     await updateDoc(docRef, {
@@ -157,7 +176,7 @@ export class FirebaseGroomingSessionRepository implements GroomingSessionReposit
   async deleteSession(
     userId: string,
     projectId: string,
-    sessionId: string
+    sessionId: string,
   ): Promise<void> {
     // Note: This doesn't delete the messages subcollection
     // In production, you might want to use a Cloud Function to handle cascading deletes
@@ -168,7 +187,7 @@ export class FirebaseGroomingSessionRepository implements GroomingSessionReposit
       "projects",
       projectId,
       "grooming_sessions",
-      sessionId
+      sessionId,
     );
 
     await deleteDoc(docRef);
@@ -178,7 +197,7 @@ export class FirebaseGroomingSessionRepository implements GroomingSessionReposit
     userId: string,
     projectId: string,
     sessionId: string,
-    message: Omit<GroomingSessionMessage, "timestamp">
+    message: Omit<GroomingSessionMessage, "timestamp">,
   ): Promise<string> {
     const colRef = this.getMessagesCollection(userId, projectId, sessionId);
 
@@ -198,16 +217,16 @@ export class FirebaseGroomingSessionRepository implements GroomingSessionReposit
   async getMessages(
     userId: string,
     projectId: string,
-    sessionId: string
+    sessionId: string,
   ): Promise<GroomingSessionMessage[]> {
     const q = query(
       this.getMessagesCollection(userId, projectId, sessionId),
-      orderBy("timestamp", "asc")
+      orderBy("timestamp", "asc"),
     );
     const querySnapshot = await getDocs(q);
 
     return querySnapshot.docs.map((doc) =>
-      this.toMessage(doc.data() as Record<string, unknown>)
+      this.toMessage(doc.data() as Record<string, unknown>),
     );
   }
 
@@ -215,19 +234,20 @@ export class FirebaseGroomingSessionRepository implements GroomingSessionReposit
     userId: string,
     projectId: string,
     onUpdate: (sessions: GroomingSession[]) => void,
-    onError?: (error: Error) => void
+    onError?: (error: Error) => void,
   ): () => void {
     const q = query(
       this.getSessionsCollection(userId, projectId),
-      orderBy("updatedAt", "desc")
+      orderBy("updatedAt", "desc"),
     );
 
     const unsubscribe: Unsubscribe = onSnapshot(
       q,
       (querySnapshot) => {
         const sessions = querySnapshot.docs.map((doc) =>
-          this.toGroomingSession(doc.id, doc.data() as Record<string, unknown>)
+          this.toGroomingSession(doc.id, doc.data() as Record<string, unknown>),
         );
+
         onUpdate(sessions);
       },
       (error) => {
@@ -235,7 +255,7 @@ export class FirebaseGroomingSessionRepository implements GroomingSessionReposit
         if (onError) {
           onError(error);
         }
-      }
+      },
     );
 
     return unsubscribe;
@@ -245,7 +265,7 @@ export class FirebaseGroomingSessionRepository implements GroomingSessionReposit
     userId: string,
     projectId: string,
     sessionId: string,
-    tasks: SuggestedTask[]
+    tasks: SuggestedTask[],
   ): Promise<void> {
     await this.updateSession(userId, projectId, sessionId, {
       suggestedTasks: tasks,
@@ -256,7 +276,7 @@ export class FirebaseGroomingSessionRepository implements GroomingSessionReposit
     userId: string,
     projectId: string,
     sessionId: string,
-    epics: SuggestedEpic[]
+    epics: SuggestedEpic[],
   ): Promise<void> {
     await this.updateSession(userId, projectId, sessionId, {
       suggestedEpics: epics,
@@ -264,4 +284,5 @@ export class FirebaseGroomingSessionRepository implements GroomingSessionReposit
   }
 }
 
-export const groomingSessionRepository = new FirebaseGroomingSessionRepository();
+export const groomingSessionRepository =
+  new FirebaseGroomingSessionRepository();

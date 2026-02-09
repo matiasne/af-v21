@@ -17,7 +17,8 @@ import { useProjectChatSafe } from "@/infrastructure/context/ProjectChatContext"
 import { SetPasswordModal } from "@/components/SetPasswordModal";
 
 export const Navbar = () => {
-  const { user, loading, signOut, setPassword, hasPasswordProvider } = useAuth();
+  const { user, loading, signOut, setPassword, hasPasswordProvider } =
+    useAuth();
   const projectChatContext = useProjectChatSafe();
   const projectContext = projectChatContext?.projectContext;
   const [isSetPasswordModalOpen, setIsSetPasswordModalOpen] = useState(false);
@@ -38,11 +39,13 @@ export const Navbar = () => {
           <NextLink href="/">
             {mounted ? (
               <Image
-                src={theme === "dark" ? "/echo-logo-wh.svg" : "/echo-logo-bl.svg"}
-                alt="Echo Logo"
-                width={120}
-                height={33}
                 priority
+                alt="Echo Logo"
+                height={33}
+                src={
+                  theme === "dark" ? "/echo-logo-wh.svg" : "/echo-logo-bl.svg"
+                }
+                width={120}
               />
             ) : (
               <div style={{ width: 120, height: 33 }} />
@@ -82,11 +85,15 @@ export const Navbar = () => {
                     }
                   }}
                 >
-                  <DropdownItem key="profile" className="h-14 gap-2" textValue="Profile">
+                  <DropdownItem
+                    key="profile"
+                    className="h-14 gap-2"
+                    textValue="Profile"
+                  >
                     <p className="font-semibold">Signed in as</p>
                     <p className="font-semibold">{user.email}</p>
                   </DropdownItem>
-                  <DropdownItem key="dashboard" href="/dashboard" as={NextLink}>
+                  <DropdownItem key="dashboard" as={NextLink} href="/dashboard">
                     Dashboard
                   </DropdownItem>
                   <DropdownItem
@@ -111,7 +118,6 @@ export const Navbar = () => {
         onOpenChange={setIsSetPasswordModalOpen}
         onSetPassword={setPassword}
       />
-
     </div>
   );
 };

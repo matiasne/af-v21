@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+
 import { graphRAGService } from "@/application/services/GraphRAGService";
 import { getRagRepository } from "@/infrastructure/repositories/PineconeRAGRepository";
 
 /**
  * Detect dependencies from task content using pattern matching
  */
-function detectDependenciesFromContent(content: string): { dependsOn: string[]; blocks: string[] } {
+function detectDependenciesFromContent(content: string): {
+  dependsOn: string[];
+  blocks: string[];
+} {
   const dependsOn: string[] = [];
   const blocks: string[] = [];
 
@@ -23,8 +27,10 @@ function detectDependenciesFromContent(content: string): { dependsOn: string[]; 
 
   for (const pattern of dependsOnPatterns) {
     let match;
+
     while ((match = pattern.exec(content)) !== null) {
       const reference = match[1].trim();
+
       if (reference.length > 3 && reference.length < 100) {
         dependsOn.push(reference);
       }
@@ -41,8 +47,10 @@ function detectDependenciesFromContent(content: string): { dependsOn: string[]; 
 
   for (const pattern of blocksPatterns) {
     let match;
+
     while ((match = pattern.exec(content)) !== null) {
       const reference = match[1].trim();
+
       if (reference.length > 3 && reference.length < 100) {
         blocks.push(reference);
       }
@@ -59,9 +67,14 @@ function detectDependenciesFromContent(content: string): { dependsOn: string[]; 
  */
 async function findTaskDependencies(
   tasks: SuggestedTask[],
-  ragStoreName: string | undefined
-): Promise<Map<string, { dependsOn: TaskDependency[]; blocks: TaskDependency[] }>> {
-  const dependencyMap = new Map<string, { dependsOn: TaskDependency[]; blocks: TaskDependency[] }>();
+  ragStoreName: string | undefined,
+): Promise<
+  Map<string, { dependsOn: TaskDependency[]; blocks: TaskDependency[] }>
+> {
+  const dependencyMap = new Map<
+    string,
+    { dependsOn: TaskDependency[]; blocks: TaskDependency[] }
+  >();
 
   // Initialize dependency arrays for each task
   for (const task of tasks) {
@@ -70,6 +83,7 @@ async function findTaskDependencies(
 
   // Create a lookup map for suggested tasks by title (lowercase for matching)
   const suggestedTasksByTitle = new Map<string, SuggestedTask>();
+
   for (const task of tasks) {
     suggestedTasksByTitle.set(task.title.toLowerCase(), task);
   }
@@ -86,8 +100,12 @@ async function findTaskDependencies(
       // First check if it matches another suggested task
       let foundInSuggested = false;
       const suggestedEntries = Array.from(suggestedTasksByTitle.entries());
+
       for (const [title, suggestedTask] of suggestedEntries) {
-        if (suggestedTask.id !== task.id && (title.includes(refLower) || refLower.includes(title))) {
+        if (
+          suggestedTask.id !== task.id &&
+          (title.includes(refLower) || refLower.includes(title))
+        ) {
           taskDeps.dependsOn.push({
             taskId: suggestedTask.id,
             taskTitle: suggestedTask.title,
@@ -102,12 +120,18 @@ async function findTaskDependencies(
       // If not found in suggested tasks, search in existing tasks via Pinecone
       if (!foundInSuggested && ragStoreName) {
         try {
-          const searchResults = await getRagRepository().searchFiles(reference, ragStoreName);
+          const searchResults = await getRagRepository().searchFiles(
+            reference,
+            ragStoreName,
+          );
           const bestMatch = searchResults.find((r) => r.relevanceScore > 0.6);
+
           if (bestMatch) {
             // Extract task title from content (first line usually contains "Task: title")
             const titleMatch = bestMatch.content.match(/Task:\s*(.+)/);
-            const matchedTitle = titleMatch ? titleMatch[1].trim() : bestMatch.id;
+            const matchedTitle = titleMatch
+              ? titleMatch[1].trim()
+              : bestMatch.id;
 
             taskDeps.dependsOn.push({
               taskId: bestMatch.id,
@@ -117,7 +141,10 @@ async function findTaskDependencies(
             });
           }
         } catch (error) {
-          console.error("[Grooming API] Error searching for dependency:", error);
+          console.error(
+            "[Grooming API] Error searching for dependency:",
+            error,
+          );
         }
       }
     }
@@ -128,9 +155,15 @@ async function findTaskDependencies(
 
       // First check if it matches another suggested task
       let foundInSuggested = false;
-      const suggestedEntriesForBlocks = Array.from(suggestedTasksByTitle.entries());
+      const suggestedEntriesForBlocks = Array.from(
+        suggestedTasksByTitle.entries(),
+      );
+
       for (const [title, suggestedTask] of suggestedEntriesForBlocks) {
-        if (suggestedTask.id !== task.id && (title.includes(refLower) || refLower.includes(title))) {
+        if (
+          suggestedTask.id !== task.id &&
+          (title.includes(refLower) || refLower.includes(title))
+        ) {
           taskDeps.blocks.push({
             taskId: suggestedTask.id,
             taskTitle: suggestedTask.title,
@@ -145,11 +178,17 @@ async function findTaskDependencies(
       // If not found in suggested tasks, search in existing tasks via Pinecone
       if (!foundInSuggested && ragStoreName) {
         try {
-          const searchResults = await getRagRepository().searchFiles(reference, ragStoreName);
+          const searchResults = await getRagRepository().searchFiles(
+            reference,
+            ragStoreName,
+          );
           const bestMatch = searchResults.find((r) => r.relevanceScore > 0.6);
+
           if (bestMatch) {
             const titleMatch = bestMatch.content.match(/Task:\s*(.+)/);
-            const matchedTitle = titleMatch ? titleMatch[1].trim() : bestMatch.id;
+            const matchedTitle = titleMatch
+              ? titleMatch[1].trim()
+              : bestMatch.id;
 
             taskDeps.blocks.push({
               taskId: bestMatch.id,
@@ -174,7 +213,12 @@ async function findTaskDependencies(
     // Database tasks often need to be done before backend tasks
     if (task.category === "backend") {
       for (const otherTask of tasks) {
-        if (otherTask.id !== task.id && otherTask.category === "database" && task.epicId && task.epicId === otherTask.epicId) {
+        if (
+          otherTask.id !== task.id &&
+          otherTask.category === "database" &&
+          task.epicId &&
+          task.epicId === otherTask.epicId
+        ) {
           // Check if this dependency already exists
           if (!taskDeps.dependsOn.find((d) => d.taskId === otherTask.id)) {
             taskDeps.dependsOn.push({
@@ -191,7 +235,12 @@ async function findTaskDependencies(
     // Frontend tasks often depend on backend/API tasks
     if (task.category === "frontend") {
       for (const otherTask of tasks) {
-        if (otherTask.id !== task.id && (otherTask.category === "backend" || otherTask.category === "api") && task.epicId && task.epicId === otherTask.epicId) {
+        if (
+          otherTask.id !== task.id &&
+          (otherTask.category === "backend" || otherTask.category === "api") &&
+          task.epicId &&
+          task.epicId === otherTask.epicId
+        ) {
           if (!taskDeps.dependsOn.find((d) => d.taskId === otherTask.id)) {
             taskDeps.dependsOn.push({
               taskId: otherTask.id,
@@ -227,7 +276,11 @@ interface SuggestedTask {
   description: string;
   category: "backend" | "frontend" | "database" | "integration" | "api";
   priority: "high" | "medium" | "low";
-  cleanArchitectureArea: "domain" | "application" | "infrastructure" | "presentation";
+  cleanArchitectureArea:
+    | "domain"
+    | "application"
+    | "infrastructure"
+    | "presentation";
   acceptanceCriteria: string[];
   epicId?: string;
   // Dependencies detected automatically or set by user
@@ -267,7 +320,16 @@ export interface GroomingResponse {
 
 export async function POST(request: NextRequest) {
   try {
-    const { messages, projectContext, existingTasks, documentContent, documentName, documentContext, ragStoreName, projectId } = await request.json();
+    const {
+      messages,
+      projectContext,
+      existingTasks,
+      documentContent,
+      documentName,
+      documentContext,
+      ragStoreName,
+      projectId,
+    } = await request.json();
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(
@@ -291,12 +353,14 @@ export async function POST(request: NextRequest) {
     // Search for similar tasks using GraphRAG (Pinecone + Neo4j) if storage name is provided
     let ragSearchResults = "";
     let graphNodes: GraphNode[] = [];
+
     console.log("[Grooming API] ========== GRAPH RAG SEARCH ==========");
     console.log("[Grooming API] ragStoreName received:", ragStoreName);
     console.log("[Grooming API] projectId received:", projectId);
     if (ragStoreName && projectId) {
       try {
         const lastMessage = messages[messages.length - 1];
+
         if (lastMessage && lastMessage.role === "user") {
           console.log("[Grooming API] User query:", lastMessage.content);
           console.log("[Grooming API] Calling graphRAGService.search...");
@@ -304,19 +368,32 @@ export async function POST(request: NextRequest) {
             lastMessage.content,
             ragStoreName,
             projectId,
-            { includeGraphContext: true, includeRelatedTasks: true }
+            { includeGraphContext: true, includeRelatedTasks: true },
           );
-          console.log("[Grooming API] Search returned", searchResults.length, "results");
-          console.log("[Grooming API] Results:", JSON.stringify(searchResults, null, 2));
+
+          console.log(
+            "[Grooming API] Search returned",
+            searchResults.length,
+            "results",
+          );
+          console.log(
+            "[Grooming API] Results:",
+            JSON.stringify(searchResults, null, 2),
+          );
           if (searchResults.length > 0) {
             // Use the GraphRAG service to format results with graph context
-            ragSearchResults = graphRAGService.formatForLLMContext(searchResults);
+            ragSearchResults =
+              graphRAGService.formatForLLMContext(searchResults);
 
             // Convert search results to graph nodes for visualization
             graphNodes = searchResults.map((result) => {
               const node: GraphNode = {
-                id: result.taskId || `result-${Math.random().toString(36).slice(2, 11)}`,
-                title: result.graphContext?.task?.title || result.content.split("\n")[0].replace("Task: ", ""),
+                id:
+                  result.taskId ||
+                  `result-${Math.random().toString(36).slice(2, 11)}`,
+                title:
+                  result.graphContext?.task?.title ||
+                  result.content.split("\n")[0].replace("Task: ", ""),
                 type: "task",
                 category: result.graphContext?.task?.category,
                 priority: result.graphContext?.task?.priority,
@@ -331,15 +408,22 @@ export async function POST(request: NextRequest) {
                   .map((rel) => ({
                     type: rel.type,
                     targetId: rel.relatedTask?.id || rel.relatedEpic?.id || "",
-                    targetTitle: rel.relatedTask?.title || rel.relatedEpic?.title || "",
-                    targetType: rel.relatedEpic ? "epic" as const : "task" as const,
+                    targetTitle:
+                      rel.relatedTask?.title || rel.relatedEpic?.title || "",
+                    targetType: rel.relatedEpic
+                      ? ("epic" as const)
+                      : ("task" as const),
                   }));
               }
 
               // Add related tasks as RELATED_TO relationships
               if (result.relatedTasks) {
                 result.relatedTasks.forEach((relatedTask) => {
-                  if (!node.relationships.find((r) => r.targetId === relatedTask.id)) {
+                  if (
+                    !node.relationships.find(
+                      (r) => r.targetId === relatedTask.id,
+                    )
+                  ) {
                     node.relationships.push({
                       type: "RELATED_TO",
                       targetId: relatedTask.id,
@@ -353,7 +437,10 @@ export async function POST(request: NextRequest) {
               return node;
             });
 
-            console.log("[Grooming API] Graph nodes created:", graphNodes.length);
+            console.log(
+              "[Grooming API] Graph nodes created:",
+              graphNodes.length,
+            );
           }
         }
       } catch (error) {
@@ -361,12 +448,15 @@ export async function POST(request: NextRequest) {
         // Continue without RAG results if search fails
       }
     } else {
-      console.log("[Grooming API] No ragStoreName or projectId provided, skipping GraphRAG search");
+      console.log(
+        "[Grooming API] No ragStoreName or projectId provided, skipping GraphRAG search",
+      );
     }
     console.log("[Grooming API] ========== GRAPH RAG SEARCH END ==========");
 
     // Build document context section
     let documentSection = "";
+
     if (documentContent && documentName) {
       documentSection = `
 UPLOADED DOCUMENT "${documentName}":
@@ -533,6 +623,7 @@ Always respond with valid JSON only. No additional text before or after the JSON
     try {
       // Try to extract JSON from the response (in case there's extra text)
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+
       if (jsonMatch) {
         parsedResponse = JSON.parse(jsonMatch[0]);
       } else {
@@ -549,42 +640,70 @@ Always respond with valid JSON only. No additional text before or after the JSON
     }
 
     // Validate and sanitize suggested tasks
-    const validatedTasks = (parsedResponse.suggestedTasks || []).map((task, index) => ({
-      id: task.id || `task-${Date.now()}-${index}`,
-      title: task.title || "Untitled Task",
-      description: task.description || "",
-      category: ["backend", "frontend", "database", "integration", "api"].includes(task.category)
-        ? task.category
-        : "backend",
-      priority: ["high", "medium", "low"].includes(task.priority) ? task.priority : "medium",
-      cleanArchitectureArea: ["domain", "application", "infrastructure", "presentation"].includes(
-        task.cleanArchitectureArea
-      )
-        ? task.cleanArchitectureArea
-        : "infrastructure",
-      acceptanceCriteria: Array.isArray(task.acceptanceCriteria) ? task.acceptanceCriteria : [],
-      epicId: task.epicId || undefined,
-    }));
+    const validatedTasks = (parsedResponse.suggestedTasks || []).map(
+      (task, index) => ({
+        id: task.id || `task-${Date.now()}-${index}`,
+        title: task.title || "Untitled Task",
+        description: task.description || "",
+        category: [
+          "backend",
+          "frontend",
+          "database",
+          "integration",
+          "api",
+        ].includes(task.category)
+          ? task.category
+          : "backend",
+        priority: ["high", "medium", "low"].includes(task.priority)
+          ? task.priority
+          : "medium",
+        cleanArchitectureArea: [
+          "domain",
+          "application",
+          "infrastructure",
+          "presentation",
+        ].includes(task.cleanArchitectureArea)
+          ? task.cleanArchitectureArea
+          : "infrastructure",
+        acceptanceCriteria: Array.isArray(task.acceptanceCriteria)
+          ? task.acceptanceCriteria
+          : [],
+        epicId: task.epicId || undefined,
+      }),
+    );
 
     // Validate and sanitize suggested epics
-    const validatedEpics = (parsedResponse.suggestedEpics || []).map((epic, index) => ({
-      id: epic.id || `epic-${Date.now()}-${index}`,
-      title: epic.title || "Untitled Epic",
-      description: epic.description || "",
-      priority: ["high", "medium", "low"].includes(epic.priority) ? epic.priority : "medium",
-      taskIds: Array.isArray(epic.taskIds) ? epic.taskIds : [],
-    }));
+    const validatedEpics = (parsedResponse.suggestedEpics || []).map(
+      (epic, index) => ({
+        id: epic.id || `epic-${Date.now()}-${index}`,
+        title: epic.title || "Untitled Epic",
+        description: epic.description || "",
+        priority: ["high", "medium", "low"].includes(epic.priority)
+          ? epic.priority
+          : "medium",
+        taskIds: Array.isArray(epic.taskIds) ? epic.taskIds : [],
+      }),
+    );
 
     // Detect dependencies for suggested tasks
     let tasksWithDependencies = validatedTasks;
+
     if (validatedTasks.length > 0) {
       try {
-        console.log("[Grooming API] Detecting dependencies for", validatedTasks.length, "tasks");
-        const dependencyMap = await findTaskDependencies(validatedTasks as SuggestedTask[], ragStoreName);
+        console.log(
+          "[Grooming API] Detecting dependencies for",
+          validatedTasks.length,
+          "tasks",
+        );
+        const dependencyMap = await findTaskDependencies(
+          validatedTasks as SuggestedTask[],
+          ragStoreName,
+        );
 
         // Add dependencies to each task
         tasksWithDependencies = validatedTasks.map((task) => {
           const deps = dependencyMap.get(task.id);
+
           return {
             ...task,
             dependsOn: deps?.dependsOn || [],
@@ -610,6 +729,7 @@ Always respond with valid JSON only. No additional text before or after the JSON
     } as GroomingResponse);
   } catch (error) {
     console.error("Grooming chat API error:", error);
+
     return NextResponse.json({ error: error }, { status: 500 });
   }
 }

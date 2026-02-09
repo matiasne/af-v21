@@ -1,4 +1,5 @@
 import neo4j, { Driver, Session } from "neo4j-driver";
+
 import {
   GraphRAGRepository,
   TaskNode,
@@ -13,31 +14,40 @@ export class Neo4jGraphRAGRepository implements GraphRAGRepository {
   constructor() {
     const uri = process.env.NEO4J_URI || "bolt://localhost:7687";
     // Support both NEO4J_USERNAME (Aura) and NEO4J_USER naming conventions
-    const user = process.env.NEO4J_USERNAME || process.env.NEO4J_USER || "neo4j";
+    const user =
+      process.env.NEO4J_USERNAME || process.env.NEO4J_USER || "neo4j";
     const password = process.env.NEO4J_PASSWORD || "";
     const database = process.env.NEO4J_DATABASE || "neo4j";
 
     if (!password) {
-      console.warn("[Neo4j GraphRAG] NEO4J_PASSWORD not set, connection may fail");
+      console.warn(
+        "[Neo4j GraphRAG] NEO4J_PASSWORD not set, connection may fail",
+      );
     }
 
-    console.log(`[Neo4j GraphRAG] Connecting to ${uri} as ${user} (database: ${database})`);
+    console.log(
+      `[Neo4j GraphRAG] Connecting to ${uri} as ${user} (database: ${database})`,
+    );
     this.driver = neo4j.driver(uri, neo4j.auth.basic(user, password));
   }
 
   private getSession(): Session {
     const database = process.env.NEO4J_DATABASE || "neo4j";
+
     return this.driver.session({ database });
   }
 
   async healthCheck(): Promise<boolean> {
     const session = this.getSession();
+
     try {
       await session.run("RETURN 1");
       console.log("[Neo4j GraphRAG] Connection healthy");
+
       return true;
     } catch (error) {
       console.error("[Neo4j GraphRAG] Health check failed:", error);
+
       return false;
     } finally {
       await session.close();
@@ -46,6 +56,7 @@ export class Neo4jGraphRAGRepository implements GraphRAGRepository {
 
   async upsertTask(task: TaskNode): Promise<boolean> {
     const session = this.getSession();
+
     try {
       console.log(`[Neo4j GraphRAG] Upserting task: ${task.id}`);
 
@@ -72,13 +83,15 @@ export class Neo4jGraphRAGRepository implements GraphRAGRepository {
           cleanArchitectureArea: task.cleanArchitectureArea,
           epicId: task.epicId || null,
           createdAt: task.createdAt,
-        }
+        },
       );
 
       console.log(`[Neo4j GraphRAG] Task upserted successfully: ${task.id}`);
+
       return true;
     } catch (error) {
       console.error("[Neo4j GraphRAG] Error upserting task:", error);
+
       return false;
     } finally {
       await session.close();
@@ -87,6 +100,7 @@ export class Neo4jGraphRAGRepository implements GraphRAGRepository {
 
   async upsertEpic(epic: EpicNode): Promise<boolean> {
     const session = this.getSession();
+
     try {
       console.log(`[Neo4j GraphRAG] Upserting epic: ${epic.id}`);
 
@@ -107,13 +121,15 @@ export class Neo4jGraphRAGRepository implements GraphRAGRepository {
           description: epic.description,
           priority: epic.priority,
           createdAt: epic.createdAt,
-        }
+        },
       );
 
       console.log(`[Neo4j GraphRAG] Epic upserted successfully: ${epic.id}`);
+
       return true;
     } catch (error) {
       console.error("[Neo4j GraphRAG] Error upserting epic:", error);
+
       return false;
     } finally {
       await session.close();
@@ -125,12 +141,13 @@ export class Neo4jGraphRAGRepository implements GraphRAGRepository {
     targetTaskId: string,
     relationshipType: TaskRelationship["type"],
     projectId: string,
-    weight?: number
+    weight?: number,
   ): Promise<boolean> {
     const session = this.getSession();
+
     try {
       console.log(
-        `[Neo4j GraphRAG] Creating relationship: ${sourceTaskId} -[${relationshipType}]-> ${targetTaskId}`
+        `[Neo4j GraphRAG] Creating relationship: ${sourceTaskId} -[${relationshipType}]-> ${targetTaskId}`,
       );
 
       // Create relationship based on type
@@ -151,17 +168,24 @@ export class Neo4jGraphRAGRepository implements GraphRAGRepository {
       });
 
       console.log(`[Neo4j GraphRAG] Relationship created successfully`);
+
       return true;
     } catch (error) {
       console.error("[Neo4j GraphRAG] Error creating relationship:", error);
+
       return false;
     } finally {
       await session.close();
     }
   }
 
-  async linkTaskToEpic(taskId: string, epicId: string, projectId: string): Promise<boolean> {
+  async linkTaskToEpic(
+    taskId: string,
+    epicId: string,
+    projectId: string,
+  ): Promise<boolean> {
     const session = this.getSession();
+
     try {
       console.log(`[Neo4j GraphRAG] Linking task ${taskId} to epic ${epicId}`);
 
@@ -173,13 +197,15 @@ export class Neo4jGraphRAGRepository implements GraphRAGRepository {
         SET r.createdAt = datetime()
         RETURN r
         `,
-        { taskId, epicId, projectId }
+        { taskId, epicId, projectId },
       );
 
       console.log(`[Neo4j GraphRAG] Task linked to epic successfully`);
+
       return true;
     } catch (error) {
       console.error("[Neo4j GraphRAG] Error linking task to epic:", error);
+
       return false;
     } finally {
       await session.close();
@@ -188,11 +214,14 @@ export class Neo4jGraphRAGRepository implements GraphRAGRepository {
 
   async getTaskWithRelationships(
     taskId: string,
-    projectId: string
+    projectId: string,
   ): Promise<GraphSearchResult | null> {
     const session = this.getSession();
+
     try {
-      console.log(`[Neo4j GraphRAG] Getting task with relationships: ${taskId}`);
+      console.log(
+        `[Neo4j GraphRAG] Getting task with relationships: ${taskId}`,
+      );
 
       const result = await session.run(
         `
@@ -203,11 +232,12 @@ export class Neo4jGraphRAGRepository implements GraphRAGRepository {
                collect(DISTINCT {type: type(r), node: related, direction: 'outgoing'}) as outRels,
                collect(DISTINCT {type: type(r2), node: incoming, direction: 'incoming'}) as inRels
         `,
-        { taskId, projectId }
+        { taskId, projectId },
       );
 
       if (result.records.length === 0) {
         console.log(`[Neo4j GraphRAG] Task not found: ${taskId}`);
+
         return null;
       }
 
@@ -255,35 +285,43 @@ export class Neo4jGraphRAGRepository implements GraphRAGRepository {
 
       // Generate context summary
       const contextParts: string[] = [];
-      const epicRels = relationships.filter((r) => r.type === "PART_OF_EPIC" && r.relatedEpic);
-      const dependsOn = relationships.filter((r) => r.type === "DEPENDS_ON" && r.relatedTask);
-      const blocks = relationships.filter((r) => r.type === "BLOCKS" && r.relatedTask);
-      const relatedTo = relationships.filter((r) => r.type === "RELATED_TO" && r.relatedTask);
-      const similarTo = relationships.filter((r) => r.type === "SIMILAR_TO" && r.relatedTask);
+      const epicRels = relationships.filter(
+        (r) => r.type === "PART_OF_EPIC" && r.relatedEpic,
+      );
+      const dependsOn = relationships.filter(
+        (r) => r.type === "DEPENDS_ON" && r.relatedTask,
+      );
+      const blocks = relationships.filter(
+        (r) => r.type === "BLOCKS" && r.relatedTask,
+      );
+      const relatedTo = relationships.filter(
+        (r) => r.type === "RELATED_TO" && r.relatedTask,
+      );
+      const similarTo = relationships.filter(
+        (r) => r.type === "SIMILAR_TO" && r.relatedTask,
+      );
 
       if (epicRels.length > 0) {
-        contextParts.push(
-          `Part of epic: "${epicRels[0].relatedEpic?.title}"`
-        );
+        contextParts.push(`Part of epic: "${epicRels[0].relatedEpic?.title}"`);
       }
       if (dependsOn.length > 0) {
         contextParts.push(
-          `Depends on: ${dependsOn.map((r) => `"${r.relatedTask?.title}"`).join(", ")}`
+          `Depends on: ${dependsOn.map((r) => `"${r.relatedTask?.title}"`).join(", ")}`,
         );
       }
       if (blocks.length > 0) {
         contextParts.push(
-          `Blocks: ${blocks.map((r) => `"${r.relatedTask?.title}"`).join(", ")}`
+          `Blocks: ${blocks.map((r) => `"${r.relatedTask?.title}"`).join(", ")}`,
         );
       }
       if (relatedTo.length > 0) {
         contextParts.push(
-          `Related to: ${relatedTo.map((r) => `"${r.relatedTask?.title}"`).join(", ")}`
+          `Related to: ${relatedTo.map((r) => `"${r.relatedTask?.title}"`).join(", ")}`,
         );
       }
       if (similarTo.length > 0) {
         contextParts.push(
-          `Similar to: ${similarTo.map((r) => `"${r.relatedTask?.title}"`).join(", ")}`
+          `Similar to: ${similarTo.map((r) => `"${r.relatedTask?.title}"`).join(", ")}`,
         );
       }
 
@@ -306,7 +344,11 @@ export class Neo4jGraphRAGRepository implements GraphRAGRepository {
             : "No relationships found for this task.",
       };
     } catch (error) {
-      console.error("[Neo4j GraphRAG] Error getting task with relationships:", error);
+      console.error(
+        "[Neo4j GraphRAG] Error getting task with relationships:",
+        error,
+      );
+
       return null;
     } finally {
       await session.close();
@@ -316,11 +358,14 @@ export class Neo4jGraphRAGRepository implements GraphRAGRepository {
   async findRelatedTasks(
     taskId: string,
     projectId: string,
-    depth: number = 2
+    depth: number = 2,
   ): Promise<TaskNode[]> {
     const session = this.getSession();
+
     try {
-      console.log(`[Neo4j GraphRAG] Finding related tasks for: ${taskId} (depth: ${depth})`);
+      console.log(
+        `[Neo4j GraphRAG] Finding related tasks for: ${taskId} (depth: ${depth})`,
+      );
 
       const result = await session.run(
         `
@@ -330,11 +375,12 @@ export class Neo4jGraphRAGRepository implements GraphRAGRepository {
         RETURN DISTINCT related
         LIMIT 20
         `,
-        { taskId, projectId }
+        { taskId, projectId },
       );
 
       const tasks: TaskNode[] = result.records.map((record) => {
         const props = record.get("related").properties;
+
         return {
           id: props.id,
           title: props.title,
@@ -349,17 +395,23 @@ export class Neo4jGraphRAGRepository implements GraphRAGRepository {
       });
 
       console.log(`[Neo4j GraphRAG] Found ${tasks.length} related tasks`);
+
       return tasks;
     } catch (error) {
       console.error("[Neo4j GraphRAG] Error finding related tasks:", error);
+
       return [];
     } finally {
       await session.close();
     }
   }
 
-  async findTasksInSameEpic(taskId: string, projectId: string): Promise<TaskNode[]> {
+  async findTasksInSameEpic(
+    taskId: string,
+    projectId: string,
+  ): Promise<TaskNode[]> {
     const session = this.getSession();
+
     try {
       console.log(`[Neo4j GraphRAG] Finding tasks in same epic as: ${taskId}`);
 
@@ -370,11 +422,12 @@ export class Neo4jGraphRAGRepository implements GraphRAGRepository {
         WHERE sibling.id <> $taskId
         RETURN DISTINCT sibling
         `,
-        { taskId, projectId }
+        { taskId, projectId },
       );
 
       const tasks: TaskNode[] = result.records.map((record) => {
         const props = record.get("sibling").properties;
+
         return {
           id: props.id,
           title: props.title,
@@ -389,9 +442,14 @@ export class Neo4jGraphRAGRepository implements GraphRAGRepository {
       });
 
       console.log(`[Neo4j GraphRAG] Found ${tasks.length} tasks in same epic`);
+
       return tasks;
     } catch (error) {
-      console.error("[Neo4j GraphRAG] Error finding tasks in same epic:", error);
+      console.error(
+        "[Neo4j GraphRAG] Error finding tasks in same epic:",
+        error,
+      );
+
       return [];
     } finally {
       await session.close();
@@ -400,29 +458,33 @@ export class Neo4jGraphRAGRepository implements GraphRAGRepository {
 
   async enrichWithGraphContext(
     taskIds: string[],
-    projectId: string
+    projectId: string,
   ): Promise<Map<string, GraphSearchResult>> {
     console.log(
-      `[Neo4j GraphRAG] Enriching ${taskIds.length} tasks with graph context`
+      `[Neo4j GraphRAG] Enriching ${taskIds.length} tasks with graph context`,
     );
 
     const results = new Map<string, GraphSearchResult>();
 
     // Fetch all tasks in parallel
     const promises = taskIds.map((taskId) =>
-      this.getTaskWithRelationships(taskId, projectId)
+      this.getTaskWithRelationships(taskId, projectId),
     );
 
     const graphResults = await Promise.all(promises);
 
     for (let i = 0; i < taskIds.length; i++) {
       const result = graphResults[i];
+
       if (result) {
         results.set(taskIds[i], result);
       }
     }
 
-    console.log(`[Neo4j GraphRAG] Enriched ${results.size} tasks with graph context`);
+    console.log(
+      `[Neo4j GraphRAG] Enriched ${results.size} tasks with graph context`,
+    );
+
     return results;
   }
 
@@ -430,12 +492,13 @@ export class Neo4jGraphRAGRepository implements GraphRAGRepository {
     sourceTaskId: string,
     targetTaskId: string,
     relationshipType: string,
-    projectId: string
+    projectId: string,
   ): Promise<boolean> {
     const session = this.getSession();
+
     try {
       console.log(
-        `[Neo4j GraphRAG] Deleting relationship: ${sourceTaskId} -[${relationshipType}]-> ${targetTaskId}`
+        `[Neo4j GraphRAG] Deleting relationship: ${sourceTaskId} -[${relationshipType}]-> ${targetTaskId}`,
       );
 
       const query = `
@@ -453,10 +516,13 @@ export class Neo4jGraphRAGRepository implements GraphRAGRepository {
       });
 
       const deleted = result.records[0]?.get("deleted")?.toNumber() || 0;
+
       console.log(`[Neo4j GraphRAG] Deleted ${deleted} relationship(s)`);
+
       return deleted > 0;
     } catch (error) {
       console.error("[Neo4j GraphRAG] Error deleting relationship:", error);
+
       return false;
     } finally {
       await session.close();
@@ -465,6 +531,7 @@ export class Neo4jGraphRAGRepository implements GraphRAGRepository {
 
   async deleteTask(taskId: string, projectId: string): Promise<boolean> {
     const session = this.getSession();
+
     try {
       console.log(`[Neo4j GraphRAG] Deleting task: ${taskId}`);
 
@@ -473,13 +540,15 @@ export class Neo4jGraphRAGRepository implements GraphRAGRepository {
         MATCH (t:Task {id: $taskId, projectId: $projectId})
         DETACH DELETE t
         `,
-        { taskId, projectId }
+        { taskId, projectId },
       );
 
       console.log(`[Neo4j GraphRAG] Task deleted successfully`);
+
       return true;
     } catch (error) {
       console.error("[Neo4j GraphRAG] Error deleting task:", error);
+
       return false;
     } finally {
       await session.close();
@@ -488,6 +557,7 @@ export class Neo4jGraphRAGRepository implements GraphRAGRepository {
 
   async deleteEpic(epicId: string, projectId: string): Promise<boolean> {
     const session = this.getSession();
+
     try {
       console.log(`[Neo4j GraphRAG] Deleting epic: ${epicId}`);
 
@@ -496,13 +566,15 @@ export class Neo4jGraphRAGRepository implements GraphRAGRepository {
         MATCH (e:Epic {id: $epicId, projectId: $projectId})
         DETACH DELETE e
         `,
-        { epicId, projectId }
+        { epicId, projectId },
       );
 
       console.log(`[Neo4j GraphRAG] Epic deleted successfully`);
+
       return true;
     } catch (error) {
       console.error("[Neo4j GraphRAG] Error deleting epic:", error);
+
       return false;
     } finally {
       await session.close();
@@ -511,21 +583,26 @@ export class Neo4jGraphRAGRepository implements GraphRAGRepository {
 
   async deleteProject(projectId: string): Promise<boolean> {
     const session = this.getSession();
+
     try {
-      console.log(`[Neo4j GraphRAG] Deleting all nodes for project: ${projectId}`);
+      console.log(
+        `[Neo4j GraphRAG] Deleting all nodes for project: ${projectId}`,
+      );
 
       await session.run(
         `
         MATCH (n {projectId: $projectId})
         DETACH DELETE n
         `,
-        { projectId }
+        { projectId },
       );
 
       console.log(`[Neo4j GraphRAG] Project nodes deleted successfully`);
+
       return true;
     } catch (error) {
       console.error("[Neo4j GraphRAG] Error deleting project:", error);
+
       return false;
     } finally {
       await session.close();

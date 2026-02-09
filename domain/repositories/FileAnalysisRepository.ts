@@ -1,25 +1,26 @@
-import { AnalyzedFile, BusinessAnalysis, FunctionalAnalysis } from "../entities/FileAnalysis";
+import {
+  AnalyzedFile,
+  BusinessAnalysis,
+  FunctionalAnalysis,
+} from "../entities/FileAnalysis";
 
 export interface FileAnalysisRepository {
   // Get all files for a migration
-  getFiles(
-    projectId: string,
-    migrationId: string
-  ): Promise<AnalyzedFile[]>;
+  getFiles(projectId: string, migrationId: string): Promise<AnalyzedFile[]>;
 
   // Subscribe to files list
   subscribeFiles(
     projectId: string,
     migrationId: string,
     onUpdate: (files: AnalyzedFile[]) => void,
-    onError?: (error: Error) => void
+    onError?: (error: Error) => void,
   ): () => void;
 
   // Get specific file with analyses
   getFileWithAnalyses(
     projectId: string,
     migrationId: string,
-    fileId: string
+    fileId: string,
   ): Promise<{
     file: AnalyzedFile;
     businessAnalysis?: BusinessAnalysis;
@@ -30,7 +31,7 @@ export interface FileAnalysisRepository {
   skipFile(
     projectId: string,
     migrationId: string,
-    fileId: string
+    fileId: string,
   ): Promise<void>;
 
   // Add a comment to a file
@@ -38,14 +39,14 @@ export interface FileAnalysisRepository {
     projectId: string,
     migrationId: string,
     fileId: string,
-    comment: string
+    comment: string,
   ): Promise<string>;
 
   // Get comments for a file
   getComments(
     projectId: string,
     migrationId: string,
-    fileId: string
+    fileId: string,
   ): Promise<Array<{ id: string; comment: string; createdAt: number }>>;
 
   // Subscribe to comments for a file
@@ -53,8 +54,10 @@ export interface FileAnalysisRepository {
     projectId: string,
     migrationId: string,
     fileId: string,
-    onUpdate: (comments: Array<{ id: string; comment: string; createdAt: number }>) => void,
-    onError?: (error: Error) => void
+    onUpdate: (
+      comments: Array<{ id: string; comment: string; createdAt: number }>,
+    ) => void,
+    onError?: (error: Error) => void,
   ): () => void;
 
   // Delete a comment
@@ -62,6 +65,6 @@ export interface FileAnalysisRepository {
     projectId: string,
     migrationId: string,
     fileId: string,
-    commentId: string
+    commentId: string,
   ): Promise<void>;
 }

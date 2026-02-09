@@ -16,14 +16,16 @@ import {
   arrayRemove,
   where,
 } from "firebase/firestore";
-import {
-  ref,
-  uploadBytes,
-  deleteObject,
-} from "firebase/storage";
+import { ref, uploadBytes, deleteObject } from "firebase/storage";
 
 import { db, storage } from "../firebase/config";
-import { Project, ConfigChatMessage, ProjectDocument, UserProjectReference } from "@/domain/entities/Project";
+
+import {
+  Project,
+  ConfigChatMessage,
+  ProjectDocument,
+  UserProjectReference,
+} from "@/domain/entities/Project";
 import { ProjectRepository } from "@/domain/repositories/ProjectRepository";
 
 export class FirebaseProjectRepository implements ProjectRepository {
@@ -42,30 +44,15 @@ export class FirebaseProjectRepository implements ProjectRepository {
   }
 
   private getConfigChatMessagesCollection(projectId: string) {
-    return collection(
-      db,
-      "projects",
-      projectId,
-      "configChatMessages"
-    );
+    return collection(db, "projects", projectId, "configChatMessages");
   }
 
   private getGeneralChatMessagesCollection(projectId: string) {
-    return collection(
-      db,
-      "projects",
-      projectId,
-      "generalChatMessages"
-    );
+    return collection(db, "projects", projectId, "generalChatMessages");
   }
 
   private getLegacyFilesCollection(projectId: string) {
-    return collection(
-      db,
-      "projects",
-      projectId,
-      "legacy-files"
-    );
+    return collection(db, "projects", projectId, "legacy-files");
   }
 
   async getProjects(userId: string): Promise<Project[]> {
@@ -168,8 +155,9 @@ export class FirebaseProjectRepository implements ProjectRepository {
       db,
       "projects",
       docRef.id,
-      "migration-planner-module"
+      "migration-planner-module",
     );
+
     await addDoc(plannerModuleCol, {
       action: "pending",
       createdAt: now,
@@ -181,8 +169,9 @@ export class FirebaseProjectRepository implements ProjectRepository {
       db,
       "projects",
       docRef.id,
-      "migration-executor-module"
+      "migration-executor-module",
     );
+
     await addDoc(executorModuleCol, {
       action: "pending",
       createdAt: now,
@@ -215,7 +204,9 @@ export class FirebaseProjectRepository implements ProjectRepository {
     if (userDocSnap.exists()) {
       const userData = userDocSnap.data();
       const projectRefs: UserProjectReference[] = userData.projects || [];
-      const projectRefToRemove = projectRefs.find(ref => ref.projectId === projectId);
+      const projectRefToRemove = projectRefs.find(
+        (ref) => ref.projectId === projectId,
+      );
 
       if (projectRefToRemove) {
         await updateDoc(userDocRef, {
@@ -230,11 +221,11 @@ export class FirebaseProjectRepository implements ProjectRepository {
 
   async getConfigChatMessages(
     userId: string,
-    projectId: string
+    projectId: string,
   ): Promise<ConfigChatMessage[]> {
     const q = query(
       this.getConfigChatMessagesCollection(projectId),
-      orderBy("timestamp", "asc")
+      orderBy("timestamp", "asc"),
     );
     const querySnapshot = await getDocs(q);
 
@@ -244,14 +235,14 @@ export class FirebaseProjectRepository implements ProjectRepository {
   async addConfigChatMessage(
     userId: string,
     projectId: string,
-    message: Omit<ConfigChatMessage, "timestamp">
+    message: Omit<ConfigChatMessage, "timestamp">,
   ): Promise<string> {
     const docRef = await addDoc(
       this.getConfigChatMessagesCollection(projectId),
       {
         ...message,
         timestamp: Date.now(),
-      }
+      },
     );
 
     return docRef.id;
@@ -259,13 +250,14 @@ export class FirebaseProjectRepository implements ProjectRepository {
 
   async clearConfigChatMessages(
     userId: string,
-    projectId: string
+    projectId: string,
   ): Promise<void> {
     const querySnapshot = await getDocs(
-      this.getConfigChatMessagesCollection(projectId)
+      this.getConfigChatMessagesCollection(projectId),
     );
 
     const batch = writeBatch(db);
+
     querySnapshot.docs.forEach((doc) => {
       batch.delete(doc.ref);
     });
@@ -275,11 +267,11 @@ export class FirebaseProjectRepository implements ProjectRepository {
 
   async getGeneralChatMessages(
     userId: string,
-    projectId: string
+    projectId: string,
   ): Promise<ConfigChatMessage[]> {
     const q = query(
       this.getGeneralChatMessagesCollection(projectId),
-      orderBy("timestamp", "asc")
+      orderBy("timestamp", "asc"),
     );
     const querySnapshot = await getDocs(q);
 
@@ -289,14 +281,14 @@ export class FirebaseProjectRepository implements ProjectRepository {
   async addGeneralChatMessage(
     userId: string,
     projectId: string,
-    message: Omit<ConfigChatMessage, "timestamp">
+    message: Omit<ConfigChatMessage, "timestamp">,
   ): Promise<string> {
     const docRef = await addDoc(
       this.getGeneralChatMessagesCollection(projectId),
       {
         ...message,
         timestamp: Date.now(),
-      }
+      },
     );
 
     return docRef.id;
@@ -304,10 +296,10 @@ export class FirebaseProjectRepository implements ProjectRepository {
 
   async getLegacyFilesCount(
     userId: string,
-    projectId: string
+    projectId: string,
   ): Promise<number> {
     const querySnapshot = await getDocs(
-      this.getLegacyFilesCollection(projectId)
+      this.getLegacyFilesCollection(projectId),
     );
 
     return querySnapshot.size;
@@ -316,7 +308,7 @@ export class FirebaseProjectRepository implements ProjectRepository {
   async updateExecutorModel(
     userId: string,
     projectId: string,
-    executorModel: string
+    executorModel: string,
   ): Promise<void> {
     console.log("[FirebaseProjectRepository] updateExecutorModel called:", {
       userId,
@@ -335,7 +327,10 @@ export class FirebaseProjectRepository implements ProjectRepository {
       });
       console.log("[FirebaseProjectRepository] Document updated successfully");
     } catch (error) {
-      console.error("[FirebaseProjectRepository] Error updating document:", error);
+      console.error(
+        "[FirebaseProjectRepository] Error updating document:",
+        error,
+      );
       throw error;
     }
   }
@@ -343,7 +338,7 @@ export class FirebaseProjectRepository implements ProjectRepository {
   subscribeToProject(
     userId: string,
     projectId: string,
-    onUpdate: (project: Project | null) => void
+    onUpdate: (project: Project | null) => void,
   ): Unsubscribe {
     const docRef = this.getProjectDoc(projectId);
 
@@ -358,13 +353,13 @@ export class FirebaseProjectRepository implements ProjectRepository {
 
   async startCodeAnalysis(
     projectId: string,
-    migrationId: string
+    migrationId: string,
   ): Promise<void> {
     const codeAnalysisCol = collection(
       db,
       "projects",
       projectId,
-      "code-analysis-module"
+      "code-analysis-module",
     );
 
     // Query for existing code-analysis-module document
@@ -383,6 +378,7 @@ export class FirebaseProjectRepository implements ProjectRepository {
     } else {
       // Update existing document - set action to "start"
       const docRef = querySnapshot.docs[0].ref;
+
       await updateDoc(docRef, {
         action: "start",
         updatedAt: now,
@@ -392,13 +388,13 @@ export class FirebaseProjectRepository implements ProjectRepository {
 
   async stopCodeAnalysis(
     projectId: string,
-    migrationId: string
+    migrationId: string,
   ): Promise<void> {
     const codeAnalysisCol = collection(
       db,
       "projects",
       projectId,
-      "code-analysis-module"
+      "code-analysis-module",
     );
 
     // Query for existing code-analysis-module document
@@ -407,6 +403,7 @@ export class FirebaseProjectRepository implements ProjectRepository {
     if (!querySnapshot.empty) {
       // Update existing document - set action to "stop"
       const docRef = querySnapshot.docs[0].ref;
+
       await updateDoc(docRef, {
         action: "stop",
         updatedAt: Date.now(),
@@ -416,24 +413,32 @@ export class FirebaseProjectRepository implements ProjectRepository {
 
   async resumeCodeAnalysis(
     projectId: string,
-    migrationId: string
+    migrationId: string,
   ): Promise<void> {
-    console.log("[FirebaseProjectRepository] resumeCodeAnalysis called:", { projectId, migrationId });
+    console.log("[FirebaseProjectRepository] resumeCodeAnalysis called:", {
+      projectId,
+      migrationId,
+    });
 
     const codeAnalysisCol = collection(
       db,
       "projects",
       projectId,
-      "code-analysis-module"
+      "code-analysis-module",
     );
 
     // Query for existing code-analysis-module document
     const querySnapshot = await getDocs(codeAnalysisCol);
-    console.log("[FirebaseProjectRepository] querySnapshot empty:", querySnapshot.empty);
+
+    console.log(
+      "[FirebaseProjectRepository] querySnapshot empty:",
+      querySnapshot.empty,
+    );
 
     if (!querySnapshot.empty) {
       // Update existing document - set action to "resume"
       const docRef = querySnapshot.docs[0].ref;
+
       console.log("[FirebaseProjectRepository] Updating doc:", docRef.path);
       await updateDoc(docRef, {
         action: "resume",
@@ -445,33 +450,28 @@ export class FirebaseProjectRepository implements ProjectRepository {
 
   // Document methods for "Start from Documentation" projects
   private getDocumentsCollection(projectId: string) {
-    return collection(
-      db,
-      "projects",
-      projectId,
-      "documents"
-    );
+    return collection(db, "projects", projectId, "documents");
   }
 
   async getProjectDocuments(
     userId: string,
-    projectId: string
+    projectId: string,
   ): Promise<ProjectDocument[]> {
     const q = query(
       this.getDocumentsCollection(projectId),
-      orderBy("uploadedAt", "desc")
+      orderBy("uploadedAt", "desc"),
     );
     const querySnapshot = await getDocs(q);
 
     return querySnapshot.docs.map(
-      (doc) => ({ id: doc.id, ...doc.data() }) as ProjectDocument
+      (doc) => ({ id: doc.id, ...doc.data() }) as ProjectDocument,
     );
   }
 
   async uploadDocument(
     userId: string,
     projectId: string,
-    file: File
+    file: File,
   ): Promise<ProjectDocument> {
     const now = Date.now();
     const fileName = `${now}_${file.name}`;
@@ -493,7 +493,7 @@ export class FirebaseProjectRepository implements ProjectRepository {
 
     const docRef = await addDoc(
       this.getDocumentsCollection(projectId),
-      docData
+      docData,
     );
 
     return {
@@ -505,16 +505,10 @@ export class FirebaseProjectRepository implements ProjectRepository {
   async deleteDocument(
     userId: string,
     projectId: string,
-    documentId: string
+    documentId: string,
   ): Promise<void> {
     // Get the document to find storage reference
-    const docRef = doc(
-      db,
-      "projects",
-      projectId,
-      "documents",
-      documentId
-    );
+    const docRef = doc(db, "projects", projectId, "documents", documentId);
     const docSnap = await getDoc(docRef);
 
     if (docSnap.exists()) {
@@ -522,6 +516,7 @@ export class FirebaseProjectRepository implements ProjectRepository {
 
       // Delete from Firebase Storage
       const storageRef = ref(storage, data.storageRef);
+
       try {
         await deleteObject(storageRef);
       } catch (error) {
@@ -536,34 +531,36 @@ export class FirebaseProjectRepository implements ProjectRepository {
   subscribeToDocuments(
     userId: string,
     projectId: string,
-    onUpdate: (documents: ProjectDocument[]) => void
+    onUpdate: (documents: ProjectDocument[]) => void,
   ): Unsubscribe {
     const q = query(
       this.getDocumentsCollection(projectId),
-      orderBy("uploadedAt", "desc")
+      orderBy("uploadedAt", "desc"),
     );
 
     return onSnapshot(q, (querySnapshot) => {
       const documents = querySnapshot.docs.map(
-        (doc) => ({ id: doc.id, ...doc.data() }) as ProjectDocument
+        (doc) => ({ id: doc.id, ...doc.data() }) as ProjectDocument,
       );
+
       onUpdate(documents);
     });
   }
 
   private getExecutorModuleCollection(projectId: string) {
-    return collection(
-      db,
-      "projects",
-      projectId,
-      "migration-executor-module"
-    );
+    return collection(db, "projects", projectId, "migration-executor-module");
   }
 
   subscribeToExecutorModule(
     userId: string,
     projectId: string,
-    onUpdate: (data: { boilerplateDone?: boolean; action?: string; error?: string } | null) => void
+    onUpdate: (
+      data: {
+        boilerplateDone?: boolean;
+        action?: string;
+        error?: string;
+      } | null,
+    ) => void,
   ): Unsubscribe {
     const colRef = this.getExecutorModuleCollection(projectId);
 
@@ -572,6 +569,7 @@ export class FirebaseProjectRepository implements ProjectRepository {
         onUpdate(null);
       } else {
         const docData = querySnapshot.docs[0].data();
+
         onUpdate({
           boilerplateDone: docData.boilerplateDone,
           action: docData.action,
@@ -581,10 +579,7 @@ export class FirebaseProjectRepository implements ProjectRepository {
     });
   }
 
-  async startBoilerplate(
-    userId: string,
-    projectId: string
-  ): Promise<void> {
+  async startBoilerplate(userId: string, projectId: string): Promise<void> {
     const colRef = this.getExecutorModuleCollection(projectId);
     const querySnapshot = await getDocs(colRef);
 
@@ -600,6 +595,7 @@ export class FirebaseProjectRepository implements ProjectRepository {
     } else {
       // Update existing document - set action to "start"
       const docRef = querySnapshot.docs[0].ref;
+
       await updateDoc(docRef, {
         action: "start",
         updatedAt: now,
@@ -609,7 +605,7 @@ export class FirebaseProjectRepository implements ProjectRepository {
 
   async restartExecutorModule(
     userId: string,
-    projectId: string
+    projectId: string,
   ): Promise<void> {
     const colRef = this.getExecutorModuleCollection(projectId);
     const querySnapshot = await getDocs(colRef);
@@ -627,6 +623,7 @@ export class FirebaseProjectRepository implements ProjectRepository {
     } else {
       // Update existing document - set action to "restart" and boilerplateDone to false
       const docRef = querySnapshot.docs[0].ref;
+
       await updateDoc(docRef, {
         action: "restart",
         boilerplateDone: false,
@@ -638,14 +635,17 @@ export class FirebaseProjectRepository implements ProjectRepository {
   async inviteUserToProject(
     inviterId: string,
     projectId: string,
-    inviteeEmail: string
+    inviteeEmail: string,
   ): Promise<{ success: boolean; error?: string }> {
     try {
       const now = Date.now();
 
       // Find user by email in the users collection
       const usersCollection = collection(db, "users");
-      const userQuery = query(usersCollection, where("email", "==", inviteeEmail));
+      const userQuery = query(
+        usersCollection,
+        where("email", "==", inviteeEmail),
+      );
       const userSnapshot = await getDocs(userQuery);
 
       if (userSnapshot.empty) {
@@ -657,15 +657,22 @@ export class FirebaseProjectRepository implements ProjectRepository {
 
       // Check if user is already invited or has access to the project
       const inviteeData = inviteeDoc.data();
-      const existingProjects: UserProjectReference[] = inviteeData.projects || [];
-      const alreadyHasAccess = existingProjects.some(p => p.projectId === projectId);
+      const existingProjects: UserProjectReference[] =
+        inviteeData.projects || [];
+      const alreadyHasAccess = existingProjects.some(
+        (p) => p.projectId === projectId,
+      );
 
       if (alreadyHasAccess) {
-        return { success: false, error: "User already has access to this project" };
+        return {
+          success: false,
+          error: "User already has access to this project",
+        };
       }
 
       // Get project to verify it exists and add to sharedWith
       const projectDoc = await getDoc(this.getProjectDoc(projectId));
+
       if (!projectDoc.exists()) {
         return { success: false, error: "Project not found" };
       }
@@ -686,7 +693,9 @@ export class FirebaseProjectRepository implements ProjectRepository {
       const sharedWith = projectData.sharedWith || [];
 
       // Check if already in sharedWith
-      const alreadyShared = sharedWith.some((s: { userId: string }) => s.userId === inviteeId);
+      const alreadyShared = sharedWith.some(
+        (s: { userId: string }) => s.userId === inviteeId,
+      );
 
       if (!alreadyShared) {
         await updateDoc(this.getProjectDoc(projectId), {
@@ -704,6 +713,7 @@ export class FirebaseProjectRepository implements ProjectRepository {
       return { success: true };
     } catch (error) {
       console.error("[FirebaseProjectRepository] Error inviting user:", error);
+
       return { success: false, error: "Failed to invite user" };
     }
   }
@@ -711,11 +721,12 @@ export class FirebaseProjectRepository implements ProjectRepository {
   async removeUserFromProject(
     removerId: string,
     projectId: string,
-    userIdToRemove: string
+    userIdToRemove: string,
   ): Promise<{ success: boolean; error?: string }> {
     try {
       // Get the project to find the user's share info
       const projectDoc = await getDoc(this.getProjectDoc(projectId));
+
       if (!projectDoc.exists()) {
         return { success: false, error: "Project not found" };
       }
@@ -725,7 +736,7 @@ export class FirebaseProjectRepository implements ProjectRepository {
 
       // Find the share entry to remove
       const shareToRemove = sharedWith.find(
-        (s: { userId: string }) => s.userId === userIdToRemove
+        (s: { userId: string }) => s.userId === userIdToRemove,
       );
 
       if (!shareToRemove) {
@@ -746,7 +757,7 @@ export class FirebaseProjectRepository implements ProjectRepository {
         const userData = userDocSnap.data();
         const projectRefs: UserProjectReference[] = userData.projects || [];
         const projectRefToRemove = projectRefs.find(
-          (ref) => ref.projectId === projectId
+          (ref) => ref.projectId === projectId,
         );
 
         if (projectRefToRemove) {
@@ -759,6 +770,7 @@ export class FirebaseProjectRepository implements ProjectRepository {
       return { success: true };
     } catch (error) {
       console.error("[FirebaseProjectRepository] Error removing user:", error);
+
       return { success: false, error: "Failed to remove user" };
     }
   }

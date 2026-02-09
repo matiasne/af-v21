@@ -12,6 +12,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "../firebase/config";
+
 import {
   FirestoreRepository,
   FirestoreOperator,
@@ -50,7 +51,6 @@ export class FirestoreRepositoryImpl<T extends { id?: string }>
   async update(id: string, data: Partial<T>): Promise<void> {
     const docRef = doc(db, this.collectionName, id);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await updateDoc(docRef, data as any);
   }
 
