@@ -15,6 +15,7 @@ import { useTheme } from "next-themes";
 import { useAuth } from "@/infrastructure/context/AuthContext";
 import { useProjectChatSafe } from "@/infrastructure/context/ProjectChatContext";
 import { SetPasswordModal } from "@/components/SetPasswordModal";
+import { SunFilledIcon, MoonFilledIcon } from "@/components/icons";
 
 export const Navbar = () => {
   const { user, loading, signOut, setPassword, hasPasswordProvider } =
@@ -22,7 +23,7 @@ export const Navbar = () => {
   const projectChatContext = useProjectChatSafe();
   const projectContext = projectChatContext?.projectContext;
   const [isSetPasswordModalOpen, setIsSetPasswordModalOpen] = useState(false);
-  const { theme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -80,6 +81,8 @@ export const Navbar = () => {
                   onAction={(key) => {
                     if (key === "set-password") {
                       setIsSetPasswordModalOpen(true);
+                    } else if (key === "theme") {
+                      setTheme(theme === "dark" ? "light" : "dark");
                     } else if (key === "logout") {
                       signOut();
                     }
@@ -101,6 +104,18 @@ export const Navbar = () => {
                     className={showSetPasswordOption ? "" : "hidden"}
                   >
                     Set Password
+                  </DropdownItem>
+                  <DropdownItem
+                    key="theme"
+                    startContent={
+                      theme === "dark" ? (
+                        <SunFilledIcon size={18} />
+                      ) : (
+                        <MoonFilledIcon size={18} />
+                      )
+                    }
+                  >
+                    {theme === "dark" ? "Light Mode" : "Dark Mode"}
                   </DropdownItem>
                   <DropdownItem key="logout" color="danger">
                     Log Out

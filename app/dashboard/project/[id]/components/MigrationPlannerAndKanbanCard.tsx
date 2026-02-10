@@ -612,7 +612,7 @@ export function MigrationPlannerAndKanbanCard({
         </div>
 
         {/* Footer with Start Planning button */}
-        {plannerStatus && plannerStatus.action === "pending" && (
+        {(!plannerStatus || plannerStatus.action === "pending") && !isLoading && (
           <div className="pt-4">
             <Button
               fullWidth
