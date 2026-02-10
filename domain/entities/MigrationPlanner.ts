@@ -9,6 +9,8 @@ export interface MigrationPlannerStatus {
   description: string | null;
   error: string | null;
   logFile: string | null;
+  processedEpicFiles: string[];
+  processedTaskFiles: string[];
   tasksGenerated: number;
   updatedAt: number | null;
 }

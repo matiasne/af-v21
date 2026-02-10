@@ -226,6 +226,12 @@ export function MigrationPlannerAndKanbanCard({
   const plannerProgressPercent =
     totalFiles > 0 ? (currentFile / totalFiles) * 100 : 0;
 
+  // Epic and task generation progress
+  const isGeneratingEpics = plannerStatus?.currentStep === "generating_epics";
+  const isGeneratingTasks = plannerStatus?.currentStep === "generating_tasks";
+  const epicFilesProcessed = plannerStatus?.processedEpicFiles?.length || 0;
+  const taskFilesProcessed = plannerStatus?.processedTaskFiles?.length || 0;
+
   // Format timestamp
   const formatTime = (timestamp: number | null) => {
     if (!timestamp) return null;
@@ -385,24 +391,48 @@ export function MigrationPlannerAndKanbanCard({
             ) : isPlannerRunning ? (
               <div className="flex flex-col items-center justify-center py-4">
                 <CodeLoader className="mb-4" size="md" />
-                {totalFiles > 0 && (
-                  <div className="w-full max-w-xs">
+                <div className="w-full space-y-3">
+                  {/* Epic Generation Progress */}
+                  <div className="w-full">
                     <div className="flex justify-between text-xs mb-1">
                       <span className="text-default-600">
-                        Processing FDD files
+                        Generating Epics
                       </span>
                       <span className="text-default-500">
-                        {currentFile}/{totalFiles}
+                        {isGeneratingEpics && totalFiles > 0
+                          ? `${currentFile}/${totalFiles}`
+                          : `${epicFilesProcessed} files processed`}
                       </span>
                     </div>
                     <Progress
                       className="max-w-full"
-                      color="warning"
+                      color={isGeneratingEpics ? "warning" : epicFilesProcessed > 0 ? "success" : "default"}
+                      isIndeterminate={isGeneratingEpics && totalFiles === 0}
                       size="sm"
-                      value={plannerProgressPercent}
+                      value={isGeneratingEpics ? plannerProgressPercent : epicFilesProcessed > 0 ? 100 : 0}
                     />
                   </div>
-                )}
+                  {/* Task Generation Progress */}
+                  <div className="w-full">
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-default-600">
+                        Generating Tasks
+                      </span>
+                      <span className="text-default-500">
+                        {isGeneratingTasks && totalFiles > 0
+                          ? `${currentFile}/${totalFiles}`
+                          : `${taskFilesProcessed} files processed`}
+                      </span>
+                    </div>
+                    <Progress
+                      className="max-w-full"
+                      color={isGeneratingTasks ? "warning" : taskFilesProcessed > 0 ? "success" : "default"}
+                      isIndeterminate={isGeneratingTasks && totalFiles === 0}
+                      size="sm"
+                      value={isGeneratingTasks ? plannerProgressPercent : taskFilesProcessed > 0 ? 100 : 0}
+                    />
+                  </div>
+                </div>
               </div>
             ) : (
               <>

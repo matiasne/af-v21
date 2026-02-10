@@ -46,6 +46,8 @@ export class FirebaseMigrationPlannerRepository {
       description: (data.description as string) || null,
       error: (data.error as string) || null,
       logFile: (data.logFile as string) || null,
+      processedEpicFiles: (data.processedEpicFiles as string[]) || [],
+      processedTaskFiles: (data.processedTaskFiles as string[]) || [],
       tasksGenerated: (data.tasksGenerated as number) || 0,
       updatedAt: (data.updatedAt as number) || null,
     };
