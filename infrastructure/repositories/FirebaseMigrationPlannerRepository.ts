@@ -7,6 +7,7 @@ import {
   Unsubscribe,
   getDocs,
   updateDoc,
+  addDoc,
   serverTimestamp,
 } from "firebase/firestore";
 
@@ -20,13 +21,11 @@ import {
 export class FirebaseMigrationPlannerRepository {
   /**
    * Get the collection reference for migration planner module.
-   * Path: users/{userId}/projects/{projectId}/migration-planner-module
+   * Path: projects/{projectId}/migration-planner-module
    */
-  private getCollection(userId: string, projectId: string) {
+  private getCollection(projectId: string) {
     return collection(
       db,
-      "users",
-      userId,
       "projects",
       projectId,
       "migration-planner-module",
@@ -56,16 +55,10 @@ export class FirebaseMigrationPlannerRepository {
    * Start the migration planner by updating the existing document with action = "start".
    */
   async startPlanning(userId: string, projectId: string): Promise<string> {
-    const collectionRef = this.getCollection(userId, projectId);
+    const collectionRef = this.getCollection(projectId);
     const querySnapshot = await getDocs(collectionRef);
 
-    if (querySnapshot.empty) {
-      throw new Error("No migration planner document found");
-    }
-
-    const docRef = querySnapshot.docs[0].ref;
-
-    await updateDoc(docRef, {
+    const data = {
       action: "start",
       currentStep: null,
       description: "Queued for processing",
@@ -73,7 +66,17 @@ export class FirebaseMigrationPlannerRepository {
       logFile: null,
       tasksGenerated: 0,
       updatedAt: serverTimestamp(),
-    });
+    };
+
+    if (querySnapshot.empty) {
+      const newDoc = await addDoc(collectionRef, data);
+
+      return newDoc.id;
+    }
+
+    const docRef = querySnapshot.docs[0].ref;
+
+    await updateDoc(docRef, data);
 
     return docRef.id;
   }
@@ -89,7 +92,7 @@ export class FirebaseMigrationPlannerRepository {
     onUpdate: (status: MigrationPlannerStatus | null) => void,
     onError?: (error: Error) => void,
   ): () => void {
-    const collectionRef = this.getCollection(userId, projectId);
+    const collectionRef = this.getCollection(projectId);
     // Query for the most recently updated document
     const q = query(collectionRef, orderBy("updatedAt", "desc"), limit(1));
 
