@@ -77,12 +77,15 @@ export function ProjectStepper({
     if (stepId === "code_analysis") {
       if (isCodeAnalysisComplete) return "completed";
       if (isCodeAnalysisRunning) return "running";
+
       return "pending";
     }
     if (stepId === "migration_planner") {
       if (isMigrationPlannerRunning) return "running";
+
       return "pending";
     }
+
     return "pending";
   };
 
@@ -106,9 +109,9 @@ export function ProjectStepper({
             viewBox="0 0 24 24"
           >
             <path
+              d="M4.5 12.75l6 6 9-13.5"
               strokeLinecap="round"
               strokeLinejoin="round"
-              d="M4.5 12.75l6 6 9-13.5"
             />
           </svg>
         )}

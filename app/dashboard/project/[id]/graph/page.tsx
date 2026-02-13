@@ -92,6 +92,7 @@ function GraphEvents({ onNodeClick, onNodeHover }: GraphEventsProps) {
         onNodeHover(null);
         // Reset highlighting
         const graph = sigma.getGraph();
+
         graph.forEachNode((node) => {
           graph.setNodeAttribute(node, "highlighted", true);
         });
@@ -122,11 +123,14 @@ export default function GraphPage() {
     const checkContainer = () => {
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
+
         if (rect.width > 0 && rect.height > 0) {
           setIsContainerReady(true);
+
           return true;
         }
       }
+
       return false;
     };
 
@@ -163,11 +167,13 @@ export default function GraphPage() {
 
       try {
         const response = await fetch(`/api/graph?projectId=${projectId}`);
+
         if (!response.ok) {
           throw new Error("Failed to fetch graph data");
         }
 
         const data = await response.json();
+
         setNodes(data.nodes || []);
         setEdges(data.edges || []);
       } catch (err) {
@@ -198,9 +204,10 @@ export default function GraphPage() {
       const x = radius * Math.cos(angle);
       const y = radius * Math.sin(angle);
 
-      const color = node.type === "epic"
-        ? CATEGORY_COLORS.epic
-        : CATEGORY_COLORS[node.category || "backend"] || "#64748b";
+      const color =
+        node.type === "epic"
+          ? CATEGORY_COLORS.epic
+          : CATEGORY_COLORS[node.category || "backend"] || "#64748b";
 
       g.addNode(node.id, {
         x,
@@ -234,10 +241,14 @@ export default function GraphPage() {
     return g;
   }, [nodes, edges]);
 
-  const handleNodeClick = useCallback((nodeId: string) => {
-    const nodeData = nodes.find((n) => n.id === nodeId);
-    setSelectedNode(nodeData || null);
-  }, [nodes]);
+  const handleNodeClick = useCallback(
+    (nodeId: string) => {
+      const nodeData = nodes.find((n) => n.id === nodeId);
+
+      setSelectedNode(nodeData || null);
+    },
+    [nodes],
+  );
 
   const handleNodeHover = useCallback((nodeId: string | null) => {
     setHoveredNode(nodeId);
@@ -246,9 +257,11 @@ export default function GraphPage() {
   // Get relationship counts by type
   const relationshipCounts = useMemo(() => {
     const counts: Record<string, number> = {};
+
     edges.forEach((edge) => {
       counts[edge.type] = (counts[edge.type] || 0) + 1;
     });
+
     return counts;
   }, [edges]);
 
@@ -288,10 +301,10 @@ export default function GraphPage() {
               viewBox="0 0 24 24"
             >
               <path
+                d="M13 10V3L4 14h7v7l9-11h-7z"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={1.5}
-                d="M13 10V3L4 14h7v7l9-11h-7z"
               />
             </svg>
           </div>
@@ -299,9 +312,15 @@ export default function GraphPage() {
             No Graph Data Yet
           </h2>
           <p className="text-default-500 mb-4">
-            Start a grooming session to create tasks and see their relationships here.
+            Start a grooming session to create tasks and see their relationships
+            here.
           </p>
-          <Button color="primary" onPress={() => router.push(`/dashboard/project/${projectId}/grooming`)}>
+          <Button
+            color="primary"
+            onPress={() =>
+              router.push(`/dashboard/project/${projectId}/grooming`)
+            }
+          >
             Go to Grooming
           </Button>
         </div>
@@ -314,13 +333,19 @@ export default function GraphPage() {
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-default-200 bg-white dark:bg-default-800">
         <div className="flex items-center gap-4">
-          <Button
-            isIconOnly
-            variant="light"
-            onPress={() => router.back()}
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          <Button isIconOnly variant="light" onPress={() => router.back()}>
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M15 19l-7-7 7-7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+              />
             </svg>
           </Button>
           <div>
@@ -341,11 +366,11 @@ export default function GraphPage() {
               <Tooltip key={type} content={`${count} ${type} relationships`}>
                 <Chip
                   size="sm"
-                  variant="flat"
                   style={{
                     backgroundColor: `${RELATIONSHIP_COLORS[type]}20`,
                     color: RELATIONSHIP_COLORS[type],
                   }}
+                  variant="flat"
                 >
                   {type.replace(/_/g, " ")} ({count})
                 </Chip>
@@ -366,7 +391,6 @@ export default function GraphPage() {
           {isContainerReady && nodes.length > 0 ? (
             <SigmaContainer
               graph={graph}
-              style={{ height: "100%", width: "100%", position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
               settings={{
                 allowInvalidContainer: true,
                 nodeProgramClasses: {},
@@ -380,6 +404,15 @@ export default function GraphPage() {
                 renderEdgeLabels: true,
                 edgeLabelSize: 10,
                 edgeLabelFont: "Inter, sans-serif",
+              }}
+              style={{
+                height: "100%",
+                width: "100%",
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
               }}
             >
               <GraphEvents
@@ -421,8 +454,18 @@ export default function GraphPage() {
                   variant="light"
                   onPress={() => setSelectedNode(null)}
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M6 18L18 6M6 6l12 12"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                    />
                   </svg>
                 </Button>
               </div>
@@ -430,14 +473,18 @@ export default function GraphPage() {
               <div className="space-y-4">
                 <div>
                   <p className="text-sm text-default-500 mb-1">Title</p>
-                  <p className="font-medium text-default-800">{selectedNode.label}</p>
+                  <p className="font-medium text-default-800">
+                    {selectedNode.label}
+                  </p>
                 </div>
 
                 <div>
                   <p className="text-sm text-default-500 mb-1">Type</p>
                   <Chip
+                    color={
+                      selectedNode.type === "epic" ? "secondary" : "primary"
+                    }
                     size="sm"
-                    color={selectedNode.type === "epic" ? "secondary" : "primary"}
                     variant="flat"
                   >
                     {selectedNode.type}
@@ -449,11 +496,11 @@ export default function GraphPage() {
                     <p className="text-sm text-default-500 mb-1">Category</p>
                     <Chip
                       size="sm"
-                      variant="flat"
                       style={{
                         backgroundColor: `${CATEGORY_COLORS[selectedNode.category]}20`,
                         color: CATEGORY_COLORS[selectedNode.category],
                       }}
+                      variant="flat"
                     >
                       {selectedNode.category}
                     </Chip>
@@ -465,11 +512,11 @@ export default function GraphPage() {
                     <p className="text-sm text-default-500 mb-1">Priority</p>
                     <Chip
                       size="sm"
-                      variant="flat"
                       style={{
                         backgroundColor: `${PRIORITY_COLORS[selectedNode.priority]}20`,
                         color: PRIORITY_COLORS[selectedNode.priority],
                       }}
+                      variant="flat"
                     >
                       {selectedNode.priority}
                     </Chip>
@@ -478,8 +525,12 @@ export default function GraphPage() {
 
                 {selectedNode.cleanArchitectureArea && (
                   <div>
-                    <p className="text-sm text-default-500 mb-1">Architecture Area</p>
-                    <p className="text-sm text-default-700">{selectedNode.cleanArchitectureArea}</p>
+                    <p className="text-sm text-default-500 mb-1">
+                      Architecture Area
+                    </p>
+                    <p className="text-sm text-default-700">
+                      {selectedNode.cleanArchitectureArea}
+                    </p>
                   </div>
                 )}
 
@@ -497,11 +548,19 @@ export default function GraphPage() {
                   <p className="text-sm text-default-500 mb-2">Relationships</p>
                   <div className="space-y-2">
                     {edges
-                      .filter((e) => e.source === selectedNode.id || e.target === selectedNode.id)
+                      .filter(
+                        (e) =>
+                          e.source === selectedNode.id ||
+                          e.target === selectedNode.id,
+                      )
                       .map((edge) => {
                         const isSource = edge.source === selectedNode.id;
-                        const otherNodeId = isSource ? edge.target : edge.source;
-                        const otherNode = nodes.find((n) => n.id === otherNodeId);
+                        const otherNodeId = isSource
+                          ? edge.target
+                          : edge.source;
+                        const otherNode = nodes.find(
+                          (n) => n.id === otherNodeId,
+                        );
 
                         return (
                           <div
@@ -515,10 +574,14 @@ export default function GraphPage() {
                           >
                             <span
                               className="w-2 h-2 rounded-full"
-                              style={{ backgroundColor: RELATIONSHIP_COLORS[edge.type] }}
+                              style={{
+                                backgroundColor: RELATIONSHIP_COLORS[edge.type],
+                              }}
                             />
                             <span className="text-default-500">
-                              {isSource ? edge.type.replace(/_/g, " ") : `is ${edge.type.replace(/_/g, " ")} by`}
+                              {isSource
+                                ? edge.type.replace(/_/g, " ")
+                                : `is ${edge.type.replace(/_/g, " ")} by`}
                             </span>
                             <span className="font-medium text-default-700 truncate flex-1">
                               {otherNode?.label || otherNodeId}
@@ -526,8 +589,14 @@ export default function GraphPage() {
                           </div>
                         );
                       })}
-                    {edges.filter((e) => e.source === selectedNode.id || e.target === selectedNode.id).length === 0 && (
-                      <p className="text-sm text-default-400">No relationships</p>
+                    {edges.filter(
+                      (e) =>
+                        e.source === selectedNode.id ||
+                        e.target === selectedNode.id,
+                    ).length === 0 && (
+                      <p className="text-sm text-default-400">
+                        No relationships
+                      </p>
                     )}
                   </div>
                 </div>
@@ -540,7 +609,9 @@ export default function GraphPage() {
       {/* Category legend */}
       <div className="px-6 py-3 border-t border-default-200 bg-white dark:bg-default-800">
         <div className="flex items-center gap-4 overflow-x-auto">
-          <span className="text-xs text-default-500 whitespace-nowrap">Node Categories:</span>
+          <span className="text-xs text-default-500 whitespace-nowrap">
+            Node Categories:
+          </span>
           {Object.entries(CATEGORY_COLORS).map(([category, color]) => (
             <div key={category} className="flex items-center gap-1">
               <span

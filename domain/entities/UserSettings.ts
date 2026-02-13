@@ -48,11 +48,56 @@ export const GRID_COLS = 12;
 export const GRID_ROW_HEIGHT = 100;
 
 export const DEFAULT_CARD_ORDER: CardSettings[] = [
-  { id: "queue-status", order: 0, pinned: false, size: "full", x: 0, y: 0, w: 12, h: 2 },
-  { id: "pipeline-progress", order: 1, pinned: false, size: "full", x: 0, y: 2, w: 12, h: 3 },
-  { id: "project-details", order: 2, pinned: false, size: "medium", x: 0, y: 5, w: 4, h: 3 },
-  { id: "quick-actions", order: 3, pinned: false, size: "medium", x: 4, y: 5, w: 4, h: 3 },
-  { id: "statistics", order: 4, pinned: false, size: "medium", x: 8, y: 5, w: 4, h: 3 },
+  {
+    id: "queue-status",
+    order: 0,
+    pinned: false,
+    size: "full",
+    x: 0,
+    y: 0,
+    w: 12,
+    h: 2,
+  },
+  {
+    id: "pipeline-progress",
+    order: 1,
+    pinned: false,
+    size: "full",
+    x: 0,
+    y: 2,
+    w: 12,
+    h: 3,
+  },
+  {
+    id: "project-details",
+    order: 2,
+    pinned: false,
+    size: "medium",
+    x: 0,
+    y: 5,
+    w: 4,
+    h: 3,
+  },
+  {
+    id: "quick-actions",
+    order: 3,
+    pinned: false,
+    size: "medium",
+    x: 4,
+    y: 5,
+    w: 4,
+    h: 3,
+  },
+  {
+    id: "statistics",
+    order: 4,
+    pinned: false,
+    size: "medium",
+    x: 8,
+    y: 5,
+    w: 4,
+    h: 3,
+  },
 ];
 
 export const SIZE_TO_COL_SPAN: Record<CardSize, 1 | 2 | 3> = {

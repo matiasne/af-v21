@@ -4,7 +4,6 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { Card, CardHeader, CardBody } from "@heroui/card";
 import { Button } from "@heroui/button";
 import { Spinner } from "@heroui/spinner";
-import { Chip } from "@heroui/chip";
 
 import { ProjectDocument } from "@/domain/entities/Project";
 import { FirebaseProjectRepository } from "@/infrastructure/repositories/FirebaseProjectRepository";
@@ -21,6 +20,7 @@ function formatFileSize(bytes: number): string {
   const k = 1024;
   const sizes = ["Bytes", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
+
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 }
 
@@ -29,6 +29,7 @@ function getFileIcon(type: string): string {
   if (type.includes("word") || type.includes("document")) return "doc";
   if (type.includes("sheet") || type.includes("excel")) return "xls";
   if (type.includes("text") || type.includes("markdown")) return "txt";
+
   return "file";
 }
 
@@ -47,7 +48,7 @@ export function DocumentUploadCard({ projectId }: DocumentUploadCardProps) {
     const unsubscribe = projectRepository.subscribeToDocuments(
       user.uid,
       projectId,
-      (docs) => setDocuments(docs)
+      (docs) => setDocuments(docs),
     );
 
     return () => unsubscribe();
@@ -68,7 +69,7 @@ export function DocumentUploadCard({ projectId }: DocumentUploadCardProps) {
         setUploading(false);
       }
     },
-    [user?.uid, projectId]
+    [user?.uid, projectId],
   );
 
   const handleDelete = useCallback(
@@ -84,7 +85,7 @@ export function DocumentUploadCard({ projectId }: DocumentUploadCardProps) {
         setDeleting(null);
       }
     },
-    [user?.uid, projectId]
+    [user?.uid, projectId],
   );
 
   const handleDrag = useCallback((e: React.DragEvent) => {
@@ -104,7 +105,7 @@ export function DocumentUploadCard({ projectId }: DocumentUploadCardProps) {
       setDragActive(false);
       handleUpload(e.dataTransfer.files);
     },
-    [handleUpload]
+    [handleUpload],
   );
 
   return (
@@ -132,11 +133,11 @@ export function DocumentUploadCard({ projectId }: DocumentUploadCardProps) {
         >
           <input
             ref={fileInputRef}
-            type="file"
             multiple
-            className="hidden"
-            onChange={(e) => handleUpload(e.target.files)}
             accept=".pdf,.doc,.docx,.txt,.md,.xls,.xlsx"
+            className="hidden"
+            type="file"
+            onChange={(e) => handleUpload(e.target.files)}
           />
           <div className="flex flex-col items-center gap-2">
             <svg
@@ -147,16 +148,16 @@ export function DocumentUploadCard({ projectId }: DocumentUploadCardProps) {
               viewBox="0 0 24 24"
             >
               <path
+                d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z"
               />
             </svg>
             <p className="text-default-600">
               Drag and drop files here, or{" "}
               <button
-                type="button"
                 className="text-primary font-medium hover:underline"
+                type="button"
                 onClick={() => fileInputRef.current?.click()}
               >
                 browse
@@ -198,9 +199,9 @@ export function DocumentUploadCard({ projectId }: DocumentUploadCardProps) {
                         viewBox="0 0 24 24"
                       >
                         <path
+                          d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
                           strokeLinecap="round"
                           strokeLinejoin="round"
-                          d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
                         />
                       </svg>
                     </div>
@@ -213,10 +214,10 @@ export function DocumentUploadCard({ projectId }: DocumentUploadCardProps) {
                   </div>
                   <Button
                     isIconOnly
-                    size="sm"
-                    variant="light"
                     color="danger"
                     isLoading={deleting === doc.id}
+                    size="sm"
+                    variant="light"
                     onPress={() => handleDelete(doc.id)}
                   >
                     <svg
@@ -227,9 +228,9 @@ export function DocumentUploadCard({ projectId }: DocumentUploadCardProps) {
                       viewBox="0 0 24 24"
                     >
                       <path
+                        d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
                       />
                     </svg>
                   </Button>
@@ -243,7 +244,8 @@ export function DocumentUploadCard({ projectId }: DocumentUploadCardProps) {
         {documents.length === 0 && !uploading && (
           <div className="text-center py-4">
             <p className="text-sm text-default-400">
-              No documents uploaded yet. Upload your project documentation to get started.
+              No documents uploaded yet. Upload your project documentation to
+              get started.
             </p>
           </div>
         )}

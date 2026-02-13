@@ -21,6 +21,8 @@ import {
 } from "@heroui/modal";
 import { RadioGroup, Radio } from "@heroui/radio";
 
+import { TaskDetailModal } from "./TaskDetailModal";
+
 import {
   ExecutionPlanTask,
   TaskStatus,
@@ -28,7 +30,6 @@ import {
   CleanArchitectureArea,
   Epic,
 } from "@/domain/entities/ExecutionPlan";
-import { TaskDetailModal } from "./TaskDetailModal";
 
 const TASKS_PER_PAGE = 20;
 
@@ -36,7 +37,9 @@ interface TaskListProps {
   tasks: ExecutionPlanTask[];
   epics: Epic[];
   onUpdateTaskEpic: (taskId: string, epicId: string) => Promise<void>;
-  onReorderTasks?: (taskOrders: { taskId: string; order: number }[]) => Promise<void>;
+  onReorderTasks?: (
+    taskOrders: { taskId: string; order: number }[],
+  ) => Promise<void>;
   onDeleteTask?: (taskId: string) => Promise<void>;
   onDeleteEpic?: (epicId: string, deleteTasksToo: boolean) => Promise<void>;
   onMoveToBacklog?: (taskId: string) => Promise<void>;
@@ -50,7 +53,7 @@ const STATUS_OPTIONS: { id: TaskStatus; label: string }[] = [
 ];
 
 const getCategoryColor = (
-  category: TaskCategory
+  category: TaskCategory,
 ): "primary" | "success" | "warning" | "danger" | "secondary" => {
   switch (category) {
     case "backend":
@@ -69,7 +72,7 @@ const getCategoryColor = (
 };
 
 const getArchitectureAreaColor = (
-  area: CleanArchitectureArea
+  area: CleanArchitectureArea,
 ): "default" | "primary" | "secondary" | "success" | "warning" => {
   switch (area) {
     case "domain":
@@ -86,7 +89,7 @@ const getArchitectureAreaColor = (
 };
 
 const getStatusColor = (
-  status: TaskStatus
+  status: TaskStatus,
 ): "default" | "primary" | "warning" | "success" => {
   switch (status) {
     case "backlog":
@@ -102,23 +105,37 @@ const getStatusColor = (
   }
 };
 
-export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDeleteTask, onDeleteEpic, onMoveToBacklog }: TaskListProps) {
+export function TaskList({
+  tasks,
+  epics,
+  onUpdateTaskEpic,
+  onReorderTasks,
+  onDeleteTask,
+  onDeleteEpic,
+  onMoveToBacklog,
+}: TaskListProps) {
   const [selectedTask, setSelectedTask] = useState<ExecutionPlanTask | null>(
-    null
+    null,
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(TASKS_PER_PAGE);
   const [isLoading, setIsLoading] = useState(false);
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null);
-  const [dragOverPosition, setDragOverPosition] = useState<"above" | "below" | null>(null);
+  const [dragOverPosition, setDragOverPosition] = useState<
+    "above" | "below" | null
+  >(null);
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
-  const [taskToDelete, setTaskToDelete] = useState<ExecutionPlanTask | null>(null);
+  const [taskToDelete, setTaskToDelete] = useState<ExecutionPlanTask | null>(
+    null,
+  );
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deletingEpicId, setDeletingEpicId] = useState<string | null>(null);
   const [epicToDelete, setEpicToDelete] = useState<Epic | null>(null);
   const [isDeleteEpicModalOpen, setIsDeleteEpicModalOpen] = useState(false);
-  const [epicDeleteMode, setEpicDeleteMode] = useState<"unassign" | "delete">("unassign");
+  const [epicDeleteMode, setEpicDeleteMode] = useState<"unassign" | "delete">(
+    "unassign",
+  );
   const [collapsedEpics, setCollapsedEpics] = useState<Set<string>>(new Set());
   const [dragOverEpicId, setDragOverEpicId] = useState<string | null>(null);
   const loaderRef = useRef<HTMLDivElement>(null);
@@ -127,11 +144,13 @@ export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDel
   const toggleEpicCollapse = (epicId: string) => {
     setCollapsedEpics((prev) => {
       const newSet = new Set(prev);
+
       if (newSet.has(epicId)) {
         newSet.delete(epicId);
       } else {
         newSet.add(epicId);
       }
+
       return newSet;
     });
   };
@@ -143,19 +162,23 @@ export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDel
   const groupedTasks = visibleTasks.reduce(
     (acc, task) => {
       const epicId = task.epicId || "unassigned";
+
       if (!acc[epicId]) {
         acc[epicId] = [];
       }
       acc[epicId].push(task);
+
       return acc;
     },
-    {} as Record<string, ExecutionPlanTask[]>
+    {} as Record<string, ExecutionPlanTask[]>,
   );
 
   // Get ordered epic sections (epics first, then unassigned)
   const epicSections = [
     ...epics.filter((epic) => groupedTasks[epic.id]),
-    ...(groupedTasks["unassigned"] ? [{ id: "unassigned", title: "Unassigned Tasks" } as Epic] : []),
+    ...(groupedTasks["unassigned"]
+      ? [{ id: "unassigned", title: "Unassigned Tasks" } as Epic]
+      : []),
   ];
 
   // Reset visible count when tasks change
@@ -177,6 +200,7 @@ export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDel
   // Intersection Observer for infinite scroll
   useEffect(() => {
     const loader = loaderRef.current;
+
     if (!loader) return;
 
     const observer = new IntersectionObserver(
@@ -189,7 +213,7 @@ export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDel
         root: containerRef.current,
         rootMargin: "100px",
         threshold: 0.1,
-      }
+      },
     );
 
     observer.observe(loader);
@@ -251,7 +275,10 @@ export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDel
   };
 
   // Drag and drop handlers
-  const handleDragStart = (e: DragEvent<HTMLTableRowElement>, taskId: string) => {
+  const handleDragStart = (
+    e: DragEvent<HTMLTableRowElement>,
+    taskId: string,
+  ) => {
     setDraggedTaskId(taskId);
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", taskId);
@@ -276,19 +303,25 @@ export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDel
   };
 
   // Handle drop directly on an epic section (for empty epics or dropping at the end)
-  const handleEpicDrop = async (e: DragEvent<HTMLDivElement>, targetEpicId: string) => {
+  const handleEpicDrop = async (
+    e: DragEvent<HTMLDivElement>,
+    targetEpicId: string,
+  ) => {
     e.preventDefault();
     const sourceTaskId = e.dataTransfer.getData("text/plain");
 
     if (!sourceTaskId) {
       handleDragEnd();
+
       return;
     }
 
     // Find the source task
     const sourceTask = visibleTasks.find((t) => t.id === sourceTaskId);
+
     if (!sourceTask) {
       handleDragEnd();
+
       return;
     }
 
@@ -297,13 +330,17 @@ export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDel
     // Only update if moving to a different epic
     if (sourceEpicId !== targetEpicId && onUpdateTaskEpic) {
       const newEpicId = targetEpicId === "unassigned" ? "" : targetEpicId;
+
       await onUpdateTaskEpic(sourceTaskId, newEpicId);
     }
 
     handleDragEnd();
   };
 
-  const handleDragOver = (e: DragEvent<HTMLTableRowElement>, taskId: string) => {
+  const handleDragOver = (
+    e: DragEvent<HTMLTableRowElement>,
+    taskId: string,
+  ) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
 
@@ -321,19 +358,26 @@ export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDel
     setDragOverPosition(null);
   };
 
-  const handleDrop = async (e: DragEvent<HTMLTableRowElement>, targetTaskId: string, targetEpicId: string) => {
+  const handleDrop = async (
+    e: DragEvent<HTMLTableRowElement>,
+    targetTaskId: string,
+    targetEpicId: string,
+  ) => {
     e.preventDefault();
     const sourceTaskId = e.dataTransfer.getData("text/plain");
 
     if (!sourceTaskId || sourceTaskId === targetTaskId) {
       handleDragEnd();
+
       return;
     }
 
     // Find the source task to determine its current epic
     const sourceTask = visibleTasks.find((t) => t.id === sourceTaskId);
+
     if (!sourceTask) {
       handleDragEnd();
+
       return;
     }
 
@@ -343,18 +387,26 @@ export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDel
     // If moving between epics, update the epic assignment first
     if (isMovingBetweenEpics && onUpdateTaskEpic) {
       const newEpicId = targetEpicId === "unassigned" ? "" : targetEpicId;
+
       await onUpdateTaskEpic(sourceTaskId, newEpicId);
     }
 
     // Now handle the reordering within the target epic
     if (onReorderTasks) {
       // Get tasks for the target epic section (include the moved task as if it's already there)
-      const targetEpicTasks = targetEpicId === "unassigned"
-        ? visibleTasks.filter((t) => !t.epicId || t.epicId === "" || t.id === sourceTaskId)
-        : visibleTasks.filter((t) => t.epicId === targetEpicId || t.id === sourceTaskId);
+      const targetEpicTasks =
+        targetEpicId === "unassigned"
+          ? visibleTasks.filter(
+              (t) => !t.epicId || t.epicId === "" || t.id === sourceTaskId,
+            )
+          : visibleTasks.filter(
+              (t) => t.epicId === targetEpicId || t.id === sourceTaskId,
+            );
 
       // Sort by current order
-      const sortedTasks = [...targetEpicTasks].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      const sortedTasks = [...targetEpicTasks].sort(
+        (a, b) => (a.order ?? 0) - (b.order ?? 0),
+      );
 
       // Find indices
       const sourceIndex = sortedTasks.findIndex((t) => t.id === sourceTaskId);
@@ -366,6 +418,7 @@ export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDel
 
         // Calculate insert position
         let insertIndex = targetIndex;
+
         if (sourceIndex < targetIndex) {
           insertIndex = targetIndex - 1;
         }
@@ -400,12 +453,6 @@ export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDel
     return (
       <TableRow
         key={task.id}
-        draggable={canDrag}
-        onDragStart={(e) => handleDragStart(e, task.id)}
-        onDragEnd={handleDragEnd}
-        onDragOver={(e) => handleDragOver(e, task.id)}
-        onDragLeave={handleDragLeave}
-        onDrop={(e) => handleDrop(e, task.id, epicId)}
         className={`
           ${task.error ? "bg-red-50 dark:bg-red-950/20" : ""}
           ${isDragging ? "opacity-50" : ""}
@@ -413,6 +460,12 @@ export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDel
           ${isDragOver && dragOverPosition === "below" ? "border-b-2 border-b-primary" : ""}
           ${canDrag ? "cursor-grab active:cursor-grabbing" : ""}
         `}
+        draggable={canDrag}
+        onDragEnd={handleDragEnd}
+        onDragLeave={handleDragLeave}
+        onDragOver={(e) => handleDragOver(e, task.id)}
+        onDragStart={(e) => handleDragStart(e, task.id)}
+        onDrop={(e) => handleDrop(e, task.id, epicId)}
       >
         <TableCell>
           <div className="flex items-center gap-2">
@@ -424,10 +477,10 @@ export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDel
                 viewBox="0 0 24 24"
               >
                 <path
+                  d="M4 8h16M4 16h16"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M4 8h16M4 16h16"
                 />
               </svg>
             )}
@@ -443,8 +496,8 @@ export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDel
         </TableCell>
         <TableCell>
           <Chip
-            size="sm"
             color={getCategoryColor(task.category)}
+            size="sm"
             variant="flat"
           >
             {task.category}
@@ -452,20 +505,17 @@ export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDel
         </TableCell>
         <TableCell>
           <Chip
-            size="sm"
             color={getArchitectureAreaColor(task.cleanArchitectureArea)}
+            size="sm"
             variant="dot"
           >
             {task.cleanArchitectureArea}
           </Chip>
         </TableCell>
         <TableCell>
-          <Chip
-            size="sm"
-            color={getStatusColor(task.status)}
-            variant="flat"
-          >
-            {STATUS_OPTIONS.find((s) => s.id === task.status)?.label || task.status}
+          <Chip color={getStatusColor(task.status)} size="sm" variant="flat">
+            {STATUS_OPTIONS.find((s) => s.id === task.status)?.label ||
+              task.status}
           </Chip>
         </TableCell>
         <TableCell>
@@ -479,13 +529,13 @@ export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDel
             </Button>
             {onDeleteTask && (
               <Button
-                size="sm"
-                variant="flat"
-                color="danger"
                 isIconOnly
+                color="danger"
                 isLoading={deletingTaskId === task.id}
-                onPress={() => handleDeleteClick(task)}
+                size="sm"
                 title="Delete task"
+                variant="flat"
+                onPress={() => handleDeleteClick(task)}
               >
                 <svg
                   className="w-4 h-4"
@@ -494,10 +544,10 @@ export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDel
                   viewBox="0 0 24 24"
                 >
                   <path
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                   />
                 </svg>
               </Button>
@@ -516,7 +566,9 @@ export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDel
             {epicSections.map((epic) => {
               const epicTasks = groupedTasks[epic.id] || [];
               const isCollapsed = collapsedEpics.has(epic.id);
-              const isDragOverEpic = dragOverEpicId === epic.id && draggedTaskId !== null;
+              const isDragOverEpic =
+                dragOverEpicId === epic.id && draggedTaskId !== null;
+
               return (
                 <div
                   key={epic.id}
@@ -525,15 +577,15 @@ export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDel
                       ? "border-primary-400 border-2 bg-primary-50/50 dark:bg-primary-950/30"
                       : "border-default-200"
                   }`}
-                  onDragOver={(e) => handleEpicDragOver(e, epic.id)}
                   onDragLeave={handleEpicDragLeave}
+                  onDragOver={(e) => handleEpicDragOver(e, epic.id)}
                   onDrop={(e) => handleEpicDrop(e, epic.id)}
                 >
                   {/* Epic Header */}
                   <button
+                    className={`w-full px-4 py-3 ${epic.id === "unassigned" ? "bg-default-100 hover:bg-default-200" : "bg-primary-50 dark:bg-primary-950/20 hover:bg-primary-100 dark:hover:bg-primary-950/30"} transition-colors cursor-pointer`}
                     type="button"
                     onClick={() => toggleEpicCollapse(epic.id)}
-                    className={`w-full px-4 py-3 ${epic.id === "unassigned" ? "bg-default-100 hover:bg-default-200" : "bg-primary-50 dark:bg-primary-950/20 hover:bg-primary-100 dark:hover:bg-primary-950/30"} transition-colors cursor-pointer`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -544,29 +596,39 @@ export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDel
                           viewBox="0 0 24 24"
                         >
                           <path
+                            d="M9 5l7 7-7 7"
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             strokeWidth={2}
-                            d="M9 5l7 7-7 7"
                           />
                         </svg>
                         <h3 className="font-semibold text-default-800">
                           {epic.title}
                         </h3>
-                        <Chip size="sm" variant="flat" color={epic.id === "unassigned" ? "default" : "primary"}>
-                          {epicTasks.length} {epicTasks.length === 1 ? "task" : "tasks"}
+                        <Chip
+                          color={
+                            epic.id === "unassigned" ? "default" : "primary"
+                          }
+                          size="sm"
+                          variant="flat"
+                        >
+                          {epicTasks.length}{" "}
+                          {epicTasks.length === 1 ? "task" : "tasks"}
                         </Chip>
                       </div>
-                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                      <div
+                        className="flex items-center gap-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         {onDeleteEpic && epic.id !== "unassigned" && (
                           <Button
-                            size="sm"
-                            variant="flat"
-                            color="danger"
                             isIconOnly
+                            color="danger"
                             isLoading={deletingEpicId === epic.id}
-                            onPress={() => handleDeleteEpicClick(epic)}
+                            size="sm"
                             title="Delete epic"
+                            variant="flat"
+                            onPress={() => handleDeleteEpicClick(epic)}
                           >
                             <svg
                               className="w-4 h-4"
@@ -575,10 +637,10 @@ export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDel
                               viewBox="0 0 24 24"
                             >
                               <path
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 strokeWidth={2}
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                               />
                             </svg>
                           </Button>
@@ -595,7 +657,10 @@ export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDel
                   {/* Tasks Table - collapsible */}
                   {!isCollapsed && (
                     <>
-                      <Table aria-label={`Tasks for ${epic.title}`} removeWrapper>
+                      <Table
+                        removeWrapper
+                        aria-label={`Tasks for ${epic.title}`}
+                      >
                         <TableHeader>
                           <TableColumn>TITLE</TableColumn>
                           <TableColumn>CATEGORY</TableColumn>
@@ -648,7 +713,7 @@ export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDel
         {hasMore && (
           <div ref={loaderRef} className="flex justify-center py-4">
             {isLoading ? (
-              <Spinner size="sm" color="primary" />
+              <Spinner color="primary" size="sm" />
             ) : (
               <span className="text-xs text-default-400">
                 {tasks.length - visibleCount} more tasks
@@ -665,32 +730,28 @@ export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDel
 
       {/* Task Details Modal */}
       <TaskDetailModal
-        task={selectedTask}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
         epics={epics}
-        onUpdateEpic={onUpdateTaskEpic}
+        isOpen={isModalOpen}
+        task={selectedTask}
+        onClose={() => setIsModalOpen(false)}
         onDeleteTask={onDeleteTask}
         onMoveToBacklog={onMoveToBacklog}
+        onUpdateEpic={onUpdateTaskEpic}
       />
 
       {/* Delete Confirmation Modal */}
-      <Modal
-        isOpen={isDeleteModalOpen}
-        onClose={handleCancelDelete}
-        size="sm"
-      >
+      <Modal isOpen={isDeleteModalOpen} size="sm" onClose={handleCancelDelete}>
         <ModalContent>
-          <ModalHeader className="flex flex-col gap-1">
-            Delete Task
-          </ModalHeader>
+          <ModalHeader className="flex flex-col gap-1">Delete Task</ModalHeader>
           <ModalBody>
             <p className="text-default-600">
               Are you sure you want to delete this task?
             </p>
             {taskToDelete && (
               <div className="mt-2 p-3 bg-default-100 rounded-lg">
-                <p className="font-medium text-default-800">{taskToDelete.title}</p>
+                <p className="font-medium text-default-800">
+                  {taskToDelete.title}
+                </p>
                 {taskToDelete.description && (
                   <p className="text-sm text-default-500 mt-1 line-clamp-2">
                     {taskToDelete.description}
@@ -704,16 +765,16 @@ export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDel
           </ModalBody>
           <ModalFooter>
             <Button
+              isDisabled={deletingTaskId !== null}
               variant="flat"
               onPress={handleCancelDelete}
-              isDisabled={deletingTaskId !== null}
             >
               Cancel
             </Button>
             <Button
               color="danger"
-              onPress={handleConfirmDelete}
               isLoading={deletingTaskId !== null}
+              onPress={handleConfirmDelete}
             >
               Delete
             </Button>
@@ -724,20 +785,20 @@ export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDel
       {/* Delete Epic Confirmation Modal */}
       <Modal
         isOpen={isDeleteEpicModalOpen}
-        onClose={handleCancelDeleteEpic}
         size="md"
+        onClose={handleCancelDeleteEpic}
       >
         <ModalContent>
-          <ModalHeader className="flex flex-col gap-1">
-            Delete Epic
-          </ModalHeader>
+          <ModalHeader className="flex flex-col gap-1">Delete Epic</ModalHeader>
           <ModalBody>
             <p className="text-default-600">
               Are you sure you want to delete this epic?
             </p>
             {epicToDelete && (
               <div className="mt-2 p-3 bg-default-100 rounded-lg">
-                <p className="font-medium text-default-800">{epicToDelete.title}</p>
+                <p className="font-medium text-default-800">
+                  {epicToDelete.title}
+                </p>
                 {epicToDelete.description && (
                   <p className="text-sm text-default-500 mt-1 line-clamp-2">
                     {epicToDelete.description}
@@ -751,12 +812,21 @@ export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDel
               </p>
               <RadioGroup
                 value={epicDeleteMode}
-                onValueChange={(value) => setEpicDeleteMode(value as "unassign" | "delete")}
+                onValueChange={(value) =>
+                  setEpicDeleteMode(value as "unassign" | "delete")
+                }
               >
-                <Radio value="unassign" description="Tasks will be moved to Unassigned">
+                <Radio
+                  description="Tasks will be moved to Unassigned"
+                  value="unassign"
+                >
                   Keep tasks (unassign from epic)
                 </Radio>
-                <Radio value="delete" description="Tasks will be permanently deleted" classNames={{ description: "text-danger" }}>
+                <Radio
+                  classNames={{ description: "text-danger" }}
+                  description="Tasks will be permanently deleted"
+                  value="delete"
+                >
                   Delete all tasks
                 </Radio>
               </RadioGroup>
@@ -767,18 +837,20 @@ export function TaskList({ tasks, epics, onUpdateTaskEpic, onReorderTasks, onDel
           </ModalBody>
           <ModalFooter>
             <Button
+              isDisabled={deletingEpicId !== null}
               variant="flat"
               onPress={handleCancelDeleteEpic}
-              isDisabled={deletingEpicId !== null}
             >
               Cancel
             </Button>
             <Button
               color="danger"
-              onPress={handleConfirmDeleteEpic}
               isLoading={deletingEpicId !== null}
+              onPress={handleConfirmDeleteEpic}
             >
-              {epicDeleteMode === "delete" ? "Delete Epic & Tasks" : "Delete Epic"}
+              {epicDeleteMode === "delete"
+                ? "Delete Epic & Tasks"
+                : "Delete Epic"}
             </Button>
           </ModalFooter>
         </ModalContent>

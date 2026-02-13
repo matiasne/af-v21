@@ -7,7 +7,7 @@ import { button as buttonStyles } from "@heroui/theme";
 import { Spinner } from "@heroui/spinner";
 import Image from "next/image";
 
-import { title, subtitle } from "@/components/primitives";
+import { title } from "@/components/primitives";
 import { useAuth } from "@/infrastructure/context/AuthContext";
 import Threads from "@/components/Threads";
 
@@ -43,19 +43,19 @@ export default function Home() {
   return (
     <section className="fixed inset-0 w-screen h-screen flex flex-col items-center justify-center gap-4">
       <Threads
-        color={[0.5, 0.3, 1]}
-        amplitude={2}
-        distance={0.3}
         enableMouseInteraction
+        amplitude={2}
+        color={[0.5, 0.3, 1]}
+        distance={0.3}
       />
       <div className="relative z-10 mb-6">
         <Image
-          src="/echo-logo-bl.svg"
-          alt="Echo Logo"
-          width={200}
-          height={60}
           priority
+          alt="Echo Logo"
           className="dark:invert"
+          height={60}
+          src="/echo-logo-bl.svg"
+          width={200}
         />
       </div>
       <div className="relative z-10 inline-block max-w-xl text-center justify-center">

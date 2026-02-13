@@ -2,7 +2,6 @@
 
 import { useMemo } from "react";
 import { Card, CardBody, CardHeader } from "@heroui/card";
-import { Progress } from "@heroui/progress";
 import { Divider } from "@heroui/divider";
 import { Chip } from "@heroui/chip";
 import { Button } from "@heroui/button";
@@ -38,6 +37,7 @@ interface MigrationProgressCardProps {
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
   if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+
   return `${(ms / 60000).toFixed(1)}m`;
 }
 
@@ -70,6 +70,7 @@ export function MigrationProgressCard({
   // isInProcessingState: true when in a processing step (regardless of action)
   const isInProcessingState = useMemo(() => {
     if (!currentStep) return false;
+
     return PROCESSING_STEPS.includes(currentStep) || currentStep === "queue";
   }, [currentStep]);
 
@@ -82,15 +83,18 @@ export function MigrationProgressCard({
 
   const stepResultsMap = useMemo(() => {
     const map = new Map<string, StepResult>();
+
     stepResults.forEach((result) => {
       map.set(result.step, result);
     });
+
     return map;
   }, [stepResults]);
 
   // Get phase information
   const phaseInfoData = useMemo(() => {
     if (!currentStep) return [];
+
     return getPhaseInfo(currentStep, completedSteps);
   }, [currentStep, completedSteps]);
 
@@ -114,6 +118,7 @@ export function MigrationProgressCard({
 
     // Check step result from step_results collection
     const result = stepResultsMap.get(step);
+
     if (result) {
       if (result.status === "error") return "error";
       if (result.status === "completed") return "completed";
@@ -189,8 +194,8 @@ export function MigrationProgressCard({
       return (
         <Chip
           color="danger"
-          variant="flat"
           startContent={<Spinner size="sm" />}
+          variant="flat"
         >
           Deleting
         </Chip>
@@ -200,8 +205,8 @@ export function MigrationProgressCard({
       return (
         <Chip
           color="primary"
-          variant="flat"
           startContent={<Spinner size="sm" />}
+          variant="flat"
         >
           Running
         </Chip>
@@ -211,13 +216,14 @@ export function MigrationProgressCard({
       return (
         <Chip
           color="primary"
-          variant="flat"
           startContent={<Spinner size="sm" />}
+          variant="flat"
         >
           Processing
         </Chip>
       );
     }
+
     return (
       <Chip color="default" variant="flat">
         Idle
@@ -240,45 +246,45 @@ export function MigrationProgressCard({
           <div className="flex items-center gap-3">
             {hasNoAction && onStart && (
               <Button
-                size="sm"
                 color="primary"
-                onPress={onStart}
-                isLoading={isLoading}
                 isDisabled={!canStartMigration}
+                isLoading={isLoading}
+                size="sm"
+                onPress={onStart}
               >
                 Start
               </Button>
             )}
             {(isError || isStopped) && !isCompleted && onResume && (
               <Button
-                size="sm"
                 color="primary"
+                isLoading={isLoading}
+                size="sm"
                 variant="flat"
                 onPress={onResume}
-                isLoading={isLoading}
               >
                 Resume
               </Button>
             )}
             {isRunning && !isCompleted && !isError && onStop && (
               <Button
-                size="sm"
                 color="warning"
+                isLoading={isLoading}
+                size="sm"
                 variant="flat"
                 onPress={onStop}
-                isLoading={isLoading}
               >
                 Stop
               </Button>
             )}
             {onOpenConfig && (
               <Button
-                size="sm"
-                variant="light"
                 isIconOnly
-                onPress={onOpenConfig}
                 isDisabled={isRunning || isDeleting}
+                size="sm"
                 title="Configuration"
+                variant="light"
+                onPress={onOpenConfig}
               >
                 <svg
                   className="w-4 h-4"
@@ -287,16 +293,16 @@ export function MigrationProgressCard({
                   viewBox="0 0 24 24"
                 >
                   <path
+                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
                   />
                   <path
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
                   />
                 </svg>
               </Button>
@@ -309,7 +315,7 @@ export function MigrationProgressCard({
         {currentStep && isRunning && isInProcessingState && (
           <div className="bg-primary-50 dark:bg-primary-900/20 rounded-lg p-4">
             <div className="flex items-center gap-2">
-              <Spinner size="sm" color="primary" />
+              <Spinner color="primary" size="sm" />
               <div>
                 <p className="font-medium text-primary-600 dark:text-primary-400">
                   {getStepLabel(currentStep)}
@@ -334,10 +340,10 @@ export function MigrationProgressCard({
                   viewBox="0 0 24 24"
                 >
                   <path
+                    d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
                 <div>
@@ -351,10 +357,10 @@ export function MigrationProgressCard({
               </div>
               {onResume && (
                 <Button
-                  size="sm"
                   color="primary"
-                  onPress={onResume}
                   isLoading={isLoading}
+                  size="sm"
+                  onPress={onResume}
                 >
                   Resume
                 </Button>
@@ -374,10 +380,10 @@ export function MigrationProgressCard({
                 viewBox="0 0 24 24"
               >
                 <path
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
                 />
               </svg>
               <div className="flex-1">
@@ -400,7 +406,7 @@ export function MigrationProgressCard({
         {isDeleting && (
           <div className="bg-danger-50 dark:bg-danger-900/20 rounded-lg p-4 border border-danger-200 dark:border-danger-800">
             <div className="flex items-center gap-3">
-              <Spinner size="md" color="danger" />
+              <Spinner color="danger" size="md" />
               <div className="flex-1">
                 <p className="font-medium text-danger-600 dark:text-danger-400">
                   Deleting Migration
@@ -503,10 +509,10 @@ export function MigrationProgressCard({
                                   viewBox="0 0 24 24"
                                 >
                                   <path
+                                    d="M5 13l4 4L19 7"
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
                                     strokeWidth={2}
-                                    d="M5 13l4 4L19 7"
                                   />
                                 </svg>
                               ) : status === "error" ? (
@@ -517,10 +523,10 @@ export function MigrationProgressCard({
                                   viewBox="0 0 24 24"
                                 >
                                   <path
+                                    d="M6 18L18 6M6 6l12 12"
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
                                     strokeWidth={2}
-                                    d="M6 18L18 6M6 6l12 12"
                                   />
                                 </svg>
                               ) : status === "in_progress" && isStopped ? (
@@ -531,14 +537,14 @@ export function MigrationProgressCard({
                                   viewBox="0 0 24 24"
                                 >
                                   <path
+                                    d="M10 9v6m4-6v6"
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
                                     strokeWidth={2}
-                                    d="M10 9v6m4-6v6"
                                   />
                                 </svg>
                               ) : status === "in_progress" ? (
-                                <Spinner size="sm" color="white" />
+                                <Spinner color="white" size="sm" />
                               ) : status === "skipped" ? (
                                 <svg
                                   className="w-3.5 h-3.5"
@@ -547,10 +553,10 @@ export function MigrationProgressCard({
                                   viewBox="0 0 24 24"
                                 >
                                   <path
+                                    d="M13 5l7 7-7 7M5 5l7 7-7 7"
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
                                     strokeWidth={2}
-                                    d="M13 5l7 7-7 7M5 5l7 7-7 7"
                                   />
                                 </svg>
                               ) : (
@@ -571,12 +577,12 @@ export function MigrationProgressCard({
                                   {stepLabel}
                                 </p>
                                 <Chip
-                                  size="sm"
                                   color={
                                     status === "in_progress" && isStopped
                                       ? "warning"
                                       : statusColor
                                   }
+                                  size="sm"
                                   variant="flat"
                                 >
                                   {status === "in_progress" && isStopped
@@ -600,10 +606,10 @@ export function MigrationProgressCard({
                                       ` • ${agentConfig.model}`}
                                   </span>
                                   <Chip
+                                    className="h-4 text-[10px]"
+                                    color={isOverride ? "secondary" : "default"}
                                     size="sm"
                                     variant="bordered"
-                                    color={isOverride ? "secondary" : "default"}
-                                    className="h-4 text-[10px]"
                                   >
                                     {isOverride ? "Override" : "Default"}
                                   </Chip>
@@ -654,9 +660,9 @@ export function MigrationProgressCard({
                                           (item) => (
                                             <Chip
                                               key={item.name}
+                                              color="primary"
                                               size="sm"
                                               variant="flat"
-                                              color="primary"
                                             >
                                               {item.name}
                                             </Chip>
@@ -677,9 +683,9 @@ export function MigrationProgressCard({
                                           (item) => (
                                             <Chip
                                               key={item.name}
+                                              color="secondary"
                                               size="sm"
                                               variant="flat"
-                                              color="secondary"
                                             >
                                               {item.name}
                                             </Chip>
@@ -700,9 +706,9 @@ export function MigrationProgressCard({
                                           (item) => (
                                             <Chip
                                               key={item.name}
+                                              color="warning"
                                               size="sm"
                                               variant="flat"
-                                              color="warning"
                                             >
                                               {item.name}
                                             </Chip>
@@ -723,9 +729,9 @@ export function MigrationProgressCard({
                                           (item) => (
                                             <Chip
                                               key={item.name}
+                                              color="default"
                                               size="sm"
                                               variant="flat"
-                                              color="default"
                                             >
                                               {item.name}
                                             </Chip>
@@ -747,9 +753,9 @@ export function MigrationProgressCard({
                                           (item) => (
                                             <Chip
                                               key={item.name}
+                                              color="default"
                                               size="sm"
                                               variant="flat"
-                                              color="default"
                                             >
                                               {item.name}
                                             </Chip>
@@ -771,9 +777,9 @@ export function MigrationProgressCard({
                                           (item) => (
                                             <Chip
                                               key={item.name}
+                                              color="success"
                                               size="sm"
                                               variant="flat"
-                                              color="success"
                                             >
                                               {item.name}
                                             </Chip>
@@ -793,9 +799,9 @@ export function MigrationProgressCard({
                                         {techStackAnalysis.tools.map((item) => (
                                           <Chip
                                             key={item.name}
+                                            color="default"
                                             size="sm"
                                             variant="flat"
-                                            color="default"
                                           >
                                             {item.name}
                                           </Chip>

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 
 import { useAuth } from "../context/AuthContext";
 import { FirebaseUserSettingsRepository } from "../repositories/FirebaseUserSettingsRepository";
+
 import {
   UserSettings,
   CardSettings,
@@ -19,7 +20,7 @@ export function useUserSettings() {
 
   const settingsRepository = useMemo(
     () => new FirebaseUserSettingsRepository(),
-    []
+    [],
   );
 
   const fetchSettings = useCallback(async () => {
@@ -42,8 +43,9 @@ export function useUserSettings() {
           (card) => ({
             ...card,
             size: card.size || "medium",
-          })
+          }),
         );
+
         userSettings.projectDashboard.cardOrder = migratedCardOrder;
       }
 
@@ -95,7 +97,7 @@ export function useUserSettings() {
         fetchSettings();
       }
     },
-    [user, settings, settingsRepository, fetchSettings]
+    [user, settings, settingsRepository, fetchSettings],
   );
 
   const toggleCardPin = useCallback(
@@ -125,12 +127,12 @@ export function useUserSettings() {
         (card, index) => ({
           ...card,
           order: index,
-        })
+        }),
       );
 
       await updateCardOrder(reorderedCards);
     },
-    [user, settings, updateCardOrder]
+    [user, settings, updateCardOrder],
   );
 
   const updateCardSize = useCallback(
@@ -143,11 +145,12 @@ export function useUserSettings() {
       if (cardIndex === -1) return;
 
       const updatedOrder = [...currentOrder];
+
       updatedOrder[cardIndex] = { ...updatedOrder[cardIndex], size };
 
       await updateCardOrder(updatedOrder);
     },
-    [user, settings, updateCardOrder]
+    [user, settings, updateCardOrder],
   );
 
   const cycleCardSize = useCallback(
@@ -165,7 +168,7 @@ export function useUserSettings() {
 
       await updateCardSize(cardId, nextSize);
     },
-    [user, settings, updateCardSize]
+    [user, settings, updateCardSize],
   );
 
   const getCardOrder = useCallback(() => {

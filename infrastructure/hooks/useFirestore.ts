@@ -5,7 +5,9 @@ import { useState, useCallback } from "react";
 import { FirestoreRepositoryImpl } from "@/infrastructure/repositories/FirestoreRepositoryImpl";
 import { FirestoreOperator } from "@/domain/repositories/FirestoreRepository";
 
-export function useFirestore<T extends { id?: string }>(collectionName: string) {
+export function useFirestore<T extends { id?: string }>(
+  collectionName: string,
+) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 

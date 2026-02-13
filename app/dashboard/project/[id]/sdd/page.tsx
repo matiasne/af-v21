@@ -20,9 +20,11 @@ import { sddRepository } from "@/infrastructure/repositories/FirebaseSDDReposito
 function getFirebaseStorageUrl(gsUrl: string): string {
   // Convert gs://bucket/path to https://firebasestorage.googleapis.com/v0/b/bucket/o/path?alt=media
   const match = gsUrl.match(/^gs:\/\/([^/]+)\/(.+)$/);
+
   if (!match) return gsUrl;
   const [, bucket, path] = match;
   const encodedPath = encodeURIComponent(path);
+
   return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodedPath}?alt=media`;
 }
 
@@ -32,18 +34,18 @@ function SectionCard({ section }: { section: SDDSection }) {
       <CardHeader className="flex flex-col items-start gap-1">
         <div className="flex items-center gap-2 w-full justify-between">
           <div className="flex items-center gap-2">
-            <Chip size="sm" color="primary" variant="flat">
+            <Chip color="primary" size="sm" variant="flat">
               {section.number}
             </Chip>
             <h3 className="text-lg font-semibold">{section.title}</h3>
           </div>
           {section.documentLink && (
             <Link
-              href={getFirebaseStorageUrl(section.documentLink)}
               isExternal
               showAnchorIcon
-              size="sm"
               color="primary"
+              href={getFirebaseStorageUrl(section.documentLink)}
+              size="sm"
             >
               View Document
             </Link>
@@ -55,7 +57,7 @@ function SectionCard({ section }: { section: SDDSection }) {
         <>
           <Divider />
           <CardBody className="pt-2">
-            <Accordion variant="light" selectionMode="multiple">
+            <Accordion selectionMode="multiple" variant="light">
               {section.subsections.map((subsection) => (
                 <AccordionItem
                   key={subsection.number}
@@ -73,7 +75,7 @@ function SectionCard({ section }: { section: SDDSection }) {
                     {subsection.description}
                   </p>
                   {subsection.viewpointRef && (
-                    <Chip size="sm" variant="bordered" className="mt-1">
+                    <Chip className="mt-1" size="sm" variant="bordered">
                       {subsection.viewpointRef}
                     </Chip>
                   )}
@@ -92,8 +94,12 @@ export default function SDDPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const { projects, loading: projectsLoading } = useProjects();
-  const { setProjectContext, setCurrentProjectId, setIsConfiguration, setPageTitle } =
-    useProjectChat();
+  const {
+    setProjectContext,
+    setCurrentProjectId,
+    setIsConfiguration,
+    setPageTitle,
+  } = useProjectChat();
   const [project, setProject] = useState<Project | null>(null);
   const [toc, setToc] = useState<SDDTableOfContents | null>(null);
   const [tocLoading, setTocLoading] = useState(true);
@@ -103,6 +109,7 @@ export default function SDDPage() {
   // Set page title
   useEffect(() => {
     setPageTitle("Software Design Document");
+
     return () => setPageTitle(null);
   }, [setPageTitle]);
 
@@ -117,6 +124,7 @@ export default function SDDPage() {
   useEffect(() => {
     if (projects.length > 0 && projectId) {
       const foundProject = projects.find((p) => p.id === projectId);
+
       if (foundProject) {
         setProject(foundProject);
       } else {
@@ -148,13 +156,13 @@ export default function SDDPage() {
     if (!user?.uid || !projectId) {
       setToc(null);
       setTocLoading(false);
+
       return;
     }
 
     setTocLoading(true);
 
     const unsubscribe = sddRepository.subscribeTableOfContents(
-      user.uid,
       projectId,
       (updatedToc) => {
         setToc(updatedToc);
@@ -163,13 +171,13 @@ export default function SDDPage() {
       (error) => {
         console.error("Error subscribing to SDD TOC:", error);
         setTocLoading(false);
-      }
+      },
     );
 
     return () => {
       unsubscribe();
     };
-  }, [user?.uid, projectId]);
+  }, [projectId]);
 
   if (authLoading || projectsLoading) {
     return (
@@ -194,7 +202,7 @@ export default function SDDPage() {
         <h2 className="text-lg font-medium text-default-500">{project.name}</h2>
         {toc && (
           <div className="flex items-center gap-2">
-            <Chip size="sm" variant="flat" color="secondary">
+            <Chip color="secondary" size="sm" variant="flat">
               {toc.standard}
             </Chip>
             <Chip size="sm" variant="flat">
@@ -210,7 +218,8 @@ export default function SDDPage() {
           <h1 className="text-2xl font-bold mb-2">{toc.title}</h1>
           <p className="text-sm text-default-400">
             {toc.sections.length} sections •{" "}
-            {toc.sections.reduce((acc, s) => acc + s.subsections.length, 0)} subsections
+            {toc.sections.reduce((acc, s) => acc + s.subsections.length, 0)}{" "}
+            subsections
           </p>
         </div>
       )}
@@ -231,19 +240,22 @@ export default function SDDPage() {
               viewBox="0 0 24 24"
             >
               <path
+                d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
               />
             </svg>
           </div>
           <p className="text-default-500 mb-4">
-            The Software Design Document will be generated during the migration process.
+            The Software Design Document will be generated during the migration
+            process.
           </p>
           <Button
             color="primary"
             variant="flat"
-            onPress={() => router.push(`/dashboard/project/${projectId}/migration`)}
+            onPress={() =>
+              router.push(`/dashboard/project/${projectId}/migration`)
+            }
           >
             Go to Migration
           </Button>

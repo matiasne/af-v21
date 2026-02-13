@@ -149,6 +149,7 @@ Always respond with valid JSON only. No additional text before or after the JSON
     try {
       // Try to extract JSON from the response (in case there's extra text)
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+
       if (jsonMatch) {
         parsedResponse = JSON.parse(jsonMatch[0]);
       } else {
@@ -181,6 +182,7 @@ Always respond with valid JSON only. No additional text before or after the JSON
     } as DefineTechStackResponse);
   } catch (error) {
     console.error("Define tech stack API error:", error);
+
     return NextResponse.json({ error: error }, { status: 500 });
   }
 }

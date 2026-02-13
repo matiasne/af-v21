@@ -106,29 +106,24 @@ export function ProjectConfigModal({
     }
   }, [migration]);
 
-  const handleProcessorHostChange = useCallback(
-    (host: string) => {
-      if (!host) return;
-      setProcessorHost(host);
-      setHasUnsavedChanges(true);
-    },
-    [],
-  );
+  const handleProcessorHostChange = useCallback((host: string) => {
+    if (!host) return;
+    setProcessorHost(host);
+    setHasUnsavedChanges(true);
+  }, []);
 
-  const handleProviderChange = useCallback(
-    (provider: AgentProvider) => {
-      setSelectedProvider(provider);
-      const defaultModel =
-        provider === "openrouter"
-          ? OPENROUTER_MODELS[0].id
-          : provider === "claude"
-            ? CLAUDE_MODELS[0].id
-            : undefined;
-      setSelectedAgentModel(defaultModel || OPENROUTER_MODELS[0].id);
-      setHasUnsavedChanges(true);
-    },
-    [],
-  );
+  const handleProviderChange = useCallback((provider: AgentProvider) => {
+    setSelectedProvider(provider);
+    const defaultModel =
+      provider === "openrouter"
+        ? OPENROUTER_MODELS[0].id
+        : provider === "claude"
+          ? CLAUDE_MODELS[0].id
+          : undefined;
+
+    setSelectedAgentModel(defaultModel || OPENROUTER_MODELS[0].id);
+    setHasUnsavedChanges(true);
+  }, []);
 
   const handleAgentModelChange = useCallback(
     (model: string) => {
@@ -145,11 +140,7 @@ export function ProjectConfigModal({
   }, []);
 
   const handleStepAgentChange = useCallback(
-    (
-      step: StepStatus,
-      provider: AgentProvider | "default",
-      model?: string,
-    ) => {
+    (step: StepStatus, provider: AgentProvider | "default", model?: string) => {
       const newStepAgents = { ...stepAgents };
 
       if (provider === "default") {
@@ -191,7 +182,14 @@ export function ProjectConfigModal({
     } finally {
       setIsSaving(false);
     }
-  }, [onUpdateMigrationConfig, onUpdateProject, processorHost, selectedProvider, selectedAgentModel, stepAgents]);
+  }, [
+    onUpdateMigrationConfig,
+    onUpdateProject,
+    processorHost,
+    selectedProvider,
+    selectedAgentModel,
+    stepAgents,
+  ]);
 
   const hasCustomStepAgents = Object.keys(stepAgents).length > 0;
 
@@ -211,9 +209,9 @@ export function ProjectConfigModal({
   return (
     <Modal
       isOpen={isOpen}
-      onOpenChange={onOpenChange}
-      size="4xl"
       scrollBehavior="inside"
+      size="4xl"
+      onOpenChange={onOpenChange}
     >
       <ModalContent>
         {(onClose) => (
@@ -232,6 +230,12 @@ export function ProjectConfigModal({
                     <div className="space-y-4">
                       <h4 className="text-md font-medium">Processor Host</h4>
                       <Select
+                        description={
+                          processors.length === 0
+                            ? "No processors available. Make sure a processor is running."
+                            : "Select the processor server that will handle the migration"
+                        }
+                        isDisabled={isSaving}
                         label="Processor Host"
                         placeholder="Select a processor"
                         selectedKeys={
@@ -239,16 +243,11 @@ export function ProjectConfigModal({
                         }
                         onSelectionChange={(keys) => {
                           const selected = Array.from(keys)[0] as string;
+
                           if (selected) {
                             handleProcessorHostChange(selected);
                           }
                         }}
-                        isDisabled={isSaving}
-                        description={
-                          processors.length === 0
-                            ? "No processors available. Make sure a processor is running."
-                            : "Select the processor server that will handle the migration"
-                        }
                       >
                         {processors
                           .filter((p) => p.status === "running")
@@ -275,7 +274,9 @@ export function ProjectConfigModal({
                     {/* Default AI Agent */}
                     <div className="space-y-4">
                       <div>
-                        <h4 className="text-md font-medium">Default AI Agent</h4>
+                        <h4 className="text-md font-medium">
+                          Default AI Agent
+                        </h4>
                         <p className="text-xs text-default-400">
                           Select the default AI agent for processing migration
                           steps
@@ -283,16 +284,18 @@ export function ProjectConfigModal({
                       </div>
                       <div className="flex gap-4">
                         <Select
+                          className="flex-1"
+                          isDisabled={isSaving}
                           label="Provider"
                           placeholder="Select provider"
                           selectedKeys={
                             selectedProvider ? [selectedProvider] : []
                           }
                           onChange={(e) =>
-                            handleProviderChange(e.target.value as AgentProvider)
+                            handleProviderChange(
+                              e.target.value as AgentProvider,
+                            )
                           }
-                          isDisabled={isSaving}
-                          className="flex-1"
                         >
                           {AGENT_PROVIDERS.map((provider) => (
                             <SelectItem
@@ -310,14 +313,14 @@ export function ProjectConfigModal({
                         </Select>
                         {selectedProvider === "openrouter" && (
                           <Select
+                            className="flex-1"
+                            isDisabled={isSaving}
                             label="Model"
                             placeholder="Select model"
                             selectedKeys={[selectedAgentModel]}
                             onChange={(e) =>
                               handleAgentModelChange(e.target.value)
                             }
-                            isDisabled={isSaving}
-                            className="flex-1"
                           >
                             {OPENROUTER_MODELS.map((model) => (
                               <SelectItem key={model.id} textValue={model.name}>
@@ -328,14 +331,14 @@ export function ProjectConfigModal({
                         )}
                         {selectedProvider === "claude" && (
                           <Select
+                            className="flex-1"
+                            isDisabled={isSaving}
                             label="Model"
                             placeholder="Select model"
                             selectedKeys={[selectedAgentModel]}
                             onChange={(e) =>
                               handleAgentModelChange(e.target.value)
                             }
-                            isDisabled={isSaving}
-                            className="flex-1"
                           >
                             {CLAUDE_MODELS.map((model) => (
                               <SelectItem key={model.id} textValue={model.name}>
@@ -359,17 +362,17 @@ export function ProjectConfigModal({
                                 Per-Step AI Agent Configuration
                               </h4>
                               <p className="text-xs text-default-400">
-                                Configure the AI agent for each step (Claude Code is
-                                the default)
+                                Configure the AI agent for each step (Claude
+                                Code is the default)
                               </p>
                             </div>
                             {hasCustomStepAgents && (
                               <Button
+                                color="warning"
+                                isDisabled={isSaving}
                                 size="sm"
                                 variant="light"
-                                color="warning"
                                 onPress={handleClearStepAgents}
-                                isDisabled={isSaving}
                               >
                                 Clear All
                               </Button>
@@ -381,7 +384,8 @@ export function ProjectConfigModal({
                                 !["clone", "clear_conversation"].includes(step),
                             ).map((step) => {
                               const stepLabelText = getStepLabel(step);
-                              const stepDescriptionText = getStepDescription(step);
+                              const stepDescriptionText =
+                                getStepDescription(step);
                               const stepAgent = stepAgents[step];
                               const currentProvider =
                                 stepAgent?.provider || "default";
@@ -401,10 +405,11 @@ export function ProjectConfigModal({
                                   </div>
                                   <div className="flex items-center gap-2 flex-shrink-0">
                                     <Select
-                                      size="sm"
-                                      label="Agent"
                                       className="w-40"
+                                      isDisabled={isSaving}
+                                      label="Agent"
                                       selectedKeys={[currentProvider]}
+                                      size="sm"
                                       onChange={(e) => {
                                         const value = e.target.value as
                                           | AgentProvider
@@ -415,13 +420,13 @@ export function ProjectConfigModal({
                                             : value === "claude"
                                               ? CLAUDE_MODELS[0].id
                                               : undefined;
+
                                         handleStepAgentChange(
                                           step,
                                           value,
                                           defaultModel,
                                         );
                                       }}
-                                      isDisabled={isSaving}
                                     >
                                       {[
                                         { id: "default", name: "Default" },
@@ -437,12 +442,15 @@ export function ProjectConfigModal({
                                     </Select>
                                     {stepAgent?.provider === "claude" && (
                                       <Select
-                                        size="sm"
-                                        label="Model"
                                         className="w-44"
+                                        isDisabled={isSaving}
+                                        label="Model"
                                         selectedKeys={
-                                          stepAgent.model ? [stepAgent.model] : []
+                                          stepAgent.model
+                                            ? [stepAgent.model]
+                                            : []
                                         }
+                                        size="sm"
                                         onChange={(e) =>
                                           handleStepAgentChange(
                                             step,
@@ -450,7 +458,6 @@ export function ProjectConfigModal({
                                             e.target.value,
                                           )
                                         }
-                                        isDisabled={isSaving}
                                       >
                                         {CLAUDE_MODELS.map((model) => (
                                           <SelectItem
@@ -464,12 +471,15 @@ export function ProjectConfigModal({
                                     )}
                                     {stepAgent?.provider === "openrouter" && (
                                       <Select
-                                        size="sm"
-                                        label="Model"
                                         className="w-44"
+                                        isDisabled={isSaving}
+                                        label="Model"
                                         selectedKeys={
-                                          stepAgent.model ? [stepAgent.model] : []
+                                          stepAgent.model
+                                            ? [stepAgent.model]
+                                            : []
                                         }
+                                        size="sm"
                                         onChange={(e) =>
                                           handleStepAgentChange(
                                             step,
@@ -477,7 +487,6 @@ export function ProjectConfigModal({
                                             e.target.value,
                                           )
                                         }
-                                        isDisabled={isSaving}
                                       >
                                         {OPENROUTER_MODELS.map((model) => (
                                           <SelectItem
@@ -538,9 +547,9 @@ export function ProjectConfigModal({
                               viewBox="0 0 24 24"
                             >
                               <path
+                                d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
-                                d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
                               />
                             </svg>
                             <p className="text-sm font-semibold text-danger">
@@ -555,16 +564,16 @@ export function ProjectConfigModal({
                           </p>
                           <div className="flex gap-2 justify-end">
                             <Button
+                              isDisabled={isDeleting}
                               variant="flat"
                               onPress={() => setShowDeleteConfirm(false)}
-                              isDisabled={isDeleting}
                             >
                               Cancel
                             </Button>
                             <Button
                               color="danger"
-                              onPress={handleDeleteProject}
                               isLoading={isDeleting}
+                              onPress={handleDeleteProject}
                             >
                               Yes, Delete Project
                             </Button>
@@ -582,9 +591,9 @@ export function ProjectConfigModal({
               </Button>
               <Button
                 color="primary"
-                onPress={handleSaveConfig}
-                isLoading={isSaving}
                 isDisabled={!hasUnsavedChanges}
+                isLoading={isSaving}
+                onPress={handleSaveConfig}
               >
                 Save
               </Button>

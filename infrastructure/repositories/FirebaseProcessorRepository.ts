@@ -8,6 +8,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "../firebase/config";
+
 import { ProcessorInfo } from "@/domain/entities/ProcessorInfo";
 import { ProcessorRepository } from "@/domain/repositories/ProcessorRepository";
 
@@ -49,7 +50,7 @@ export class FirebaseProcessorRepository implements ProcessorRepository {
 
   subscribeProcessors(
     onUpdate: (processors: ProcessorInfo[]) => void,
-    onError?: (error: Error) => void
+    onError?: (error: Error) => void,
   ): () => void {
     const processorsRef = this.getProcessorsCollection();
 
@@ -65,13 +66,14 @@ export class FirebaseProcessorRepository implements ProcessorRepository {
           startedAt: doc.data().startedAt,
           status: doc.data().status as ProcessorInfo["status"],
         }));
+
         onUpdate(processors);
       },
       (error) => {
         if (onError) {
           onError(error);
         }
-      }
+      },
     );
 
     return unsubscribe;

@@ -19,12 +19,18 @@ export interface TaskAssistResponse {
 
 export async function POST(request: NextRequest) {
   try {
-    const { field, taskTitle, currentValue, userPrompt, projectContext }: TaskAssistRequest = await request.json();
+    const {
+      field,
+      taskTitle,
+      currentValue,
+      userPrompt,
+      projectContext,
+    }: TaskAssistRequest = await request.json();
 
     if (!taskTitle || !userPrompt) {
       return NextResponse.json(
         { error: "Task title and user prompt are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -33,7 +39,7 @@ export async function POST(request: NextRequest) {
     if (!apiKey) {
       return NextResponse.json(
         { error: "Gemini API key not configured" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -45,10 +51,14 @@ export async function POST(request: NextRequest) {
     if (field === "description") {
       systemPrompt = `You are an AI assistant helping a developer write a clear and detailed task description for a software development task.
 
-${projectContext ? `Project Context:
+${
+  projectContext
+    ? `Project Context:
 - Project Name: ${projectContext.name}
 - Project Description: ${projectContext.description || "Not provided"}
-- Tech Stack: ${projectContext.techStack?.join(", ") || "Not defined"}` : ""}
+- Tech Stack: ${projectContext.techStack?.join(", ") || "Not defined"}`
+    : ""
+}
 
 Task Title: "${taskTitle}"
 ${currentValue ? `Current Description Draft: "${currentValue}"` : ""}
@@ -65,10 +75,14 @@ Respond with ONLY the description text, no explanations or formatting markers.`;
     } else {
       systemPrompt = `You are an AI assistant helping a developer write acceptance criteria for a software development task.
 
-${projectContext ? `Project Context:
+${
+  projectContext
+    ? `Project Context:
 - Project Name: ${projectContext.name}
 - Project Description: ${projectContext.description || "Not provided"}
-- Tech Stack: ${projectContext.techStack?.join(", ") || "Not defined"}` : ""}
+- Tech Stack: ${projectContext.techStack?.join(", ") || "Not defined"}`
+    : ""
+}
 
 Task Title: "${taskTitle}"
 ${currentValue ? `Current Acceptance Criteria Draft: "${currentValue}"` : ""}
@@ -95,9 +109,10 @@ Error message displays when required fields are empty`;
     return NextResponse.json({ suggestion } as TaskAssistResponse);
   } catch (error) {
     console.error("Error in task-assist:", error);
+
     return NextResponse.json(
       { error: "Failed to generate suggestion" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

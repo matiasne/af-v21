@@ -9,18 +9,6 @@ import { Input, Textarea } from "@heroui/input";
 import { useDisclosure } from "@heroui/modal";
 import { collection, query, onSnapshot } from "firebase/firestore";
 
-import { useAuth } from "@/infrastructure/context/AuthContext";
-import { useProjects } from "@/infrastructure/hooks/useProjects";
-import { useMigration } from "@/infrastructure/hooks/useMigration";
-import { useProjectChat } from "@/infrastructure/context/ProjectChatContext";
-import { db } from "@/infrastructure/firebase/config";
-import {
-  Project,
-  UIType,
-  getStepLabel,
-  PROCESSING_STEPS,
-} from "@/domain/entities/Project";
-
 import {
   UITypeSelectionModal,
   NewTechStackCard,
@@ -32,6 +20,18 @@ import {
   DocumentUploadCard,
   type ProjectStep,
 } from "./components";
+
+import { useAuth } from "@/infrastructure/context/AuthContext";
+import { useProjects } from "@/infrastructure/hooks/useProjects";
+import { useMigration } from "@/infrastructure/hooks/useMigration";
+import { useProjectChat } from "@/infrastructure/context/ProjectChatContext";
+import { db } from "@/infrastructure/firebase/config";
+import {
+  Project,
+  UIType,
+  getStepLabel,
+  PROCESSING_STEPS,
+} from "@/domain/entities/Project";
 
 export default function ProjectDashboardPage() {
   const params = useParams();
@@ -86,10 +86,18 @@ export default function ProjectDashboardPage() {
 
   const [project, setProject] = useState<Project | null>(null);
   const [isUpdatingUIType, setIsUpdatingUIType] = useState(false);
-  const [codeAnalysisStatus, setCodeAnalysisStatus] = useState<string | undefined>(undefined);
-  const [codeAnalysisError, setCodeAnalysisError] = useState<string | undefined>(undefined);
-  const [codeAnalysisErrorDetails, setCodeAnalysisErrorDetails] = useState<string | undefined>(undefined);
-  const [codeAnalysisCurrentStep, setCodeAnalysisCurrentStep] = useState<string | undefined>(undefined);
+  const [codeAnalysisStatus, setCodeAnalysisStatus] = useState<
+    string | undefined
+  >(undefined);
+  const [codeAnalysisError, setCodeAnalysisError] = useState<
+    string | undefined
+  >(undefined);
+  const [codeAnalysisErrorDetails, setCodeAnalysisErrorDetails] = useState<
+    string | undefined
+  >(undefined);
+  const [codeAnalysisCurrentStep, setCodeAnalysisCurrentStep] = useState<
+    string | undefined
+  >(undefined);
 
   // Project name/description editing state
   const [isEditingProject, setIsEditingProject] = useState(false);
@@ -99,22 +107,38 @@ export default function ProjectDashboardPage() {
 
   // Stepper state - sync with URL
   const stepFromUrl = searchParams.get("step") as ProjectStep | null;
-  const validSteps: ProjectStep[] = ["configuration", "code_analysis", "migration_planner"];
-  const initialStep = stepFromUrl && validSteps.includes(stepFromUrl) ? stepFromUrl : "configuration";
+  const validSteps: ProjectStep[] = [
+    "configuration",
+    "code_analysis",
+    "migration_planner",
+  ];
+  const initialStep =
+    stepFromUrl && validSteps.includes(stepFromUrl)
+      ? stepFromUrl
+      : "configuration";
   const [activeStep, setActiveStepState] = useState<ProjectStep>(initialStep);
 
   // Handler to update both state and URL
-  const setActiveStep = useCallback((step: ProjectStep) => {
-    setActiveStepState(step);
-    const newParams = new URLSearchParams(searchParams.toString());
-    newParams.set("step", step);
-    router.push(`?${newParams.toString()}`, { scroll: false });
-  }, [router, searchParams]);
+  const setActiveStep = useCallback(
+    (step: ProjectStep) => {
+      setActiveStepState(step);
+      const newParams = new URLSearchParams(searchParams.toString());
+
+      newParams.set("step", step);
+      router.push(`?${newParams.toString()}`, { scroll: false });
+    },
+    [router, searchParams],
+  );
 
   // Sync state with URL changes (e.g., browser back/forward)
   useEffect(() => {
     const stepParam = searchParams.get("step") as ProjectStep | null;
-    if (stepParam && validSteps.includes(stepParam) && stepParam !== activeStep) {
+
+    if (
+      stepParam &&
+      validSteps.includes(stepParam) &&
+      stepParam !== activeStep
+    ) {
       setActiveStepState(stepParam);
     }
   }, [searchParams, activeStep]);
@@ -143,6 +167,7 @@ export default function ProjectDashboardPage() {
   // Create memoized migration config chat functions
   const migrationConfigChatFunctions = useMemo(() => {
     if (!migration?.id) return null;
+
     return {
       getConfigChatMessages,
       addConfigChatMessage,
@@ -152,6 +177,7 @@ export default function ProjectDashboardPage() {
   // Set migration config chat functions when available
   useEffect(() => {
     setMigrationConfigChatFunctions(migrationConfigChatFunctions);
+
     return () => setMigrationConfigChatFunctions(null);
   }, [migrationConfigChatFunctions, setMigrationConfigChatFunctions]);
 
@@ -254,6 +280,7 @@ export default function ProjectDashboardPage() {
         const assistantMessage = data.message;
 
         const updatedHistory = [...newHistory, assistantMessage];
+
         setConfigChatHistory(updatedHistory);
         handleConfigChatHistoryChange(updatedHistory);
 
@@ -285,6 +312,7 @@ export default function ProjectDashboardPage() {
           content: "Sorry, I encountered an error. Please try again.",
         };
         const errorHistory = [...newHistory, errorMessage];
+
         setConfigChatHistory(errorHistory);
         handleConfigChatHistoryChange(errorHistory);
       } finally {
@@ -310,6 +338,7 @@ export default function ProjectDashboardPage() {
   const handleRemoveTech = useCallback(
     (tech: string) => {
       const updatedStack = currentTechStack.filter((t) => t !== tech);
+
       setNewTechStack(updatedStack);
       if (projectId) {
         updateProject(projectId, {
@@ -374,6 +403,7 @@ export default function ProjectDashboardPage() {
   const handleStartAnalysis = useCallback(async () => {
     if (!projectId || !migration?.id) {
       console.error("Missing projectId or migrationId");
+
       return;
     }
 
@@ -388,11 +418,12 @@ export default function ProjectDashboardPage() {
   const handleStopAnalysis = useCallback(async () => {
     if (!projectId || !migration?.id) {
       console.error("Missing projectId or migrationId");
+
       return;
     }
 
     const confirmed = window.confirm(
-      "Are you sure you want to stop the analysis? This action cannot be undone and you may need to restart the process from the beginning."
+      "Are you sure you want to stop the analysis? This action cannot be undone and you may need to restart the process from the beginning.",
     );
 
     if (!confirmed) return;
@@ -406,15 +437,20 @@ export default function ProjectDashboardPage() {
 
   // Resume analysis handler
   const handleResumeAnalysis = useCallback(async () => {
-    console.log("[page] handleResumeAnalysis called:", { projectId, migrationId: migration?.id });
+    console.log("[page] handleResumeAnalysis called:", {
+      projectId,
+      migrationId: migration?.id,
+    });
     if (!projectId || !migration?.id) {
       console.error("Missing projectId or migrationId");
+
       return;
     }
 
     try {
       console.log("[page] Calling resumeCodeAnalysis");
       const result = await resumeCodeAnalysis(projectId, migration.id);
+
       console.log("[page] resumeCodeAnalysis result:", result);
     } catch (error) {
       console.error("Error resuming code analysis:", error);
@@ -431,13 +467,14 @@ export default function ProjectDashboardPage() {
       if (!projectId) return;
       await updateMigration(data);
     },
-    [projectId, updateMigration]
+    [projectId, updateMigration],
   );
 
   // Delete project handler
   const handleDeleteProject = useCallback(async () => {
     if (!projectId) return;
     const success = await deleteProject(projectId);
+
     if (success) {
       router.push("/dashboard");
     }
@@ -496,12 +533,14 @@ export default function ProjectDashboardPage() {
     if (project?.name) {
       setPageTitle(project.name);
     }
+
     return () => setPageTitle(null);
   }, [project?.name, setPageTitle]);
 
   // Set back URL to dashboard
   useEffect(() => {
     setBackUrl("/dashboard");
+
     return () => setBackUrl(null);
   }, [setBackUrl]);
 
@@ -553,15 +592,13 @@ export default function ProjectDashboardPage() {
 
   // Real-time subscription for code-analysis-module action
   useEffect(() => {
-    if (!projectId || !user?.uid) return;
+    if (!projectId) return;
 
     const codeAnalysisCol = collection(
       db,
-      "users",
-      user.uid,
       "projects",
       projectId,
-      "code-analysis-module"
+      "code-analysis-module",
     );
     const q = query(codeAnalysisCol);
 
@@ -569,6 +606,7 @@ export default function ProjectDashboardPage() {
       if (!snapshot.empty) {
         const doc = snapshot.docs[0];
         const data = doc.data();
+
         setCodeAnalysisStatus(data.action);
         setCodeAnalysisError(data.error);
         setCodeAnalysisErrorDetails(data.errorDetails);
@@ -582,7 +620,7 @@ export default function ProjectDashboardPage() {
     });
 
     return () => unsubscribe();
-  }, [projectId, user?.uid]);
+  }, [projectId]);
 
   if (authLoading || projectsLoading) {
     return (
@@ -603,9 +641,9 @@ export default function ProjectDashboardPage() {
   return (
     <>
       <UITypeSelectionModal
+        isLoading={isUpdatingUIType}
         isOpen={!!showUITypeModal}
         onSelect={handleUITypeSelect}
-        isLoading={isUpdatingUIType}
       />
 
       <div className="container mx-auto max-w-6xl px-4 py-2">
@@ -615,39 +653,39 @@ export default function ProjectDashboardPage() {
             {isEditingProject ? (
               <div className="space-y-3">
                 <Input
-                  value={editedName}
-                  onValueChange={setEditedName}
-                  placeholder="Project name"
-                  size="lg"
-                  variant="bordered"
                   classNames={{
                     input: "text-xl font-bold",
                   }}
+                  placeholder="Project name"
+                  size="lg"
+                  value={editedName}
+                  variant="bordered"
+                  onValueChange={setEditedName}
                 />
                 <Textarea
-                  value={editedDescription}
-                  onValueChange={setEditedDescription}
+                  maxRows={4}
+                  minRows={2}
                   placeholder="Project description (optional)"
                   size="sm"
+                  value={editedDescription}
                   variant="bordered"
-                  minRows={2}
-                  maxRows={4}
+                  onValueChange={setEditedDescription}
                 />
                 <div className="flex gap-2">
                   <Button
-                    size="sm"
                     color="primary"
-                    onPress={handleSaveProject}
-                    isLoading={isSavingProject}
                     isDisabled={!editedName.trim()}
+                    isLoading={isSavingProject}
+                    size="sm"
+                    onPress={handleSaveProject}
                   >
                     Save
                   </Button>
                   <Button
+                    isDisabled={isSavingProject}
                     size="sm"
                     variant="flat"
                     onPress={handleCancelEditProject}
-                    isDisabled={isSavingProject}
                   >
                     Cancel
                   </Button>
@@ -668,10 +706,10 @@ export default function ProjectDashboardPage() {
                   )}
                 </div>
                 <Button
-                  size="sm"
-                  variant="light"
                   isIconOnly
                   className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  size="sm"
+                  variant="light"
                   onPress={handleStartEditProject}
                 >
                   <svg
@@ -682,9 +720,9 @@ export default function ProjectDashboardPage() {
                     viewBox="0 0 24 24"
                   >
                     <path
+                      d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
                     />
                   </svg>
                 </Button>
@@ -700,18 +738,18 @@ export default function ProjectDashboardPage() {
               {/* Project Stepper */}
               <ProjectStepper
                 currentStep={activeStep}
-                onStepChange={setActiveStep}
-                isConfigurationComplete={
-                  !!migration?.githubUrl &&
-                  !!project.analysis?.newTechStack &&
-                  project.analysis.newTechStack.length > 0
-                }
                 isCodeAnalysisComplete={codeAnalysisStatus === "completed"}
                 isCodeAnalysisRunning={
                   codeAnalysisStatus === "running" ||
                   codeAnalysisStatus === "start" ||
                   migrationIsProcessing
                 }
+                isConfigurationComplete={
+                  !!migration?.githubUrl &&
+                  !!project.analysis?.newTechStack &&
+                  project.analysis.newTechStack.length > 0
+                }
+                onStepChange={setActiveStep}
               />
 
               {/* Step 1: Configuration */}
@@ -726,17 +764,21 @@ export default function ProjectDashboardPage() {
                     </CardHeader>
                     <CardBody>
                       <Input
+                        description={
+                          migrationIsProcessing || migrationIsCompleted
+                            ? "Cannot change GitHub URL after analysis has started"
+                            : "Enter the GitHub repository URL for this migration"
+                        }
+                        isDisabled={
+                          migrationLoading ||
+                          migrationIsProcessing ||
+                          migrationIsCompleted
+                        }
                         label="GitHub URL"
                         placeholder="https://github.com/username/repository"
                         value={migration?.githubUrl || ""}
                         onValueChange={(value) =>
                           updateMigration({ githubUrl: value })
-                        }
-                        isDisabled={migrationLoading || migrationIsProcessing || migrationIsCompleted}
-                        description={
-                          migrationIsProcessing || migrationIsCompleted
-                            ? "Cannot change GitHub URL after analysis has started"
-                            : "Enter the GitHub repository URL for this migration"
                         }
                       />
                     </CardBody>
@@ -744,19 +786,17 @@ export default function ProjectDashboardPage() {
 
                   {/* New Tech Stack */}
                   <NewTechStackCard
-                    newTechStack={project.analysis?.newTechStack}
                     canSelect={true}
-                    onSelect={onTechStackModalOpen}
-                    onEdit={onTechStackModalOpen}
                     isDisabled={migrationIsProcessing || migrationIsCompleted}
+                    newTechStack={project.analysis?.newTechStack}
+                    onEdit={onTechStackModalOpen}
+                    onSelect={onTechStackModalOpen}
                   />
 
                   {/* Navigation Buttons */}
                   <div className="flex justify-between">
                     <Button
                       color="default"
-                      variant="flat"
-                      onPress={onConfigModalOpen}
                       startContent={
                         <svg
                           className="h-4 w-4"
@@ -766,23 +806,24 @@ export default function ProjectDashboardPage() {
                           viewBox="0 0 24 24"
                         >
                           <path
+                            d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"
                           />
                           <path
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
                           />
                         </svg>
                       }
+                      variant="flat"
+                      onPress={onConfigModalOpen}
                     >
                       Advanced Configuration
                     </Button>
                     <Button
                       color="primary"
-                      onPress={() => setActiveStep("code_analysis")}
                       endContent={
                         <svg
                           className="h-4 w-4"
@@ -792,12 +833,13 @@ export default function ProjectDashboardPage() {
                           viewBox="0 0 24 24"
                         >
                           <path
+                            d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
                           />
                         </svg>
                       }
+                      onPress={() => setActiveStep("code_analysis")}
                     >
                       Next: Code Analysis
                     </Button>
@@ -809,43 +851,43 @@ export default function ProjectDashboardPage() {
               {activeStep === "code_analysis" && (
                 <div className="space-y-6">
                   <CodeAnalysisAndFDDCard
-                    migration={migration}
-                    stepResults={stepResults}
+                    codeAnalysisCurrentStep={codeAnalysisCurrentStep}
+                    codeAnalysisError={codeAnalysisError}
+                    codeAnalysisErrorDetails={codeAnalysisErrorDetails}
+                    codeAnalysisStatus={codeAnalysisStatus}
                     currentStep={migrationCurrentStep}
-                    isProcessing={migrationIsProcessing}
+                    githubUrl={migration?.githubUrl}
                     isCompleted={migrationIsCompleted}
                     isError={migrationIsError}
-                    isStopped={migrationIsStopped}
-                    isPaused={migrationIsPaused}
-                    progress={migrationProgress}
-                    onNavigateToMigration={() =>
-                      router.push(`/dashboard/project/${projectId}/migration`)
-                    }
-                    onStartAnalysis={handleStartAnalysis}
-                    onStopAnalysis={handleStopAnalysis}
-                    onResumeAnalysis={handleResumeAnalysis}
                     isLoading={migrationLoading}
-                    projectId={projectId}
+                    isPaused={migrationIsPaused}
+                    isProcessing={migrationIsProcessing}
+                    isStopped={migrationIsStopped}
+                    migration={migration}
                     migrationId={migration?.id}
+                    newTechStack={project.analysis?.newTechStack}
+                    progress={migrationProgress}
+                    projectId={projectId}
+                    stepResults={stepResults}
                     onNavigateToFDD={() =>
                       router.push(`/dashboard/project/${projectId}/fdd`)
                     }
                     onNavigateToFilesAnalysis={() =>
-                      router.push(`/dashboard/project/${projectId}/files-analysis`)
+                      router.push(
+                        `/dashboard/project/${projectId}/files-analysis`,
+                      )
                     }
-                    githubUrl={migration?.githubUrl}
-                    newTechStack={project.analysis?.newTechStack}
-                    codeAnalysisStatus={codeAnalysisStatus}
-                    codeAnalysisError={codeAnalysisError}
-                    codeAnalysisErrorDetails={codeAnalysisErrorDetails}
-                    codeAnalysisCurrentStep={codeAnalysisCurrentStep}
+                    onNavigateToMigration={() =>
+                      router.push(`/dashboard/project/${projectId}/migration`)
+                    }
+                    onResumeAnalysis={handleResumeAnalysis}
+                    onStartAnalysis={handleStartAnalysis}
+                    onStopAnalysis={handleStopAnalysis}
                   />
 
                   {/* Navigation Buttons */}
                   <div className="flex justify-between">
                     <Button
-                      variant="flat"
-                      onPress={() => setActiveStep("configuration")}
                       startContent={
                         <svg
                           className="h-4 w-4"
@@ -855,18 +897,19 @@ export default function ProjectDashboardPage() {
                           viewBox="0 0 24 24"
                         >
                           <path
+                            d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"
                           />
                         </svg>
                       }
+                      variant="flat"
+                      onPress={() => setActiveStep("configuration")}
                     >
                       Back: Configuration
                     </Button>
                     <Button
                       color="primary"
-                      onPress={() => setActiveStep("migration_planner")}
                       endContent={
                         <svg
                           className="h-4 w-4"
@@ -876,12 +919,13 @@ export default function ProjectDashboardPage() {
                           viewBox="0 0 24 24"
                         >
                           <path
+                            d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
                           />
                         </svg>
                       }
+                      onPress={() => setActiveStep("migration_planner")}
                     >
                       Next: Migration Planner
                     </Button>
@@ -893,21 +937,19 @@ export default function ProjectDashboardPage() {
               {activeStep === "migration_planner" && (
                 <div className="space-y-6">
                   <MigrationPlannerAndKanbanCard
+                    codeAnalysisStatus={codeAnalysisStatus}
                     projectId={projectId}
-                    onNavigateToKanban={() =>
-                      router.push(`/dashboard/project/${projectId}/kanban`)
-                    }
                     onNavigateToFDD={() =>
                       router.push(`/dashboard/project/${projectId}/fdd`)
                     }
-                    codeAnalysisStatus={codeAnalysisStatus}
+                    onNavigateToKanban={() =>
+                      router.push(`/dashboard/project/${projectId}/kanban`)
+                    }
                   />
 
                   {/* Back Button */}
                   <div className="flex justify-start">
                     <Button
-                      variant="flat"
-                      onPress={() => setActiveStep("code_analysis")}
                       startContent={
                         <svg
                           className="h-4 w-4"
@@ -917,12 +959,14 @@ export default function ProjectDashboardPage() {
                           viewBox="0 0 24 24"
                         >
                           <path
+                            d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"
                           />
                         </svg>
                       }
+                      variant="flat"
+                      onPress={() => setActiveStep("code_analysis")}
                     >
                       Back: Code Analysis
                     </Button>
@@ -937,13 +981,17 @@ export default function ProjectDashboardPage() {
             <>
               {/* Project Stepper - 2 steps for start_from_doc */}
               <ProjectStepper
-                currentStep={activeStep === "code_analysis" ? "migration_planner" : activeStep}
-                onStepChange={setActiveStep}
-                uiType="start_from_doc"
+                currentStep={
+                  activeStep === "code_analysis"
+                    ? "migration_planner"
+                    : activeStep
+                }
                 isConfigurationComplete={
                   !!project.analysis?.newTechStack &&
                   project.analysis.newTechStack.length > 0
                 }
+                uiType="start_from_doc"
+                onStepChange={setActiveStep}
               />
 
               {/* Step 1: Configuration */}
@@ -954,18 +1002,16 @@ export default function ProjectDashboardPage() {
 
                   {/* New Tech Stack */}
                   <NewTechStackCard
-                    newTechStack={project.analysis?.newTechStack}
                     canSelect={true}
-                    onSelect={onTechStackModalOpen}
+                    newTechStack={project.analysis?.newTechStack}
                     onEdit={onTechStackModalOpen}
+                    onSelect={onTechStackModalOpen}
                   />
 
                   {/* Navigation Buttons */}
                   <div className="flex justify-between">
                     <Button
                       color="default"
-                      variant="flat"
-                      onPress={onConfigModalOpen}
                       startContent={
                         <svg
                           className="h-4 w-4"
@@ -975,23 +1021,24 @@ export default function ProjectDashboardPage() {
                           viewBox="0 0 24 24"
                         >
                           <path
+                            d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"
                           />
                           <path
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
                           />
                         </svg>
                       }
+                      variant="flat"
+                      onPress={onConfigModalOpen}
                     >
                       Advanced Configuration
                     </Button>
                     <Button
                       color="primary"
-                      onPress={() => setActiveStep("migration_planner")}
                       endContent={
                         <svg
                           className="h-4 w-4"
@@ -1001,12 +1048,13 @@ export default function ProjectDashboardPage() {
                           viewBox="0 0 24 24"
                         >
                           <path
+                            d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
                           />
                         </svg>
                       }
+                      onPress={() => setActiveStep("migration_planner")}
                     >
                       Next: Planner
                     </Button>
@@ -1019,19 +1067,17 @@ export default function ProjectDashboardPage() {
                 <div className="space-y-6">
                   <MigrationPlannerAndKanbanCard
                     projectId={projectId}
-                    onNavigateToKanban={() =>
-                      router.push(`/dashboard/project/${projectId}/kanban`)
-                    }
                     onNavigateToFDD={() =>
                       router.push(`/dashboard/project/${projectId}/fdd`)
+                    }
+                    onNavigateToKanban={() =>
+                      router.push(`/dashboard/project/${projectId}/kanban`)
                     }
                   />
 
                   {/* Back Button */}
                   <div className="flex justify-start">
                     <Button
-                      variant="flat"
-                      onPress={() => setActiveStep("configuration")}
                       startContent={
                         <svg
                           className="h-4 w-4"
@@ -1041,12 +1087,14 @@ export default function ProjectDashboardPage() {
                           viewBox="0 0 24 24"
                         >
                           <path
+                            d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"
                           />
                         </svg>
                       }
+                      variant="flat"
+                      onPress={() => setActiveStep("configuration")}
                     >
                       Back: Configuration
                     </Button>
@@ -1060,30 +1108,30 @@ export default function ProjectDashboardPage() {
 
       {/* Tech Stack Edit Modal */}
       <TechStackEditModal
-        isOpen={isTechStackModalOpen}
-        onOpenChange={onTechStackModalOpenChange}
-        techStack={currentTechStack}
-        messages={configChatHistory}
         isLoading={isConfigChatLoading}
+        isOpen={isTechStackModalOpen}
+        messages={configChatHistory}
         suggestions={suggestions}
-        onSendMessage={handleSendMessage}
-        onRemoveTech={handleRemoveTech}
+        techStack={currentTechStack}
         onClearAll={handleClearAllTech}
+        onOpenChange={onTechStackModalOpenChange}
+        onRemoveTech={handleRemoveTech}
         onSave={handleSaveTechStack}
+        onSendMessage={handleSendMessage}
       />
 
       {/* Project Configuration Modal */}
       <ProjectConfigModal
         isOpen={isConfigModalOpen}
-        onOpenChange={onConfigModalOpenChange}
+        migration={migration}
         projectName={project.name}
         uiType={project.uiType}
-        migration={migration}
+        onDeleteProject={handleDeleteProject}
+        onOpenChange={onConfigModalOpenChange}
         onUpdateMigrationConfig={handleUpdateMigrationConfig}
         onUpdateProject={async (data) => {
           await updateProject(projectId, data);
         }}
-        onDeleteProject={handleDeleteProject}
       />
     </>
   );

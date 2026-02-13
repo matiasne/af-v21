@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 
-import { useAuth } from "../context/AuthContext";
 import { FirebaseMigrationRepository } from "../repositories/FirebaseMigrationRepository";
+
 import {
   MigrationAction,
   ProcessResult,
@@ -73,13 +73,7 @@ export interface UseMigrationReturn {
   unsubscribe: () => void;
 }
 
-export function useMigration(
-  projectId: string,
-  ownerId?: string | null,
-): UseMigrationReturn {
-  const { user } = useAuth();
-  // Use ownerId if provided (for shared projects), otherwise use current user's ID
-  const effectiveUserId = ownerId || user?.uid;
+export function useMigration(projectId: string): UseMigrationReturn {
   const [migration, setMigration] = useState<MigrationAction | null>(null);
   const [allMigrations, setAllMigrations] = useState<MigrationAction[]>([]);
   const [processResult, setProcessResult] = useState<ProcessResult | null>(
@@ -112,7 +106,7 @@ export function useMigration(
   // Subscribe to migration updates
   const subscribeTo = useCallback(
     (migrationId: string) => {
-      if (!effectiveUserId || !projectId) return;
+      if (!projectId) return;
 
       // Unsubscribe from previous subscriptions
       unsubscribeMigrationRef.current?.();
@@ -128,7 +122,6 @@ export function useMigration(
       );
 
       const unsub = migrationRepository.subscribeMigration(
-        effectiveUserId,
         projectId,
         migrationId,
         (updatedMigration) => {
@@ -150,14 +143,15 @@ export function useMigration(
           setLoading(false);
         },
       );
+
       unsubscribeMigrationRef.current = unsub;
     },
-    [effectiveUserId, projectId],
+    [projectId],
   );
 
   // Subscribe to process result and step results when migration changes
   useEffect(() => {
-    if (!effectiveUserId || !projectId || !migration?.id) return;
+    if (!projectId || !migration?.id) return;
 
     let unsubProcessLocal: (() => void) | null = null;
     let unsubStepsLocal: (() => void) | null = null;
@@ -166,7 +160,6 @@ export function useMigration(
     // Get latest process result and subscribe
     const fetchAndSubscribe = async () => {
       const latest = await migrationRepository.getLatestProcessResult(
-        effectiveUserId,
         projectId,
         migration.id,
       );
@@ -176,7 +169,6 @@ export function useMigration(
 
         // Subscribe to process result updates
         unsubProcessLocal = migrationRepository.subscribeProcessResult(
-          effectiveUserId,
           projectId,
           migration.id,
           latest.id,
@@ -193,7 +185,6 @@ export function useMigration(
       // Subscribe to step results (directly under migration, not under processResults)
       // This should happen regardless of whether there's a process result
       unsubStepsLocal = migrationRepository.subscribeStepResults(
-        effectiveUserId,
         projectId,
         migration.id,
         (results) => {
@@ -207,7 +198,6 @@ export function useMigration(
 
       // Subscribe to tech stack analysis
       unsubTechStackLocal = migrationRepository.subscribeTechStackAnalysis(
-        effectiveUserId,
         projectId,
         migration.id,
         (analysis) => {
@@ -228,29 +218,29 @@ export function useMigration(
       unsubStepsLocal?.();
       unsubTechStackLocal?.();
     };
-  }, [effectiveUserId, projectId, migration?.id]);
+  }, [projectId, migration?.id]);
 
   // Fetch all migrations
   const fetchAllMigrations = useCallback(async () => {
-    if (!effectiveUserId || !projectId) return [];
+    if (!projectId) return [];
 
     try {
-      const migrations = await migrationRepository.getMigrations(
-        effectiveUserId,
-        projectId,
-      );
+      const migrations = await migrationRepository.getMigrations(projectId);
+
       setAllMigrations(migrations);
+
       return migrations;
     } catch (err) {
       console.error("Error fetching migrations:", err);
+
       return [];
     }
-  }, [effectiveUserId, projectId]);
+  }, [projectId]);
 
   // Auto-initialize: Check for existing migration on mount
   useEffect(() => {
     const initExistingMigration = async () => {
-      if (!effectiveUserId || !projectId || initializationDone.current) return;
+      if (!projectId || initializationDone.current) return;
 
       initializationDone.current = true;
       setInitializing(true);
@@ -262,6 +252,7 @@ export function useMigration(
         if (existingMigrations.length > 0) {
           // Subscribe to the most recent migration
           const latestMigration = existingMigrations[0];
+
           subscribeTo(latestMigration.id);
         }
       } catch (err) {
@@ -272,7 +263,7 @@ export function useMigration(
     };
 
     initExistingMigration();
-  }, [effectiveUserId, projectId, subscribeTo, fetchAllMigrations]);
+  }, [projectId, subscribeTo, fetchAllMigrations]);
 
   // Select a specific migration
   const selectMigration = useCallback(
@@ -308,12 +299,16 @@ export function useMigration(
 
   const isCompleted = useMemo(() => currentStep === "completed", [currentStep]);
 
-  const isError = useMemo(() => migration?.action === "error", [currentStep]);
+  const isError = useMemo(
+    () => migration?.action === "error",
+    [migration?.action],
+  );
 
   const totalStepsCount = PROCESSING_STEPS.length;
 
   const completedStepsCount = useMemo(() => {
     if (!processResult) return 0;
+
     return processResult.stepsCompleted.length;
   }, [processResult]);
 
@@ -342,6 +337,7 @@ export function useMigration(
     // If current step is not in the list (e.g., configuration, queue, error), return 0
     if (currentIndex === -1) {
       if (currentStep === "completed") return 100;
+
       return 0;
     }
 
@@ -353,7 +349,7 @@ export function useMigration(
   // Actions
   const createNewMigration = useCallback(
     async (config?: Partial<MigrationAction>): Promise<string | null> => {
-      if (!effectiveUserId || !projectId) return null;
+      if (!projectId) return null;
 
       try {
         setLoading(true);
@@ -361,7 +357,6 @@ export function useMigration(
 
         const migrationData = createMigrationAction(config);
         const migrationId = await migrationRepository.createMigration(
-          effectiveUserId,
           projectId,
           migrationData,
         );
@@ -374,23 +369,25 @@ export function useMigration(
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Failed to create migration";
+
         setError(errorMessage);
+
         return null;
       } finally {
         setLoading(false);
       }
     },
-    [effectiveUserId, projectId, subscribeTo, fetchAllMigrations],
+    [projectId, subscribeTo, fetchAllMigrations],
   );
 
   const updateMigration = useCallback(
     async (data: Partial<MigrationAction>): Promise<void> => {
-      if (!effectiveUserId || !projectId || !migration?.id) {
+      if (!projectId || !migration?.id) {
         console.log("[useMigration] updateMigration skipped - missing data:", {
-          hasUser: !!effectiveUserId,
           hasProjectId: !!projectId,
           hasMigrationId: !!migration?.id,
         });
+
         return;
       }
 
@@ -402,7 +399,6 @@ export function useMigration(
       try {
         setError(null);
         await migrationRepository.updateMigration(
-          effectiveUserId,
           projectId,
           migration.id,
           data,
@@ -412,10 +408,11 @@ export function useMigration(
         console.error("[useMigration] updateMigration error:", err);
         const errorMessage =
           err instanceof Error ? err.message : "Failed to update migration";
+
         setError(errorMessage);
       }
     },
-    [effectiveUserId, projectId, migration?.id],
+    [projectId, migration?.id],
   );
 
   const startMigration = useCallback(async (): Promise<void> => {
@@ -457,6 +454,7 @@ export function useMigration(
   const setStepAgent = useCallback(
     async (step: StepStatus, agent: StepAgentConfig): Promise<void> => {
       const newStepAgents = { ...migration?.stepAgents, [step]: agent };
+
       await updateMigration({ stepAgents: newStepAgents });
     },
     [updateMigration, migration?.stepAgents],
@@ -465,6 +463,7 @@ export function useMigration(
   const removeStepAgent = useCallback(
     async (step: StepStatus): Promise<void> => {
       const newStepAgents = { ...migration?.stepAgents };
+
       delete newStepAgents[step];
       await updateMigration({ stepAgents: newStepAgents });
     },
@@ -507,54 +506,53 @@ export function useMigration(
   const getConfigChatMessages = useCallback(async (): Promise<
     ConfigChatMessage[]
   > => {
-    if (!effectiveUserId || !projectId || !migration?.id) return [];
+    if (!projectId || !migration?.id) return [];
 
     try {
       return await migrationRepository.getConfigChatMessages(
-        effectiveUserId,
         projectId,
         migration.id,
       );
     } catch (err) {
       console.error("Error getting config chat messages:", err);
+
       return [];
     }
-  }, [effectiveUserId, projectId, migration?.id]);
+  }, [projectId, migration?.id]);
 
   const addConfigChatMessage = useCallback(
     async (
       message: Omit<ConfigChatMessage, "timestamp">,
     ): Promise<string | null> => {
-      if (!effectiveUserId || !projectId || !migration?.id) return null;
+      if (!projectId || !migration?.id) return null;
 
       try {
         return await migrationRepository.addConfigChatMessage(
-          effectiveUserId,
           projectId,
           migration.id,
           message,
         );
       } catch (err) {
         console.error("Error adding config chat message:", err);
+
         return null;
       }
     },
-    [effectiveUserId, projectId, migration?.id],
+    [projectId, migration?.id],
   );
 
   const clearConfigChatMessages = useCallback(async (): Promise<void> => {
-    if (!effectiveUserId || !projectId || !migration?.id) return;
+    if (!projectId || !migration?.id) return;
 
     try {
       await migrationRepository.clearConfigChatMessages(
-        effectiveUserId,
         projectId,
         migration.id,
       );
     } catch (err) {
       console.error("Error clearing config chat messages:", err);
     }
-  }, [effectiveUserId, projectId, migration?.id]);
+  }, [projectId, migration?.id]);
 
   return {
     // State

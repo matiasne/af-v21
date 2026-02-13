@@ -23,7 +23,7 @@ export function FileExtensionsCard({ extensions }: FileExtensionsCardProps) {
         ) : (
           <div className="flex flex-wrap gap-2">
             {extensions.map((ext) => (
-              <Chip key={ext} variant="flat" color="secondary" size="sm">
+              <Chip key={ext} color="secondary" size="sm" variant="flat">
                 {ext}
               </Chip>
             ))}

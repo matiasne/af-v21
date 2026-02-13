@@ -7,13 +7,14 @@ import { Chip } from "@heroui/chip";
 import { Spinner } from "@heroui/spinner";
 import { Divider } from "@heroui/divider";
 
+import { GradientBorderWrapper } from "./GradientBorderWrapper";
+
 import { MigrationAction, StepResult } from "@/domain/entities/MigrationAction";
 import {
   StepStatus,
   getStepLabel,
   PROCESSING_STEPS,
 } from "@/domain/entities/Project";
-import { GradientBorderWrapper } from "./GradientBorderWrapper";
 
 interface MigrationStatusCardProps {
   migration: MigrationAction | null;
@@ -52,53 +53,54 @@ export function MigrationStatusCard({
   const getStatusChip = () => {
     if (isLoading) {
       return (
-        <Chip size="sm" color="default" variant="flat">
+        <Chip color="default" size="sm" variant="flat">
           Loading...
         </Chip>
       );
     }
     if (isCompleted) {
       return (
-        <Chip size="sm" color="success" variant="flat">
+        <Chip color="success" size="sm" variant="flat">
           Completed
         </Chip>
       );
     }
     if (isError) {
       return (
-        <Chip size="sm" color="danger" variant="flat">
+        <Chip color="danger" size="sm" variant="flat">
           Error
         </Chip>
       );
     }
     if (isStopped) {
       return (
-        <Chip size="sm" color="warning" variant="flat">
+        <Chip color="warning" size="sm" variant="flat">
           Stopped
         </Chip>
       );
     }
     if (isPaused) {
       return (
-        <Chip size="sm" color="secondary" variant="flat">
+        <Chip color="secondary" size="sm" variant="flat">
           Paused
         </Chip>
       );
     }
     if (isProcessing) {
       return (
-        <Chip size="sm" color="primary" variant="flat">
+        <Chip color="primary" size="sm" variant="flat">
           Running
         </Chip>
       );
     }
     if (!hasStarted) {
       return (
-        <Chip size="sm" color="default" variant="flat">
+        <Chip color="default" size="sm" variant="flat">
           Not Started
         </Chip>
       );
     }
+
     return null;
   };
 
@@ -116,9 +118,9 @@ export function MigrationStatusCard({
                 viewBox="0 0 24 24"
               >
                 <path
+                  d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"
                 />
               </svg>
             </div>
@@ -144,9 +146,9 @@ export function MigrationStatusCard({
                   viewBox="0 0 24 24"
                 >
                   <path
+                    d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z"
                   />
                 </svg>
               </div>
@@ -168,7 +170,7 @@ export function MigrationStatusCard({
                   <span className="font-medium">{Math.round(progress)}%</span>
                 </div>
                 <Progress
-                  value={progress}
+                  className="w-full"
                   color={
                     isCompleted
                       ? "success"
@@ -181,7 +183,7 @@ export function MigrationStatusCard({
                             : "primary"
                   }
                   size="md"
-                  className="w-full"
+                  value={progress}
                 />
                 <p className="text-xs text-default-400">
                   {completedStepsCount} of {totalSteps} steps completed
@@ -192,7 +194,7 @@ export function MigrationStatusCard({
               {currentStep && isProcessing && !isStopped && !isPaused && (
                 <div className="bg-primary-50 dark:bg-primary-900/20 rounded-lg p-3">
                   <div className="flex items-center gap-2">
-                    <Spinner size="sm" color="primary" />
+                    <Spinner color="primary" size="sm" />
                     <div>
                       <p className="text-sm font-medium text-primary-600 dark:text-primary-400">
                         {getStepLabel(currentStep)}
@@ -214,9 +216,9 @@ export function MigrationStatusCard({
                       viewBox="0 0 24 24"
                     >
                       <path
+                        d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"
                       />
                     </svg>
                     <p className="text-sm text-warning-600 dark:text-warning-400">
@@ -238,9 +240,9 @@ export function MigrationStatusCard({
                       viewBox="0 0 24 24"
                     >
                       <path
+                        d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"
                       />
                     </svg>
                     <p className="text-sm text-secondary-600 dark:text-secondary-400">
@@ -262,9 +264,9 @@ export function MigrationStatusCard({
                       viewBox="0 0 24 24"
                     >
                       <path
+                        d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
                       />
                     </svg>
                     <p className="text-sm text-danger-600 dark:text-danger-400">
@@ -284,9 +286,9 @@ export function MigrationStatusCard({
                       viewBox="0 0 24 24"
                     >
                       <path
-                        fillRule="evenodd"
-                        d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z"
                         clipRule="evenodd"
+                        d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z"
+                        fillRule="evenodd"
                       />
                     </svg>
                     <p className="text-sm text-success-600 dark:text-success-400">
@@ -298,9 +300,9 @@ export function MigrationStatusCard({
 
               {/* View Details Button */}
               <Button
+                fullWidth
                 color="primary"
                 variant={isProcessing ? "solid" : "flat"}
-                fullWidth
                 onPress={onNavigateToMigration}
               >
                 {isProcessing

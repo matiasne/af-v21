@@ -6,7 +6,6 @@ import { Divider } from "@heroui/divider";
 import { Spinner } from "@heroui/spinner";
 
 import { useMigration } from "@/infrastructure/hooks/useMigration";
-import { useProjectChat } from "@/infrastructure/context/ProjectChatContext";
 
 interface FilesCardProps {
   projectId: string;
@@ -14,8 +13,7 @@ interface FilesCardProps {
 }
 
 export function FilesCard({ projectId, onNavigateToFiles }: FilesCardProps) {
-  const { projectOwnerId } = useProjectChat();
-  const { migration, loading } = useMigration(projectId, projectOwnerId);
+  const { migration, loading } = useMigration(projectId);
 
   const ragStoreName = migration?.ragFunctionalAndBusinessStoreName;
   const hasRagStore = !!ragStoreName;
@@ -33,9 +31,9 @@ export function FilesCard({ projectId, onNavigateToFiles }: FilesCardProps) {
               viewBox="0 0 24 24"
             >
               <path
+                d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
               />
             </svg>
           </div>
@@ -59,9 +57,9 @@ export function FilesCard({ projectId, onNavigateToFiles }: FilesCardProps) {
                 viewBox="0 0 24 24"
               >
                 <path
+                  d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
                 />
               </svg>
             </div>
@@ -71,11 +69,7 @@ export function FilesCard({ projectId, onNavigateToFiles }: FilesCardProps) {
             <p className="text-default-400 text-xs mb-4">
               Files will be indexed during the migration process
             </p>
-            <Button
-              color="primary"
-              variant="flat"
-              onPress={onNavigateToFiles}
-            >
+            <Button color="primary" variant="flat" onPress={onNavigateToFiles}>
               Learn More
             </Button>
           </div>
@@ -94,9 +88,9 @@ export function FilesCard({ projectId, onNavigateToFiles }: FilesCardProps) {
                     viewBox="0 0 24 24"
                   >
                     <path
+                      d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"
                     />
                   </svg>
                   <span className="text-sm font-medium text-warning-600 dark:text-warning-400">
@@ -119,9 +113,9 @@ export function FilesCard({ projectId, onNavigateToFiles }: FilesCardProps) {
 
             {/* View Files Button */}
             <Button
+              fullWidth
               color="primary"
               variant="flat"
-              fullWidth
               onPress={onNavigateToFiles}
             >
               View Indexed Files

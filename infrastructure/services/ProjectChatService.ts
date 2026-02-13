@@ -70,7 +70,7 @@ export class ProjectChatService {
   private buildSystemPrompt(
     projectContext?: ProjectContext,
     migrationContext?: MigrationContext,
-    hasRagAccess?: boolean
+    hasRagAccess?: boolean,
   ): string {
     return `You are an intelligent AI assistant
 provide insights about their codebase analysis, and assist with any project-related queries.
@@ -138,17 +138,13 @@ You can help with:
     return results
       .map(
         (result) =>
-          `[Relevance: ${(result.relevanceScore * 100).toFixed(1)}%]\n${result.content}`
+          `[Relevance: ${(result.relevanceScore * 100).toFixed(1)}%]\n${result.content}`,
       )
       .join("\n\n---\n\n");
   }
 
   async chat(request: ProjectChatRequest): Promise<ProjectChatResponse> {
-    const {
-      messages,
-      projectContext,
-      migrationContext,
-    } = request;
+    const { messages, projectContext, migrationContext } = request;
 
     // Get RAG store name from migration context (passed from client)
     const ragStoreName = migrationContext?.ragStoreName || null;
@@ -180,7 +176,7 @@ You can help with:
     const systemPrompt = this.buildSystemPrompt(
       projectContext,
       migrationContext,
-      !!ragStoreName
+      !!ragStoreName,
     );
 
     // Convert chat history to Gemini format
@@ -229,7 +225,7 @@ You can help with:
         if (query) {
           const searchResults = await this.ragRepository.searchFiles(
             query,
-            ragStoreName
+            ragStoreName,
           );
           const formattedResults = this.formatSearchResults(searchResults);
 

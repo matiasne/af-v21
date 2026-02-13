@@ -2,7 +2,16 @@ import { StepStatus } from "./Project";
 
 export type AgentProvider = "claude" | "openrouter";
 
-export type MigrationActionType = "start" | "stop" | "resume" | "running" | "delete" | "deleting" | "server_stop" | "completed" | "error";
+export type MigrationActionType =
+  | "start"
+  | "stop"
+  | "resume"
+  | "running"
+  | "delete"
+  | "deleting"
+  | "server_stop"
+  | "completed"
+  | "error";
 
 export interface StepAgentConfig {
   provider: AgentProvider;
@@ -55,9 +64,10 @@ export interface ProcessResult {
 
 // Helper function to create a new MigrationAction
 export function createMigrationAction(
-  overrides?: Partial<MigrationAction>
+  overrides?: Partial<MigrationAction>,
 ): Omit<MigrationAction, "id"> {
   const now = Date.now();
+
   return {
     currentStep: "configuration",
     createdAt: now,
@@ -88,15 +98,19 @@ export const OPENROUTER_MODELS = [
 ] as const;
 
 // Agent provider options
-export const AGENT_PROVIDERS: { id: AgentProvider; name: string; description: string }[] = [
+export const AGENT_PROVIDERS: {
+  id: AgentProvider;
+  name: string;
+  description: string;
+}[] = [
   {
     id: "claude",
     name: "Claude Code",
-    description: "Use Claude Code CLI for processing"
+    description: "Use Claude Code CLI for processing",
   },
   {
     id: "openrouter",
     name: "OpenRouter",
-    description: "Use OpenRouter API with various models"
+    description: "Use OpenRouter API with various models",
   },
 ];

@@ -26,7 +26,7 @@ export function PipelineProgressCard({
 
   // Show a condensed version of steps for the progress bar
   const displaySteps = PROCESSING_STEPS.filter(
-    (step: StepStatus) => step !== "clone" && step !== "clear_conversation"
+    (step: StepStatus) => step !== "clone" && step !== "clear_conversation",
   );
 
   return (
@@ -64,10 +64,10 @@ export function PipelineProgressCard({
                           viewBox="0 0 24 24"
                         >
                           <path
+                            d="M5 13l4 4L19 7"
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             strokeWidth={2}
-                            d="M5 13l4 4L19 7"
                           />
                         </svg>
                       ) : (
@@ -121,14 +121,15 @@ export function PipelineProgressCard({
               <p className="text-default-600">{stepDescription}</p>
             </div>
           )}
-          {currentStepIndex >= 0 && currentStepIndex < PROCESSING_STEPS.length - 1 && (
-            <div>
-              <p className="text-sm font-medium text-default-500">Next Step</p>
-              <p>
-                {getStepLabel(PROCESSING_STEPS[currentStepIndex + 1])}
-              </p>
-            </div>
-          )}
+          {currentStepIndex >= 0 &&
+            currentStepIndex < PROCESSING_STEPS.length - 1 && (
+              <div>
+                <p className="text-sm font-medium text-default-500">
+                  Next Step
+                </p>
+                <p>{getStepLabel(PROCESSING_STEPS[currentStepIndex + 1])}</p>
+              </div>
+            )}
         </div>
       </CardBody>
     </Card>

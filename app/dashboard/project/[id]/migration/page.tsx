@@ -12,16 +12,17 @@ import {
   useDisclosure,
 } from "@heroui/modal";
 
-import { useAuth } from "@/infrastructure/context/AuthContext";
-import { useProjects } from "@/infrastructure/hooks/useProjects";
-import { useMigration } from "@/infrastructure/hooks/useMigration";
-import { useProjectChat } from "@/infrastructure/context/ProjectChatContext";
-import { Project } from "@/domain/entities/Project";
 import {
   MigrationConfigPanel,
   MigrationProgressCard,
   TechStackEditModal,
 } from "../components";
+
+import { useAuth } from "@/infrastructure/context/AuthContext";
+import { useProjects } from "@/infrastructure/hooks/useProjects";
+import { useMigration } from "@/infrastructure/hooks/useMigration";
+import { useProjectChat } from "@/infrastructure/context/ProjectChatContext";
+import { Project } from "@/domain/entities/Project";
 
 export default function MigrationPage() {
   const params = useParams();
@@ -45,7 +46,6 @@ export default function MigrationPage() {
     setPageTitle,
     setMigrationConfigChatFunctions,
     projectContext,
-    projectOwnerId,
   } = useProjectChat();
   const [project, setProject] = useState<Project | null>(null);
 
@@ -59,7 +59,6 @@ export default function MigrationPage() {
   // Tech Stack Edit modal
   const {
     isOpen: isTechStackModalOpen,
-    onOpen: onTechStackModalOpen,
     onOpenChange: onTechStackModalOpenChange,
   } = useDisclosure();
 
@@ -86,11 +85,12 @@ export default function MigrationPage() {
     getConfigChatMessages,
     addConfigChatMessage,
     clearConfigChatMessages,
-  } = useMigration(projectId, projectOwnerId);
+  } = useMigration(projectId);
 
   // Create memoized migration config chat functions
   const migrationConfigChatFunctions = useMemo(() => {
     if (!migration?.id) return null;
+
     return {
       getConfigChatMessages,
       addConfigChatMessage,
@@ -100,6 +100,7 @@ export default function MigrationPage() {
   // Set migration config chat functions when available (for TechStackEditModal)
   useEffect(() => {
     setMigrationConfigChatFunctions(migrationConfigChatFunctions);
+
     return () => setMigrationConfigChatFunctions(null);
   }, [migrationConfigChatFunctions, setMigrationConfigChatFunctions]);
 
@@ -118,6 +119,7 @@ export default function MigrationPage() {
   useEffect(() => {
     if (projects.length > 0 && projectId) {
       const foundProject = projects.find((p) => p.id === projectId);
+
       if (foundProject) {
         setProject(foundProject);
         // Sync tech stack with context
@@ -151,6 +153,7 @@ export default function MigrationPage() {
   // Set page title for navbar
   useEffect(() => {
     setPageTitle("Project Analysis & Documentation");
+
     return () => setPageTitle(null);
   }, [setPageTitle]);
 
@@ -222,6 +225,7 @@ export default function MigrationPage() {
         const assistantMessage = data.message;
 
         const updatedHistory = [...newHistory, assistantMessage];
+
         setConfigChatHistory(updatedHistory);
         handleConfigChatHistoryChange(updatedHistory);
 
@@ -253,6 +257,7 @@ export default function MigrationPage() {
           content: "Sorry, I encountered an error. Please try again.",
         };
         const errorHistory = [...newHistory, errorMessage];
+
         setConfigChatHistory(errorHistory);
         handleConfigChatHistoryChange(errorHistory);
       } finally {
@@ -278,6 +283,7 @@ export default function MigrationPage() {
   const handleRemoveTech = useCallback(
     (tech: string) => {
       const updatedStack = currentTechStack.filter((t) => t !== tech);
+
       setCurrentTechStack(updatedStack);
       if (projectId) {
         updateProject(projectId, {
@@ -386,30 +392,30 @@ export default function MigrationPage() {
       {/* Migration Progress Card */}
       {migration?.action !== "deleting" && (
         <MigrationProgressCard
-          migration={migration}
-          processResult={processResult}
-          stepResults={stepResults}
-          techStackAnalysis={techStackAnalysis}
-          onStart={startMigration}
-          onStop={handleStopMigration}
-          onResume={handleResumeMigration}
-          onOpenConfig={onConfigModalOpen}
-          isLoading={migrationLoading}
           canStartMigration={
             !!migration?.githubUrl?.trim() &&
             !!project?.analysis?.newTechStack &&
             project.analysis.newTechStack.length > 0 &&
             !!migration?.defaultAgent?.provider
           }
+          isLoading={migrationLoading}
+          migration={migration}
+          processResult={processResult}
+          stepResults={stepResults}
+          techStackAnalysis={techStackAnalysis}
+          onOpenConfig={onConfigModalOpen}
+          onResume={handleResumeMigration}
+          onStart={startMigration}
+          onStop={handleStopMigration}
         />
       )}
 
       {/* Configuration Modal */}
       <Modal
         isOpen={isConfigModalOpen}
-        onOpenChange={onConfigModalOpenChange}
-        size="3xl"
         scrollBehavior="inside"
+        size="3xl"
+        onOpenChange={onConfigModalOpenChange}
       >
         <ModalContent>
           {() => (
@@ -419,11 +425,11 @@ export default function MigrationPage() {
               </ModalHeader>
               <ModalBody className="pb-6">
                 <MigrationConfigPanel
-                  migration={migration}
-                  onUpdateConfig={updateMigration}
-                  onDelete={handleDeleteMigration}
-                  isLoading={migrationLoading}
                   disabled={isConfigDisabled}
+                  isLoading={migrationLoading}
+                  migration={migration}
+                  onDelete={handleDeleteMigration}
+                  onUpdateConfig={updateMigration}
                 />
               </ModalBody>
             </>
@@ -433,16 +439,16 @@ export default function MigrationPage() {
 
       {/* Tech Stack Edit Modal */}
       <TechStackEditModal
-        isOpen={isTechStackModalOpen}
-        onOpenChange={onTechStackModalOpenChange}
-        techStack={currentTechStack}
-        messages={configChatHistory}
         isLoading={isConfigChatLoading}
+        isOpen={isTechStackModalOpen}
+        messages={configChatHistory}
         suggestions={suggestions}
-        onSendMessage={handleSendMessage}
-        onRemoveTech={handleRemoveTech}
+        techStack={currentTechStack}
         onClearAll={handleClearAllTech}
+        onOpenChange={onTechStackModalOpenChange}
+        onRemoveTech={handleRemoveTech}
         onSave={handleSaveTechStack}
+        onSendMessage={handleSendMessage}
       />
 
       {/* Completed Summary */}
