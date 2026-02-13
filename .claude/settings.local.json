@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git reset:*)",
+      "Bash(git fetch:*)",
+      "Bash(git pull:*)",
+      "Bash(npm install)",
+      "Bash(npm run dev:*)",
+      "Bash(dir:*)",
+      "Bash(git checkout:*)"
+    ]
+  }
+}
