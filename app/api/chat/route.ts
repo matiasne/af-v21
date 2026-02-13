@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(
         { error: "Messages array is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     if (!apiKey) {
       return NextResponse.json(
         { error: "Gemini API key not configured" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -34,11 +34,15 @@ export async function POST(request: NextRequest) {
 You help users understand their project status, answer questions about their codebase analysis,
 and provide insights about software projects.
 
-${projectContext ? `Current project context:
+${
+  projectContext
+    ? `Current project context:
 - Project Name: ${projectContext.name}
 - Description: ${projectContext.description || "No description"}
 - Current Status: ${projectContext.status}
-- GitHub URL: ${projectContext.githubUrl || "Not provided"}` : ""}
+- GitHub URL: ${projectContext.githubUrl || "Not provided"}`
+    : ""
+}
 
 Be concise, helpful, and friendly in your responses.`;
 
@@ -56,7 +60,11 @@ Be concise, helpful, and friendly in your responses.`;
         },
         {
           role: "model",
-          parts: [{ text: "I understand. I'm ready to help with your project. How can I assist you?" }],
+          parts: [
+            {
+              text: "I understand. I'm ready to help with your project. How can I assist you?",
+            },
+          ],
         },
         ...history,
       ],
@@ -68,7 +76,7 @@ Be concise, helpful, and friendly in your responses.`;
     if (!lastMessage || lastMessage.role !== "user") {
       return NextResponse.json(
         { error: "Last message must be from user" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -83,9 +91,10 @@ Be concise, helpful, and friendly in your responses.`;
     });
   } catch (error) {
     console.error("Chat API error:", error);
+
     return NextResponse.json(
       { error: "Failed to process chat message" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

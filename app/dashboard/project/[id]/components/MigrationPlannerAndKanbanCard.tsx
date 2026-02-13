@@ -62,6 +62,7 @@ function CodeLoader({
     const interval = setInterval(() => {
       setActiveLine((prev) => (prev + 1) % codeLines.length);
     }, 150);
+
     return () => clearInterval(interval);
   }, []);
 
@@ -73,9 +74,9 @@ function CodeLoader({
 
   return (
     <div
+      aria-label="Loading"
       className={`rounded-lg bg-muted/50 backdrop-blur-sm ${sizeClasses[size].container} ${className || ""}`}
       role="status"
-      aria-label="Loading"
     >
       {/* Code lines */}
       <div className={`flex flex-col ${sizeClasses[size].gap}`}>
@@ -156,6 +157,7 @@ export function MigrationPlannerAndKanbanCard({
   useEffect(() => {
     if (!user?.uid || !projectId) {
       setPlannerLoading(false);
+
       return;
     }
 
@@ -186,6 +188,7 @@ export function MigrationPlannerAndKanbanCard({
   useEffect(() => {
     if (!user?.uid || !projectId) {
       setKanbanLoading(false);
+
       return;
     }
 
@@ -223,10 +226,17 @@ export function MigrationPlannerAndKanbanCard({
   const plannerProgressPercent =
     totalFiles > 0 ? (currentFile / totalFiles) * 100 : 0;
 
+  // Epic and task generation progress
+  const isGeneratingEpics = plannerStatus?.currentStep === "generating_epics";
+  const isGeneratingTasks = plannerStatus?.currentStep === "generating_tasks";
+  const epicFilesProcessed = plannerStatus?.processedEpicFiles?.length || 0;
+  const taskFilesProcessed = plannerStatus?.processedTaskFiles?.length || 0;
+
   // Format timestamp
   const formatTime = (timestamp: number | null) => {
     if (!timestamp) return null;
     const date = new Date(timestamp);
+
     return date.toLocaleString();
   };
 
@@ -235,6 +245,7 @@ export function MigrationPlannerAndKanbanCard({
   const columnStats: ColumnStats[] = KANBAN_COLUMNS.map((column) => {
     const count = tasks.filter((task) => task.status === column.id).length;
     let color: "default" | "warning" | "primary" | "success" = "default";
+
     switch (column.id) {
       case "backlog":
         color = "default";
@@ -249,6 +260,7 @@ export function MigrationPlannerAndKanbanCard({
         color = "success";
         break;
     }
+
     return {
       id: column.id,
       label: column.label,
@@ -294,9 +306,9 @@ export function MigrationPlannerAndKanbanCard({
               viewBox="0 0 24 24"
             >
               <path
+                d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z"
               />
             </svg>
           </div>
@@ -312,8 +324,8 @@ export function MigrationPlannerAndKanbanCard({
         {plannerStatus && (
           <Chip
             color={getMigrationPlannerActionColor(plannerStatus.action)}
-            variant="flat"
             size="sm"
+            variant="flat"
           >
             {getMigrationPlannerActionLabel(plannerStatus.action)}
           </Chip>
@@ -321,28 +333,7 @@ export function MigrationPlannerAndKanbanCard({
       </CardHeader>
       <Divider />
       <CardBody className="space-y-4">
-        {/* Overall Task Progress - Full Width at Top */}
-        {totalTasks > 0 && !kanbanLoading && (
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-default-500">Overall Task Completion</span>
-              <span className="font-medium">
-                {Math.round(kanbanProgressPercentage)}%
-              </span>
-            </div>
-            <Progress
-              value={kanbanProgressPercentage}
-              color="success"
-              size="md"
-              className="w-full"
-            />
-            <p className="text-xs text-default-400">
-              {completedTasks} of {totalTasks} tasks completed
-            </p>
-          </div>
-        )}
-
-        <div
+<div
           className={`grid gap-6 grid-cols-1 ${!plannerStatus || plannerStatus.action === "pending" ? "" : "md:grid-cols-2"}`}
         >
           {/* Left Side - Migration Planner */}
@@ -362,9 +353,9 @@ export function MigrationPlannerAndKanbanCard({
                     viewBox="0 0 24 24"
                   >
                     <path
+                      d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z"
                     />
                   </svg>
                 </div>
@@ -378,25 +369,54 @@ export function MigrationPlannerAndKanbanCard({
               </div>
             ) : isPlannerRunning ? (
               <div className="flex flex-col items-center justify-center py-4">
-                <CodeLoader size="md" className="mb-4" />
-                {totalFiles > 0 && (
-                  <div className="w-full max-w-xs">
+                <CodeLoader className="mb-4" size="md" />
+                <div className="w-full space-y-3">
+                  {/* Epic Generation Progress */}
+                  {(() => {
+                    const epicsDone = isGeneratingTasks || epicFilesProcessed > 0;
+                    return (
+                      <div className="w-full">
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-default-600">
+                            {epicsDone ? "Epics Generated" : "Generating Epics"}
+                          </span>
+                          <span className="text-default-500">
+                            {isGeneratingEpics && totalFiles > 0
+                              ? `${currentFile}/${totalFiles}`
+                              : `${epicFilesProcessed} files processed`}
+                          </span>
+                        </div>
+                        <Progress
+                          className="max-w-full"
+                          color={isGeneratingEpics ? "warning" : epicsDone ? "success" : "default"}
+                          isIndeterminate={isGeneratingEpics && totalFiles === 0}
+                          size="sm"
+                          value={isGeneratingEpics ? plannerProgressPercent : epicsDone ? 100 : 0}
+                        />
+                      </div>
+                    );
+                  })()}
+                  {/* Task Generation Progress */}
+                  <div className="w-full">
                     <div className="flex justify-between text-xs mb-1">
                       <span className="text-default-600">
-                        Processing FDD files
+                        Generating Tasks
                       </span>
                       <span className="text-default-500">
-                        {currentFile}/{totalFiles}
+                        {isGeneratingTasks && totalFiles > 0
+                          ? `${currentFile}/${totalFiles}`
+                          : `${taskFilesProcessed} files processed`}
                       </span>
                     </div>
                     <Progress
-                      value={plannerProgressPercent}
-                      color="warning"
-                      size="sm"
                       className="max-w-full"
+                      color={isGeneratingTasks ? "warning" : taskFilesProcessed > 0 ? "success" : "default"}
+                      isIndeterminate={isGeneratingTasks && totalFiles === 0}
+                      size="sm"
+                      value={isGeneratingTasks ? plannerProgressPercent : taskFilesProcessed > 0 ? 100 : 0}
                     />
                   </div>
-                )}
+                </div>
               </div>
             ) : (
               <>
@@ -432,12 +452,10 @@ export function MigrationPlannerAndKanbanCard({
                     {/* Retry button for error state */}
                     {isPlannerError && (
                       <Button
-                        color="danger"
-                        variant="flat"
                         fullWidth
-                        onPress={handleStartPlanning}
-                        isLoading={isStartingPlanning}
                         className="mb-3"
+                        color="danger"
+                        isLoading={isStartingPlanning}
                         startContent={
                           !isStartingPlanning && (
                             <svg
@@ -448,13 +466,15 @@ export function MigrationPlannerAndKanbanCard({
                               viewBox="0 0 24 24"
                             >
                               <path
+                                d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
-                                d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
                               />
                             </svg>
                           )
                         }
+                        variant="flat"
+                        onPress={handleStartPlanning}
                       >
                         Retry
                       </Button>
@@ -516,9 +536,9 @@ export function MigrationPlannerAndKanbanCard({
                       viewBox="0 0 24 24"
                     >
                       <path
+                        d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z"
                       />
                     </svg>
                   </div>
@@ -591,9 +611,9 @@ export function MigrationPlannerAndKanbanCard({
                   {/* View Board Button */}
                   <div className="flex gap-2">
                     <Button
+                      className="flex-1"
                       color="secondary"
                       variant="flat"
-                      className="flex-1"
                       onPress={onNavigateToKanban}
                     >
                       View Task Board
@@ -606,13 +626,13 @@ export function MigrationPlannerAndKanbanCard({
         </div>
 
         {/* Footer with Start Planning button */}
-        {plannerStatus && plannerStatus.action === "pending" && (
+        {(!plannerStatus || plannerStatus.action === "pending") && !isLoading && (
           <div className="pt-4">
             <Button
-              color="warning"
               fullWidth
-              onPress={handleStartPlanning}
+              color="warning"
               isLoading={isStartingPlanning}
+              onPress={handleStartPlanning}
             >
               Start Planning
             </Button>

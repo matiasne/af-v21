@@ -13,6 +13,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "../firebase/config";
+
 import {
   Epic,
   Phase,
@@ -23,7 +24,9 @@ import {
 } from "@/domain/entities/ExecutionPlan";
 import { ExecutionPlanRepository } from "@/domain/repositories/ExecutionPlanRepository";
 
-export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository {
+export class FirebaseExecutionPlanRepository
+  implements ExecutionPlanRepository
+{
   // Path: projects/{projectId}/epics
   private getEpicsCollection(projectId: string) {
     return collection(db, "projects", projectId, "epics");
@@ -59,68 +62,78 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
     };
   }
 
-  private toExecutionPlanTask(id: string, data: Record<string, unknown>): ExecutionPlanTask {
+  private toExecutionPlanTask(
+    id: string,
+    data: Record<string, unknown>,
+  ): ExecutionPlanTask {
     return {
       id: (data.id as string) || id,
       title: (data.title as string) || "",
       description: (data.description as string) || "",
       acceptanceCriteria: (data.acceptanceCriteria as string[]) || [],
       category: (data.category as TaskCategory) || "other",
-      cleanArchitectureArea: (data.cleanArchitectureArea as CleanArchitectureArea) || "domain",
+      cleanArchitectureArea:
+        (data.cleanArchitectureArea as CleanArchitectureArea) || "domain",
       dependencies: (data.dependencies as string[]) || [],
       sourceDocument: (data.sourceDocument as string) || "",
       status: (data.status as TaskStatus) || "backlog",
-      completionSummary: (data.completionSummary as string) || (data.completion_summary as string) || undefined,
+      completionSummary:
+        (data.completionSummary as string) ||
+        (data.completion_summary as string) ||
+        undefined,
       error: (data.error as string) || undefined,
       createdAt: (data.createdAt as number) || Date.now(),
       updatedAt: (data.updatedAt as number) || Date.now(),
       priority: (data.priority as "high" | "medium" | "low") || "medium",
       epicId: (data.epicId as string) || (data.epic_id as string) || "",
       phaseId: (data.phaseId as string) || (data.phase_id as string) || "",
-      effortEstimate: (data.effortEstimate as string) || (data.effort_estimate as string) || "",
+      effortEstimate:
+        (data.effortEstimate as string) ||
+        (data.effort_estimate as string) ||
+        "",
       deliverables: (data.deliverables as string[]) || [],
-      skillsRequired: (data.skillsRequired as string[]) || (data.skills_required as string[]) || [],
-      relatedRequirements: (data.relatedRequirements as string[]) || (data.related_requirements as string[]) || [],
+      skillsRequired:
+        (data.skillsRequired as string[]) ||
+        (data.skills_required as string[]) ||
+        [],
+      relatedRequirements:
+        (data.relatedRequirements as string[]) ||
+        (data.related_requirements as string[]) ||
+        [],
       order: (data.order as number) ?? undefined,
     };
   }
 
-  async getEpics(
-    userId: string,
-    projectId: string
-  ): Promise<Epic[]> {
+  async getEpics(userId: string, projectId: string): Promise<Epic[]> {
     const q = query(this.getEpicsCollection(projectId));
     const querySnapshot = await getDocs(q);
 
     return querySnapshot.docs.map((doc) =>
-      this.toEpic(doc.id, doc.data() as Record<string, unknown>)
+      this.toEpic(doc.id, doc.data() as Record<string, unknown>),
     );
   }
 
-  async getPhases(
-    userId: string,
-    projectId: string
-  ): Promise<Phase[]> {
+  async getPhases(userId: string, projectId: string): Promise<Phase[]> {
     const q = query(
       this.getPhasesCollection(projectId),
-      orderBy("number", "asc")
+      orderBy("number", "asc"),
     );
     const querySnapshot = await getDocs(q);
 
     return querySnapshot.docs.map((doc) =>
-      this.toPhase(doc.id, doc.data() as Record<string, unknown>)
+      this.toPhase(doc.id, doc.data() as Record<string, unknown>),
     );
   }
 
   async getTasks(
     userId: string,
-    projectId: string
+    projectId: string,
   ): Promise<ExecutionPlanTask[]> {
     const q = query(this.getTasksCollection(projectId));
     const querySnapshot = await getDocs(q);
 
     return querySnapshot.docs.map((doc) =>
-      this.toExecutionPlanTask(doc.id, doc.data() as Record<string, unknown>)
+      this.toExecutionPlanTask(doc.id, doc.data() as Record<string, unknown>),
     );
   }
 
@@ -128,7 +141,7 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
     userId: string,
     projectId: string,
     onUpdate: (epics: Epic[]) => void,
-    onError?: (error: Error) => void
+    onError?: (error: Error) => void,
   ): () => void {
     const q = query(this.getEpicsCollection(projectId));
 
@@ -136,8 +149,9 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
       q,
       (querySnapshot) => {
         const epics = querySnapshot.docs.map((doc) =>
-          this.toEpic(doc.id, doc.data() as Record<string, unknown>)
+          this.toEpic(doc.id, doc.data() as Record<string, unknown>),
         );
+
         onUpdate(epics);
       },
       (error) => {
@@ -145,7 +159,7 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
         if (onError) {
           onError(error);
         }
-      }
+      },
     );
 
     return unsubscribe;
@@ -155,19 +169,20 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
     userId: string,
     projectId: string,
     onUpdate: (phases: Phase[]) => void,
-    onError?: (error: Error) => void
+    onError?: (error: Error) => void,
   ): () => void {
     const q = query(
       this.getPhasesCollection(projectId),
-      orderBy("number", "asc")
+      orderBy("number", "asc"),
     );
 
     const unsubscribe: Unsubscribe = onSnapshot(
       q,
       (querySnapshot) => {
         const phases = querySnapshot.docs.map((doc) =>
-          this.toPhase(doc.id, doc.data() as Record<string, unknown>)
+          this.toPhase(doc.id, doc.data() as Record<string, unknown>),
         );
+
         onUpdate(phases);
       },
       (error) => {
@@ -175,7 +190,7 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
         if (onError) {
           onError(error);
         }
-      }
+      },
     );
 
     return unsubscribe;
@@ -185,7 +200,7 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
     userId: string,
     projectId: string,
     onUpdate: (tasks: ExecutionPlanTask[]) => void,
-    onError?: (error: Error) => void
+    onError?: (error: Error) => void,
   ): () => void {
     const q = query(this.getTasksCollection(projectId));
 
@@ -193,8 +208,12 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
       q,
       (querySnapshot) => {
         const tasks = querySnapshot.docs.map((doc) =>
-          this.toExecutionPlanTask(doc.id, doc.data() as Record<string, unknown>)
+          this.toExecutionPlanTask(
+            doc.id,
+            doc.data() as Record<string, unknown>,
+          ),
         );
+
         onUpdate(tasks);
       },
       (error) => {
@@ -202,7 +221,7 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
         if (onError) {
           onError(error);
         }
-      }
+      },
     );
 
     return unsubscribe;
@@ -212,7 +231,7 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
     userId: string,
     projectId: string,
     taskId: string,
-    status: TaskStatus
+    status: TaskStatus,
   ): Promise<void> {
     const taskRef = doc(db, "projects", projectId, "tasks", taskId);
 
@@ -226,13 +245,14 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
     userId: string,
     projectId: string,
     taskIds: string[],
-    status: TaskStatus
+    status: TaskStatus,
   ): Promise<void> {
     const batch = writeBatch(db);
     const updatedAt = Date.now();
 
     taskIds.forEach((taskId) => {
       const taskRef = doc(db, "projects", projectId, "tasks", taskId);
+
       batch.update(taskRef, { status, updatedAt });
     });
 
@@ -249,7 +269,7 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
       priority: "high" | "medium" | "low";
       cleanArchitectureArea: CleanArchitectureArea;
       acceptanceCriteria?: string[];
-    }
+    },
   ): Promise<string> {
     const colRef = this.getTasksCollection(projectId);
     const now = Date.now();
@@ -275,6 +295,7 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
     };
 
     const docRef = await addDoc(colRef, newTask);
+
     return docRef.id;
   }
 
@@ -285,13 +306,16 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
       title: string;
       description: string;
       priority: "high" | "medium" | "low";
-    }
+    },
   ): Promise<string> {
     const colRef = this.getEpicsCollection(projectId);
 
     // Get current epics to determine the next number
     const existingEpics = await this.getEpics(userId, projectId);
-    const maxNumber = existingEpics.reduce((max, epic) => Math.max(max, epic.number), 0);
+    const maxNumber = existingEpics.reduce(
+      (max, epic) => Math.max(max, epic.number),
+      0,
+    );
 
     const newEpic = {
       title: epicData.title,
@@ -302,6 +326,7 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
     };
 
     const docRef = await addDoc(colRef, newEpic);
+
     return docRef.id;
   }
 
@@ -309,7 +334,7 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
     userId: string,
     projectId: string,
     epicId: string,
-    taskIds: string[]
+    taskIds: string[],
   ): Promise<void> {
     if (taskIds.length === 0) return;
 
@@ -318,6 +343,7 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
 
     taskIds.forEach((taskId) => {
       const taskRef = doc(db, "projects", projectId, "tasks", taskId);
+
       batch.update(taskRef, { epicId, updatedAt });
     });
 
@@ -327,7 +353,7 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
   async updateTasksOrder(
     userId: string,
     projectId: string,
-    taskOrders: { taskId: string; order: number }[]
+    taskOrders: { taskId: string; order: number }[],
   ): Promise<void> {
     if (taskOrders.length === 0) return;
 
@@ -336,6 +362,7 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
 
     taskOrders.forEach(({ taskId, order }) => {
       const taskRef = doc(db, "projects", projectId, "tasks", taskId);
+
       batch.update(taskRef, { order, updatedAt });
     });
 
@@ -345,7 +372,7 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
   async deleteTask(
     userId: string,
     projectId: string,
-    taskId: string
+    taskId: string,
   ): Promise<void> {
     const taskRef = doc(db, "projects", projectId, "tasks", taskId);
 
@@ -356,7 +383,7 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
     userId: string,
     projectId: string,
     epicId: string,
-    deleteTasksToo: boolean = false
+    deleteTasksToo: boolean = false,
   ): Promise<void> {
     // First, get all tasks that belong to this epic
     const tasks = await this.getTasks(userId, projectId);
@@ -368,6 +395,7 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
 
       epicTasks.forEach((task) => {
         const taskRef = doc(db, "projects", projectId, "tasks", task.id);
+
         if (deleteTasksToo) {
           // Delete the task
           batch.delete(taskRef);
@@ -394,11 +422,16 @@ export class FirebaseExecutionPlanRepository implements ExecutionPlanRepository 
       title?: string;
       description?: string;
       dependencies?: string[];
-    }
+    },
   ): Promise<void> {
     const taskRef = doc(db, "projects", projectId, "tasks", taskId);
 
-    const updateData: Record<string, unknown> = {
+    const updateData: {
+      updatedAt: number;
+      title?: string;
+      description?: string;
+      dependencies?: string[];
+    } = {
       updatedAt: Date.now(),
     };
 

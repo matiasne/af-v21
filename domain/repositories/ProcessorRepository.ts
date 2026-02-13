@@ -5,6 +5,6 @@ export interface ProcessorRepository {
   getRunningProcessors(): Promise<ProcessorInfo[]>;
   subscribeProcessors(
     onUpdate: (processors: ProcessorInfo[]) => void,
-    onError?: (error: Error) => void
+    onError?: (error: Error) => void,
   ): () => void;
 }

@@ -1,6 +1,18 @@
-import { collection, query, orderBy, limit, onSnapshot, Unsubscribe, getDocs, updateDoc, serverTimestamp } from "firebase/firestore";
+import {
+  collection,
+  query,
+  orderBy,
+  limit,
+  onSnapshot,
+  Unsubscribe,
+  getDocs,
+  updateDoc,
+  addDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 
 import { db } from "../firebase/config";
+
 import {
   MigrationPlannerStatus,
   MigrationPlannerAction,
@@ -9,16 +21,14 @@ import {
 export class FirebaseMigrationPlannerRepository {
   /**
    * Get the collection reference for migration planner module.
-   * Path: users/{userId}/projects/{projectId}/migration-planner-module
+   * Path: projects/{projectId}/migration-planner-module
    */
-  private getCollection(userId: string, projectId: string) {
+  private getCollection(projectId: string) {
     return collection(
       db,
-      "users",
-      userId,
       "projects",
       projectId,
-      "migration-planner-module"
+      "migration-planner-module",
     );
   }
 
@@ -27,7 +37,7 @@ export class FirebaseMigrationPlannerRepository {
    */
   private toMigrationPlannerStatus(
     id: string,
-    data: Record<string, unknown>
+    data: Record<string, unknown>,
   ): MigrationPlannerStatus {
     return {
       id,
@@ -36,6 +46,8 @@ export class FirebaseMigrationPlannerRepository {
       description: (data.description as string) || null,
       error: (data.error as string) || null,
       logFile: (data.logFile as string) || null,
+      processedEpicFiles: (data.processedEpicFiles as string[]) || [],
+      processedTaskFiles: (data.processedTaskFiles as string[]) || [],
       tasksGenerated: (data.tasksGenerated as number) || 0,
       updatedAt: (data.updatedAt as number) || null,
     };
@@ -45,15 +57,10 @@ export class FirebaseMigrationPlannerRepository {
    * Start the migration planner by updating the existing document with action = "start".
    */
   async startPlanning(userId: string, projectId: string): Promise<string> {
-    const collectionRef = this.getCollection(userId, projectId);
+    const collectionRef = this.getCollection(projectId);
     const querySnapshot = await getDocs(collectionRef);
 
-    if (querySnapshot.empty) {
-      throw new Error("No migration planner document found");
-    }
-
-    const docRef = querySnapshot.docs[0].ref;
-    await updateDoc(docRef, {
+    const data = {
       action: "start",
       currentStep: null,
       description: "Queued for processing",
@@ -61,7 +68,17 @@ export class FirebaseMigrationPlannerRepository {
       logFile: null,
       tasksGenerated: 0,
       updatedAt: serverTimestamp(),
-    });
+    };
+
+    if (querySnapshot.empty) {
+      const newDoc = await addDoc(collectionRef, data);
+
+      return newDoc.id;
+    }
+
+    const docRef = querySnapshot.docs[0].ref;
+
+    await updateDoc(docRef, data);
 
     return docRef.id;
   }
@@ -75,9 +92,9 @@ export class FirebaseMigrationPlannerRepository {
     userId: string,
     projectId: string,
     onUpdate: (status: MigrationPlannerStatus | null) => void,
-    onError?: (error: Error) => void
+    onError?: (error: Error) => void,
   ): () => void {
-    const collectionRef = this.getCollection(userId, projectId);
+    const collectionRef = this.getCollection(projectId);
     // Query for the most recently updated document
     const q = query(collectionRef, orderBy("updatedAt", "desc"), limit(1));
 
@@ -86,15 +103,17 @@ export class FirebaseMigrationPlannerRepository {
       (snapshot) => {
         if (snapshot.empty) {
           onUpdate(null);
+
           return;
         }
 
         const doc = snapshot.docs[0];
+
         onUpdate(
           this.toMigrationPlannerStatus(
             doc.id,
-            doc.data() as Record<string, unknown>
-          )
+            doc.data() as Record<string, unknown>,
+          ),
         );
       },
       (error) => {
@@ -102,11 +121,12 @@ export class FirebaseMigrationPlannerRepository {
         if (onError) {
           onError(error);
         }
-      }
+      },
     );
 
     return unsubscribe;
   }
 }
 
-export const migrationPlannerRepository = new FirebaseMigrationPlannerRepository();
+export const migrationPlannerRepository =
+  new FirebaseMigrationPlannerRepository();

@@ -94,6 +94,7 @@ export function MigrationAgentInput({
         role: "assistant",
         content: "Sorry, I encountered an error. Please try again.",
       };
+
       setChatHistory([...newHistory, errorMessage]);
     } finally {
       setIsLoading(false);
@@ -124,9 +125,9 @@ export function MigrationAgentInput({
                     viewBox="0 0 24 24"
                   >
                     <path
+                      d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"
                     />
                   </svg>
                   <span className="text-sm font-medium">Migration Agent</span>
@@ -145,9 +146,9 @@ export function MigrationAgentInput({
                     viewBox="0 0 24 24"
                   >
                     <path
+                      d="M6 18L18 6M6 6l12 12"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      d="M6 18L18 6M6 6l12 12"
                     />
                   </svg>
                 </Button>
@@ -155,7 +156,8 @@ export function MigrationAgentInput({
               <ScrollShadow ref={scrollRef} className="max-h-80 p-4">
                 {chatHistory.length === 0 ? (
                   <p className="text-default-400 text-center py-8">
-                    Ask questions about the migration process or get help with configuration.
+                    Ask questions about the migration process or get help with
+                    configuration.
                   </p>
                 ) : (
                   <div className="space-y-4">
@@ -181,9 +183,9 @@ export function MigrationAgentInput({
                                 viewBox="0 0 24 24"
                               >
                                 <path
+                                  d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
-                                  d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"
                                 />
                               </svg>
                               <span className="text-xs font-medium text-primary">
@@ -201,7 +203,7 @@ export function MigrationAgentInput({
                       <div className="flex justify-start">
                         <div className="bg-default-100 rounded-xl px-4 py-2">
                           <div className="flex items-center gap-2">
-                            <Spinner size="sm" color="primary" />
+                            <Spinner color="primary" size="sm" />
                             <span className="text-sm text-default-500">
                               Thinking...
                             </span>
@@ -223,10 +225,10 @@ export function MigrationAgentInput({
           <div className="flex gap-2">
             <Button
               isIconOnly
-              variant={showHistory ? "solid" : "flat"}
               color={showHistory ? "primary" : "default"}
-              onPress={toggleHistory}
               isDisabled={disabled}
+              variant={showHistory ? "solid" : "flat"}
+              onPress={toggleHistory}
             >
               <svg
                 className="h-5 w-5"
@@ -236,30 +238,37 @@ export function MigrationAgentInput({
                 viewBox="0 0 24 24"
               >
                 <path
+                  d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z"
                 />
               </svg>
             </Button>
             <Input
-              placeholder="Ask the AI agent about the migration..."
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && message.trim() && !isLoading && !disabled) {
-                  handleSend();
-                }
-              }}
               classNames={{
                 inputWrapper: "bg-default-100",
               }}
               isDisabled={isLoading || disabled || !migrationId}
+              placeholder="Ask the AI agent about the migration..."
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={(e) => {
+                if (
+                  e.key === "Enter" &&
+                  message.trim() &&
+                  !isLoading &&
+                  !disabled
+                ) {
+                  handleSend();
+                }
+              }}
             />
             <Button
-              color="primary"
-              isDisabled={!message.trim() || isLoading || disabled || !migrationId}
               isIconOnly
+              color="primary"
+              isDisabled={
+                !message.trim() || isLoading || disabled || !migrationId
+              }
               isLoading={isLoading}
               onPress={handleSend}
             >
@@ -272,9 +281,9 @@ export function MigrationAgentInput({
                   viewBox="0 0 24 24"
                 >
                   <path
+                    d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"
                   />
                 </svg>
               )}

@@ -31,7 +31,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html suppressHydrationWarning lang="en" className="bg-background">
+    <html suppressHydrationWarning className="bg-background" lang="en">
       <head />
       <body
         className={clsx(
@@ -41,9 +41,7 @@ export default function RootLayout({
       >
         <Providers themeProps={{ attribute: "class", defaultTheme: "dark" }}>
           <div className="relative flex flex-col h-screen">
-            <main className="flex-grow w-full">
-              {children}
-            </main>
+            <main className="flex-grow w-full">{children}</main>
           </div>
         </Providers>
       </body>

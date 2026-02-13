@@ -1,6 +1,13 @@
 "use client";
 
-import { useMemo, useState, DragEvent, useRef, useCallback, useEffect } from "react";
+import {
+  useMemo,
+  useState,
+  DragEvent,
+  useRef,
+  useCallback,
+  useEffect,
+} from "react";
 import { Card, CardBody } from "@heroui/card";
 import { Chip } from "@heroui/chip";
 import { Button } from "@heroui/button";
@@ -8,8 +15,13 @@ import { useDisclosure } from "@heroui/modal";
 import { Spinner } from "@heroui/spinner";
 import { addToast } from "@heroui/toast";
 
-import { ExecutionPlanTask, TaskStatus, Epic } from "@/domain/entities/ExecutionPlan";
 import { TaskDetailModal } from "./TaskDetailModal";
+
+import {
+  ExecutionPlanTask,
+  TaskStatus,
+  Epic,
+} from "@/domain/entities/ExecutionPlan";
 
 const KANBAN_COLUMNS: { id: TaskStatus; label: string }[] = [
   { id: "backlog", label: "Backlog" },
@@ -34,11 +46,13 @@ interface KanbanBoardProps {
   onMoveToBacklog?: (taskId: string) => Promise<void>;
   onUpdateTask?: (
     taskId: string,
-    updates: { title?: string; description?: string; dependencies?: string[] }
+    updates: { title?: string; description?: string; dependencies?: string[] },
   ) => Promise<void>;
 }
 
-function getColumnColor(status: TaskStatus): "default" | "primary" | "warning" | "success" {
+function getColumnColor(
+  status: TaskStatus,
+): "default" | "primary" | "warning" | "success" {
   switch (status) {
     case "backlog":
       return "default";
@@ -53,7 +67,9 @@ function getColumnColor(status: TaskStatus): "default" | "primary" | "warning" |
   }
 }
 
-function getCategoryColor(category: string): "default" | "primary" | "secondary" | "success" | "warning" | "danger" {
+function getCategoryColor(
+  category: string,
+): "default" | "primary" | "secondary" | "success" | "warning" | "danger" {
   switch (category) {
     case "backend":
       return "primary";
@@ -70,7 +86,9 @@ function getCategoryColor(category: string): "default" | "primary" | "secondary"
   }
 }
 
-function getArchitectureAreaColor(area: string): "default" | "primary" | "secondary" | "success" | "warning" {
+function getArchitectureAreaColor(
+  area: string,
+): "default" | "primary" | "secondary" | "success" | "warning" {
   switch (area) {
     case "domain":
       return "secondary";
@@ -161,6 +179,7 @@ function KanbanColumn({
   // Intersection Observer for infinite scroll
   useEffect(() => {
     const loader = loaderRef.current;
+
     if (!loader) return;
 
     const observer = new IntersectionObserver(
@@ -173,7 +192,7 @@ function KanbanColumn({
         root: columnRef.current,
         rootMargin: "100px",
         threshold: 0.1,
-      }
+      },
     );
 
     observer.observe(loader);
@@ -187,41 +206,45 @@ function KanbanColumn({
     <div key={column.id} className="flex flex-col">
       {/* Column Header */}
       <div className="flex items-center gap-2 mb-3 px-2">
-        <Chip
-          size="sm"
-          color={getColumnColor(column.id)}
-          variant="flat"
-        >
+        <Chip color={getColumnColor(column.id)} size="sm" variant="flat">
           {column.label}
         </Chip>
-        <span className="text-sm text-default-400">
-          {tasks.length}
-        </span>
+        <span className="text-sm text-default-400">{tasks.length}</span>
         {/* New Task button and Move all to To Do button for Backlog column */}
         {column.id === "backlog" && (
           <div className="flex items-center gap-2 ml-auto">
             {onCreateTask && (
               <Button
-                size="sm"
-                color="success"
-                variant="flat"
                 className="text-xs"
-                onPress={onCreateTask}
+                color="success"
+                size="sm"
                 startContent={
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  <svg
+                    className="w-3 h-3"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M12 4v16m8-8H4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                    />
                   </svg>
                 }
+                variant="flat"
+                onPress={onCreateTask}
               >
                 New Task
               </Button>
             )}
             {tasksByStatus.backlog.length > 0 && onMoveAllBacklogToTodo && (
               <Button
-                size="sm"
-                color="primary"
-                variant="flat"
                 className="text-xs"
+                color="primary"
+                size="sm"
+                variant="flat"
                 onPress={onMoveAllBacklogToTodo}
               >
                 Move all to To Do
@@ -230,27 +253,31 @@ function KanbanColumn({
           </div>
         )}
         {/* Move all to Backlog button for To Do column */}
-        {column.id === "todo" && tasksByStatus.todo.length > 0 && onMoveAllTodoToBacklog && (
-          <Button
-            size="sm"
-            color="default"
-            variant="flat"
-            className="ml-auto text-xs"
-            onPress={onMoveAllTodoToBacklog}
-          >
-            Move all to Backlog
-          </Button>
-        )}
+        {column.id === "todo" &&
+          tasksByStatus.todo.length > 0 &&
+          onMoveAllTodoToBacklog && (
+            <Button
+              className="ml-auto text-xs"
+              color="default"
+              size="sm"
+              variant="flat"
+              onPress={onMoveAllTodoToBacklog}
+            >
+              Move all to Backlog
+            </Button>
+          )}
       </div>
 
       {/* Column Content */}
       <div
         ref={columnRef}
         className={`flex-1 bg-default-100 dark:bg-default-100/50 rounded-lg p-3 min-h-[300px] max-h-[600px] overflow-y-auto space-y-3 transition-colors ${
-          dragOverColumn === column.id ? "bg-primary-100 dark:bg-primary-900/30 ring-2 ring-primary" : ""
+          dragOverColumn === column.id
+            ? "bg-primary-100 dark:bg-primary-900/30 ring-2 ring-primary"
+            : ""
         }`}
-        onDragOver={(e) => onDragOver(e, column.id)}
         onDragLeave={onDragLeave}
+        onDragOver={(e) => onDragOver(e, column.id)}
         onDrop={(e) => onDrop(e, column.id)}
       >
         {tasks.length === 0 ? (
@@ -260,112 +287,123 @@ function KanbanColumn({
         ) : (
           <>
             {visibleTasks.map((task) => {
-              const isTaskLocked = isBoardLocked || task.status === "in_progress" || task.status === "completed";
+              const isTaskLocked =
+                isBoardLocked ||
+                task.status === "in_progress" ||
+                task.status === "completed";
+
               return (
-              <div
-                key={task.id}
-                draggable={!isTaskLocked}
-                onDragStart={(e) => onDragStart(e, task.id)}
-                onDragEnd={onDragEnd}
-                className={`${draggedTaskId === task.id ? "opacity-50" : ""}`}
-              >
-                <Card
-                  className={`bg-white dark:bg-default-100 shadow-sm hover:shadow-md transition-shadow ${
-                    isTaskLocked ? "cursor-not-allowed" : "cursor-grab active:cursor-grabbing"
-                  } ${task.error ? "border-2 border-red-300 dark:border-red-900" : ""}`}
+                <div
+                  key={task.id}
+                  className={`${draggedTaskId === task.id ? "opacity-50" : ""}`}
+                  draggable={!isTaskLocked}
+                  onDragEnd={onDragEnd}
+                  onDragStart={(e) => onDragStart(e, task.id)}
                 >
-                  <CardBody className="p-3">
-                    <div className="flex flex-col gap-2">
-                      {/* Category and Architecture Area badges */}
-                      <div className="flex flex-wrap items-center gap-1">
-                        {task.category && (
-                          <Chip
-                            size="sm"
-                            color={getCategoryColor(task.category)}
-                            variant="flat"
-                            className="text-xs"
-                          >
-                            {task.category}
-                          </Chip>
+                  <Card
+                    className={`bg-white dark:bg-default-100 shadow-sm hover:shadow-md transition-shadow ${
+                      isTaskLocked
+                        ? "cursor-not-allowed"
+                        : "cursor-grab active:cursor-grabbing"
+                    } ${task.error ? "border-2 border-red-300 dark:border-red-900" : ""}`}
+                  >
+                    <CardBody className="p-3">
+                      <div className="flex flex-col gap-2">
+                        {/* Category and Architecture Area badges */}
+                        <div className="flex flex-wrap items-center gap-1">
+                          {task.category && (
+                            <Chip
+                              className="text-xs"
+                              color={getCategoryColor(task.category)}
+                              size="sm"
+                              variant="flat"
+                            >
+                              {task.category}
+                            </Chip>
+                          )}
+                          {task.cleanArchitectureArea && (
+                            <Chip
+                              className="text-xs"
+                              color={getArchitectureAreaColor(
+                                task.cleanArchitectureArea,
+                              )}
+                              size="sm"
+                              variant="bordered"
+                            >
+                              {task.cleanArchitectureArea}
+                            </Chip>
+                          )}
+                        </div>
+                        <h4 className="text-sm font-medium line-clamp-2">
+                          {task.title}
+                        </h4>
+                        {task.description && (
+                          <p className="text-xs text-default-500 line-clamp-2">
+                            {task.description}
+                          </p>
                         )}
-                        {task.cleanArchitectureArea && (
-                          <Chip
-                            size="sm"
-                            color={getArchitectureAreaColor(task.cleanArchitectureArea)}
-                            variant="bordered"
-                            className="text-xs"
-                          >
-                            {task.cleanArchitectureArea}
-                          </Chip>
+                        {/* Dependencies count */}
+                        {task.dependencies && task.dependencies.length > 0 && (
+                          <div className="flex items-center gap-1 text-xs text-default-400">
+                            <svg
+                              className="w-3 h-3"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                              />
+                            </svg>
+                            <span>{task.dependencies.length} dependencies</span>
+                          </div>
                         )}
+                        {/* Acceptance criteria count */}
+                        {task.acceptanceCriteria &&
+                          task.acceptanceCriteria.length > 0 && (
+                            <div className="flex items-center gap-1 text-xs text-default-400">
+                              <svg
+                                className="w-3 h-3"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                />
+                              </svg>
+                              <span>
+                                {task.acceptanceCriteria.length} criteria
+                              </span>
+                            </div>
+                          )}
+                        {/* View Details Button */}
+                        <Button
+                          className="mt-1 text-xs"
+                          color="primary"
+                          size="sm"
+                          variant="light"
+                          onPress={() => onOpenTaskDetails(task)}
+                        >
+                          View Details
+                        </Button>
                       </div>
-                      <h4 className="text-sm font-medium line-clamp-2">
-                        {task.title}
-                      </h4>
-                      {task.description && (
-                        <p className="text-xs text-default-500 line-clamp-2">
-                          {task.description}
-                        </p>
-                      )}
-                      {/* Dependencies count */}
-                      {task.dependencies && task.dependencies.length > 0 && (
-                        <div className="flex items-center gap-1 text-xs text-default-400">
-                          <svg
-                            className="w-3 h-3"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-                            />
-                          </svg>
-                          <span>{task.dependencies.length} dependencies</span>
-                        </div>
-                      )}
-                      {/* Acceptance criteria count */}
-                      {task.acceptanceCriteria && task.acceptanceCriteria.length > 0 && (
-                        <div className="flex items-center gap-1 text-xs text-default-400">
-                          <svg
-                            className="w-3 h-3"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
-                            />
-                          </svg>
-                          <span>{task.acceptanceCriteria.length} criteria</span>
-                        </div>
-                      )}
-                      {/* View Details Button */}
-                      <Button
-                        size="sm"
-                        variant="light"
-                        color="primary"
-                        className="mt-1 text-xs"
-                        onPress={() => onOpenTaskDetails(task)}
-                      >
-                        View Details
-                      </Button>
-                    </div>
-                  </CardBody>
-                </Card>
-              </div>
-            );
+                    </CardBody>
+                  </Card>
+                </div>
+              );
             })}
             {/* Loader element for intersection observer */}
             {hasMore && (
               <div ref={loaderRef} className="flex justify-center py-2">
                 {isLoading ? (
-                  <Spinner size="sm" color="primary" />
+                  <Spinner color="primary" size="sm" />
                 ) : (
                   <span className="text-xs text-default-400">
                     {tasks.length - visibleCount} more tasks
@@ -380,10 +418,25 @@ function KanbanColumn({
   );
 }
 
-export function KanbanBoard({ tasks, epics = [], isLocked = false, lockedReason, onMoveTask, onMoveAllBacklogToTodo, onMoveAllTodoToBacklog, onCreateTask, onUpdateTaskEpic, onDeleteTask, onMoveToBacklog, onUpdateTask }: KanbanBoardProps) {
+export function KanbanBoard({
+  tasks,
+  epics = [],
+  isLocked = false,
+  lockedReason,
+  onMoveTask,
+  onMoveAllBacklogToTodo,
+  onMoveAllTodoToBacklog,
+  onCreateTask,
+  onUpdateTaskEpic,
+  onDeleteTask,
+  onMoveToBacklog,
+  onUpdateTask,
+}: KanbanBoardProps) {
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<TaskStatus | null>(null);
-  const [selectedTask, setSelectedTask] = useState<ExecutionPlanTask | null>(null);
+  const [selectedTask, setSelectedTask] = useState<ExecutionPlanTask | null>(
+    null,
+  );
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   // Group tasks by status
@@ -397,6 +450,7 @@ export function KanbanBoard({ tasks, epics = [], isLocked = false, lockedReason,
 
     tasks.forEach((task) => {
       const status = task.status || "backlog";
+
       if (grouped[status]) {
         grouped[status].push(task);
       } else {
@@ -419,13 +473,19 @@ export function KanbanBoard({ tasks, epics = [], isLocked = false, lockedReason,
         description: lockedReason || "Task movement is currently disabled.",
         color: "warning",
       });
+
       return;
     }
     // Find the task to check its status
     const task = tasks.find((t) => t.id === taskId);
+
     // Prevent dragging tasks from in_progress or completed columns
-    if (task && (task.status === "in_progress" || task.status === "completed")) {
+    if (
+      task &&
+      (task.status === "in_progress" || task.status === "completed")
+    ) {
       e.preventDefault();
+
       return;
     }
     setDraggedTaskId(taskId);
@@ -438,11 +498,15 @@ export function KanbanBoard({ tasks, epics = [], isLocked = false, lockedReason,
     setDragOverColumn(null);
   };
 
-  const handleDragOver = (e: DragEvent<HTMLDivElement>, columnId: TaskStatus) => {
+  const handleDragOver = (
+    e: DragEvent<HTMLDivElement>,
+    columnId: TaskStatus,
+  ) => {
     e.preventDefault();
     // Don't allow dropping into in_progress or completed columns
     if (columnId === "in_progress" || columnId === "completed") {
       e.dataTransfer.dropEffect = "none";
+
       return;
     }
     e.dataTransfer.dropEffect = "move";
@@ -453,7 +517,10 @@ export function KanbanBoard({ tasks, epics = [], isLocked = false, lockedReason,
     setDragOverColumn(null);
   };
 
-  const handleDrop = (e: DragEvent<HTMLDivElement>, targetStatus: TaskStatus) => {
+  const handleDrop = (
+    e: DragEvent<HTMLDivElement>,
+    targetStatus: TaskStatus,
+  ) => {
     e.preventDefault();
     const taskId = e.dataTransfer.getData("text/plain");
 
@@ -461,6 +528,7 @@ export function KanbanBoard({ tasks, epics = [], isLocked = false, lockedReason,
     if (targetStatus === "in_progress" || targetStatus === "completed") {
       setDraggedTaskId(null);
       setDragOverColumn(null);
+
       return;
     }
 
@@ -475,6 +543,7 @@ export function KanbanBoard({ tasks, epics = [], isLocked = false, lockedReason,
   const handleMoveAllBacklogToTodo = () => {
     if (onMoveAllBacklogToTodo && tasksByStatus.backlog.length > 0) {
       const backlogTaskIds = tasksByStatus.backlog.map((task) => task.id);
+
       onMoveAllBacklogToTodo(backlogTaskIds);
     }
   };
@@ -482,6 +551,7 @@ export function KanbanBoard({ tasks, epics = [], isLocked = false, lockedReason,
   const handleMoveAllTodoToBacklog = () => {
     if (onMoveAllTodoToBacklog && tasksByStatus.todo.length > 0) {
       const todoTaskIds = tasksByStatus.todo.map((task) => task.id);
+
       onMoveAllTodoToBacklog(todoTaskIds);
     }
   };
@@ -503,33 +573,37 @@ export function KanbanBoard({ tasks, epics = [], isLocked = false, lockedReason,
           <KanbanColumn
             key={column.id}
             column={column}
-            tasks={tasksByStatus[column.id]}
-            draggedTaskId={draggedTaskId}
             dragOverColumn={dragOverColumn}
+            draggedTaskId={draggedTaskId}
             isBoardLocked={isLocked}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            onOpenTaskDetails={handleOpenTaskDetails}
-            onMoveAllBacklogToTodo={onMoveAllBacklogToTodo ? handleMoveAllBacklogToTodo : undefined}
-            onMoveAllTodoToBacklog={onMoveAllTodoToBacklog ? handleMoveAllTodoToBacklog : undefined}
-            onCreateTask={onCreateTask}
+            tasks={tasksByStatus[column.id]}
             tasksByStatus={tasksByStatus}
+            onCreateTask={onCreateTask}
+            onDragEnd={handleDragEnd}
+            onDragLeave={handleDragLeave}
+            onDragOver={handleDragOver}
+            onDragStart={handleDragStart}
+            onDrop={handleDrop}
+            onMoveAllBacklogToTodo={
+              onMoveAllBacklogToTodo ? handleMoveAllBacklogToTodo : undefined
+            }
+            onMoveAllTodoToBacklog={
+              onMoveAllTodoToBacklog ? handleMoveAllTodoToBacklog : undefined
+            }
+            onOpenTaskDetails={handleOpenTaskDetails}
           />
         ))}
       </div>
 
       {/* Task Details Modal */}
       <TaskDetailModal
-        task={selectedTask}
-        isOpen={isOpen}
-        onClose={handleCloseModal}
         epics={epics}
-        onUpdateEpic={onUpdateTaskEpic}
+        isOpen={isOpen}
+        task={selectedTask}
+        onClose={handleCloseModal}
         onDeleteTask={onDeleteTask}
         onMoveToBacklog={onMoveToBacklog}
+        onUpdateEpic={onUpdateTaskEpic}
         onUpdateTask={onUpdateTask}
       />
     </>

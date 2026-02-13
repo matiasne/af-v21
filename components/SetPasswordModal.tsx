@@ -33,11 +33,13 @@ export function SetPasswordModal({
 
     if (password.length < 6) {
       setError("Password must be at least 6 characters long");
+
       return;
     }
 
     if (password !== confirmPassword) {
       setError("Passwords do not match");
+
       return;
     }
 
@@ -72,7 +74,7 @@ export function SetPasswordModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={handleClose} size="md">
+    <Modal isOpen={isOpen} size="md" onOpenChange={handleClose}>
       <ModalContent>
         <ModalHeader>
           <h2 className="text-xl font-bold">Set Password</h2>
@@ -87,14 +89,15 @@ export function SetPasswordModal({
                 viewBox="0 0 24 24"
               >
                 <path
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
               <p className="text-center text-default-700">
-                Password set successfully! You can now sign in with your email and password.
+                Password set successfully! You can now sign in with your email
+                and password.
               </p>
             </div>
           ) : (
@@ -105,28 +108,26 @@ export function SetPasswordModal({
               </p>
 
               <Input
-                type="password"
+                isDisabled={isLoading}
                 label="New Password"
+                minLength={6}
                 placeholder="Enter your new password"
+                type="password"
                 value={password}
                 onValueChange={setPassword}
-                isDisabled={isLoading}
-                minLength={6}
               />
 
               <Input
-                type="password"
+                isDisabled={isLoading}
                 label="Confirm Password"
+                minLength={6}
                 placeholder="Confirm your new password"
+                type="password"
                 value={confirmPassword}
                 onValueChange={setConfirmPassword}
-                isDisabled={isLoading}
-                minLength={6}
               />
 
-              {error && (
-                <p className="text-sm text-danger">{error}</p>
-              )}
+              {error && <p className="text-sm text-danger">{error}</p>}
             </div>
           )}
         </ModalBody>
@@ -137,14 +138,18 @@ export function SetPasswordModal({
             </Button>
           ) : (
             <>
-              <Button variant="flat" onPress={handleClose} isDisabled={isLoading}>
+              <Button
+                isDisabled={isLoading}
+                variant="flat"
+                onPress={handleClose}
+              >
                 Cancel
               </Button>
               <Button
                 color="primary"
-                onPress={handleSubmit}
-                isLoading={isLoading}
                 isDisabled={!password || !confirmPassword}
+                isLoading={isLoading}
+                onPress={handleSubmit}
               >
                 Set Password
               </Button>

@@ -15,10 +15,7 @@ interface SDDCardProps {
   onNavigateToSDD: () => void;
 }
 
-export function SDDCard({
-  projectId,
-  onNavigateToSDD,
-}: SDDCardProps) {
+export function SDDCard({ projectId, onNavigateToSDD }: SDDCardProps) {
   const { user } = useAuth();
   const [toc, setToc] = useState<SDDTableOfContents | null>(null);
   const [loading, setLoading] = useState(true);
@@ -26,12 +23,12 @@ export function SDDCard({
   useEffect(() => {
     if (!user?.uid || !projectId) {
       setLoading(false);
+
       return;
     }
 
     setLoading(true);
     const unsubscribe = sddRepository.subscribeTableOfContents(
-      user.uid,
       projectId,
       (updatedToc) => {
         setToc(updatedToc);
@@ -40,14 +37,15 @@ export function SDDCard({
       (error) => {
         console.error("Error loading SDD TOC:", error);
         setLoading(false);
-      }
+      },
     );
 
     return () => unsubscribe();
-  }, [user?.uid, projectId]);
+  }, [projectId]);
 
   const totalSections = toc?.sections.length || 0;
-  const totalSubsections = toc?.sections.reduce((acc, s) => acc + s.subsections.length, 0) || 0;
+  const totalSubsections =
+    toc?.sections.reduce((acc, s) => acc + s.subsections.length, 0) || 0;
 
   return (
     <Card className="w-full">
@@ -62,9 +60,9 @@ export function SDDCard({
               viewBox="0 0 24 24"
             >
               <path
+                d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
               />
             </svg>
           </div>
@@ -93,9 +91,9 @@ export function SDDCard({
                 viewBox="0 0 24 24"
               >
                 <path
+                  d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
                 />
               </svg>
             </div>
@@ -112,7 +110,9 @@ export function SDDCard({
                   <span className="text-sm text-primary-600 dark:text-primary-400 font-medium">
                     {toc.standard}
                   </span>
-                  <span className="text-xs text-primary-500">v{toc.version}</span>
+                  <span className="text-xs text-primary-500">
+                    v{toc.version}
+                  </span>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -136,7 +136,9 @@ export function SDDCard({
                   key={section.number}
                   className="flex items-center gap-2 text-sm text-default-600 dark:text-default-400"
                 >
-                  <span className="text-xs font-mono text-default-400">{section.number}</span>
+                  <span className="text-xs font-mono text-default-400">
+                    {section.number}
+                  </span>
                   <span className="truncate">{section.title}</span>
                 </div>
               ))}
@@ -149,9 +151,9 @@ export function SDDCard({
 
             {/* View SDD Button */}
             <Button
+              fullWidth
               color="primary"
               variant="flat"
-              fullWidth
               onPress={onNavigateToSDD}
             >
               View Full Document

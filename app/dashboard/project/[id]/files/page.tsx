@@ -44,11 +44,12 @@ export default function FilesPage() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const projectId = params.id as string;
-  const { migration } = useMigration(projectId, projectOwnerId);
+  const { migration } = useMigration(projectId);
 
   // Set page title
   useEffect(() => {
     setPageTitle("RAG Files");
+
     return () => setPageTitle(null);
   }, [setPageTitle]);
 
@@ -63,6 +64,7 @@ export default function FilesPage() {
   useEffect(() => {
     if (projects.length > 0 && projectId) {
       const foundProject = projects.find((p) => p.id === projectId);
+
       if (foundProject) {
         setProject(foundProject);
       } else {
@@ -95,6 +97,7 @@ export default function FilesPage() {
 
     if (!ragStoreName) {
       setLoading(false);
+
       return;
     }
 
@@ -104,16 +107,18 @@ export default function FilesPage() {
     try {
       console.log("Fetching files for corpus:", ragStoreName);
       const response = await fetch(
-        `/api/rag/files?corpusName=${encodeURIComponent(ragStoreName)}`
+        `/api/rag/files?corpusName=${encodeURIComponent(ragStoreName)}`,
       );
 
       if (!response.ok) {
         const errorData = await response.json();
+
         console.error("API error response:", errorData);
         throw new Error(errorData.error || "Failed to fetch files");
       }
 
       const data: RAGFilesResponse = await response.json();
+
       console.log("API response data:", data);
       console.log("Documents count:", data.documents?.length || 0);
       console.log("Documents:", data.documents);
@@ -143,18 +148,20 @@ export default function FilesPage() {
       setFilteredFiles(files);
     } else {
       const query = searchQuery.toLowerCase();
+
       setFilteredFiles(
         files.filter(
           (file) =>
             file.displayName.toLowerCase().includes(query) ||
-            file.name.toLowerCase().includes(query)
-        )
+            file.name.toLowerCase().includes(query),
+        ),
       );
     }
   }, [searchQuery, files]);
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return "N/A";
+
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
@@ -188,7 +195,7 @@ export default function FilesPage() {
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-lg font-medium text-default-500">{project.name}</h2>
         {corpus && (
-          <Chip size="sm" variant="flat" color="secondary">
+          <Chip color="secondary" size="sm" variant="flat">
             {corpus.displayName || "RAG Store"}
           </Chip>
         )}
@@ -221,9 +228,9 @@ export default function FilesPage() {
               viewBox="0 0 24 24"
             >
               <path
+                d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
               />
             </svg>
           </div>
@@ -243,20 +250,23 @@ export default function FilesPage() {
               viewBox="0 0 24 24"
             >
               <path
+                d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
               />
             </svg>
           </div>
           <p className="text-default-500 mb-4">
             No RAG store has been created yet. Files will be indexed during the
-            migration process after the &quot;Upload to RAG&quot; step completes.
+            migration process after the &quot;Upload to RAG&quot; step
+            completes.
           </p>
           <Button
             color="primary"
             variant="flat"
-            onPress={() => router.push(`/dashboard/project/${projectId}/migration`)}
+            onPress={() =>
+              router.push(`/dashboard/project/${projectId}/migration`)
+            }
           >
             Go to Migration
           </Button>
@@ -272,24 +282,26 @@ export default function FilesPage() {
               viewBox="0 0 24 24"
             >
               <path
+                d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z"
               />
             </svg>
           </div>
-          <p className="text-default-500 mb-2">
-            No documents indexed yet
-          </p>
+          <p className="text-default-500 mb-2">No documents indexed yet</p>
           <p className="text-default-400 text-sm mb-4">
-            The RAG store has been created, but files haven&apos;t been uploaded yet.
+            The RAG store has been created, but files haven&apos;t been uploaded
+            yet.
             <br />
-            Files will be indexed when the migration reaches the file upload step.
+            Files will be indexed when the migration reaches the file upload
+            step.
           </p>
           <Button
             color="primary"
             variant="flat"
-            onPress={() => router.push(`/dashboard/project/${projectId}/migration`)}
+            onPress={() =>
+              router.push(`/dashboard/project/${projectId}/migration`)
+            }
           >
             View Migration Progress
           </Button>
@@ -299,9 +311,9 @@ export default function FilesPage() {
           {/* Search */}
           <div className="flex items-center gap-4">
             <Input
+              isClearable
+              className="max-w-md"
               placeholder="Search files..."
-              value={searchQuery}
-              onValueChange={setSearchQuery}
               startContent={
                 <svg
                   className="h-4 w-4 text-default-400"
@@ -311,15 +323,15 @@ export default function FilesPage() {
                   viewBox="0 0 24 24"
                 >
                   <path
+                    d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
                   />
                 </svg>
               }
-              isClearable
+              value={searchQuery}
               onClear={() => setSearchQuery("")}
-              className="max-w-md"
+              onValueChange={setSearchQuery}
             />
             <span className="text-sm text-default-400">
               {filteredFiles.length} of {files.length} files
@@ -350,9 +362,9 @@ export default function FilesPage() {
                             viewBox="0 0 24 24"
                           >
                             <path
+                              d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
                               strokeLinecap="round"
                               strokeLinejoin="round"
-                              d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
                             />
                           </svg>
                           <p className="font-medium truncate">
@@ -369,13 +381,13 @@ export default function FilesPage() {
                                 ([key, value]) => (
                                   <Chip
                                     key={key}
+                                    className="text-xs"
                                     size="sm"
                                     variant="flat"
-                                    className="text-xs"
                                   >
                                     {key}: {value}
                                   </Chip>
-                                )
+                                ),
                               )}
                             </div>
                           )}

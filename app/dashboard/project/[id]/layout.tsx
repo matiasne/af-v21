@@ -3,6 +3,8 @@
 import { ReactNode } from "react";
 import { useParams, usePathname } from "next/navigation";
 
+import { FloatingInput } from "./components";
+
 import {
   ProjectChatProvider,
   useProjectChat,
@@ -10,7 +12,6 @@ import {
 import { useAuth } from "@/infrastructure/context/AuthContext";
 import { useMigration } from "@/infrastructure/hooks/useMigration";
 import { Navbar } from "@/components/navbar";
-import { FloatingInput } from "./components";
 
 function ProjectLayoutContent({ children }: { children: ReactNode }) {
   const params = useParams();
@@ -25,10 +26,9 @@ function ProjectLayoutContent({ children }: { children: ReactNode }) {
     isChatLoading,
     setIsChatLoading,
     isConfiguration,
-    projectOwnerId,
   } = useProjectChat();
 
-  const { migration } = useMigration(projectId, projectOwnerId);
+  const { migration } = useMigration(projectId);
 
   // Hide FloatingInput on grooming and graph pages
   const isGroomingPage = pathname?.includes("/grooming");
@@ -40,22 +40,25 @@ function ProjectLayoutContent({ children }: { children: ReactNode }) {
         <Navbar />
       </div>
       <div className="pt-1">{children}</div>
-      {projectContext && !isConfiguration && !isGroomingPage && !isGraphPage && (
-        <FloatingInput
-          projectContext={projectContext}
-          projectId={projectId}
-          userId={user?.uid}
-          migrationId={migration?.id}
-          chatHistory={chatHistory}
-          onChatHistoryChange={handleChatHistoryChange}
-          isLoading={isChatLoading}
-          onLoadingChange={setIsChatLoading}
-          migrationContext={{
-            currentStep: migration?.currentStep,
-            ragStoreName: migration?.ragFunctionalAndBusinessStoreName,
-          }}
-        />
-      )}
+      {projectContext &&
+        !isConfiguration &&
+        !isGroomingPage &&
+        !isGraphPage && (
+          <FloatingInput
+            chatHistory={chatHistory}
+            isLoading={isChatLoading}
+            migrationContext={{
+              currentStep: migration?.currentStep,
+              ragStoreName: migration?.ragFunctionalAndBusinessStoreName,
+            }}
+            migrationId={migration?.id}
+            projectContext={projectContext}
+            projectId={projectId}
+            userId={user?.uid}
+            onChatHistoryChange={handleChatHistoryChange}
+            onLoadingChange={setIsChatLoading}
+          />
+        )}
     </>
   );
 }

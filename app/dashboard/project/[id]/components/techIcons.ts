@@ -126,5 +126,6 @@ export const techIconMap: Record<string, { icon: IconType; color: string }> = {
 
 export function getTechIcon(tech: string): { icon: IconType; color: string } {
   const normalizedTech = tech.toLowerCase().trim();
+
   return techIconMap[normalizedTech] || { icon: FaCode, color: "#6B7280" };
 }

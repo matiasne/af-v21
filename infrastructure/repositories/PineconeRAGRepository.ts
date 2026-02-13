@@ -1,9 +1,10 @@
+import { Pinecone } from "@pinecone-database/pinecone";
+
 import {
   RAGRepository,
   RAGSearchResult,
 } from "@/domain/repositories/RAGRepository";
 import { RAGFile, RAGCorpus } from "@/domain/entities/RAGFile";
-import { Pinecone } from "@pinecone-database/pinecone";
 
 // Simple in-memory cache for document metadata
 // In production, you might want to use a proper cache like Redis
@@ -74,19 +75,31 @@ export class PineconeRAGRepository implements RAGRepository {
         fields: ["content", "displayName", "search-text"],
       });
 
-      console.log("[Pinecone RAG] Raw response:", JSON.stringify(searchResponse, null, 2));
+      console.log(
+        "[Pinecone RAG] Raw response:",
+        JSON.stringify(searchResponse, null, 2),
+      );
 
-      if (!searchResponse.result?.hits || searchResponse.result.hits.length === 0) {
+      if (
+        !searchResponse.result?.hits ||
+        searchResponse.result.hits.length === 0
+      ) {
         console.log("[Pinecone RAG] No matches found");
         console.log("[Pinecone RAG] ========== SEARCH END ==========");
+
         return [];
       }
 
-      console.log(`[Pinecone RAG] Found ${searchResponse.result.hits.length} matches`);
+      console.log(
+        `[Pinecone RAG] Found ${searchResponse.result.hits.length} matches`,
+      );
 
       const results = searchResponse.result.hits.map((hit, index) => {
         const fields = hit.fields as Record<string, unknown> | undefined;
-        const content = (fields?.content as string) || (fields?.["search-text"] as string) || "";
+        const content =
+          (fields?.content as string) ||
+          (fields?.["search-text"] as string) ||
+          "";
         const score = hit._score || 0;
         const documentId = hit._id || "";
 
@@ -103,10 +116,12 @@ export class PineconeRAGRepository implements RAGRepository {
       });
 
       console.log("[Pinecone RAG] ========== SEARCH END ==========");
+
       return results;
     } catch (error) {
       console.error("[Pinecone RAG] Error searching files:", error);
       console.log("[Pinecone RAG] ========== SEARCH END (ERROR) ==========");
+
       return [];
     }
   }
@@ -122,10 +137,13 @@ export class PineconeRAGRepository implements RAGRepository {
 
       // Check if the index exists
       const indexes = await this.pinecone.listIndexes();
-      const indexExists = indexes.indexes?.some((idx) => idx.name === indexName);
+      const indexExists = indexes.indexes?.some(
+        (idx) => idx.name === indexName,
+      );
 
       if (!indexExists) {
         console.log(`[Pinecone RAG] Index ${indexName} not found`);
+
         return null;
       }
 
@@ -137,6 +155,7 @@ export class PineconeRAGRepository implements RAGRepository {
       };
     } catch (error) {
       console.error("[Pinecone RAG] Error getting corpus:", error);
+
       return null;
     }
   }
@@ -147,13 +166,19 @@ export class PineconeRAGRepository implements RAGRepository {
         ? corpusName.split("/")[1]
         : corpusName;
 
-      console.log(`[Pinecone RAG] Listing documents for corpus: ${displayName}`);
+      console.log(
+        `[Pinecone RAG] Listing documents for corpus: ${displayName}`,
+      );
 
       // Check cache first
       const cacheKey = `docs_${displayName}`;
       const cachedDocs = documentMetadataCache.get(cacheKey);
+
       if (cachedDocs) {
-        console.log(`[Pinecone RAG] Returning ${cachedDocs.length} documents from cache`);
+        console.log(
+          `[Pinecone RAG] Returning ${cachedDocs.length} documents from cache`,
+        );
+
         return cachedDocs;
       }
 
@@ -169,17 +194,21 @@ export class PineconeRAGRepository implements RAGRepository {
 
       if (!namespaceStats || namespaceStats.recordCount === 0) {
         console.log("[Pinecone RAG] No documents found in namespace");
+
         return [];
       }
 
       // Unfortunately, Pinecone doesn't support listing all vectors directly
       // We need to maintain document metadata separately or use the list operation if available
       // For now, return empty array - documents will be tracked via cache on upload
-      console.log(`[Pinecone RAG] Namespace has ${namespaceStats.recordCount} vectors`);
+      console.log(
+        `[Pinecone RAG] Namespace has ${namespaceStats.recordCount} vectors`,
+      );
 
       return [];
     } catch (error) {
       console.error("[Pinecone RAG] Error listing documents:", error);
+
       return [];
     }
   }
@@ -209,17 +238,20 @@ export class PineconeRAGRepository implements RAGRepository {
       // Update cache
       const cacheKey = `docs_${corpusDisplayName}`;
       const cachedDocs = documentMetadataCache.get(cacheKey);
+
       if (cachedDocs) {
         documentMetadataCache.set(
           cacheKey,
-          cachedDocs.filter((doc) => doc.displayName !== displayName)
+          cachedDocs.filter((doc) => doc.displayName !== displayName),
         );
       }
 
       console.log("[Pinecone RAG] Document deleted successfully");
+
       return true;
     } catch (error) {
       console.error("[Pinecone RAG] Error deleting document:", error);
+
       return false;
     }
   }
@@ -228,16 +260,23 @@ export class PineconeRAGRepository implements RAGRepository {
     corpusDisplayName: string,
   ): Promise<RAGCorpus | null> {
     try {
-      console.log(`[Pinecone RAG] Getting or creating corpus: ${corpusDisplayName}`);
+      console.log(
+        `[Pinecone RAG] Getting or creating corpus: ${corpusDisplayName}`,
+      );
 
       const indexName = this.getIndexName();
 
       // Check if shared index exists
       const indexes = await this.pinecone.listIndexes();
-      const existingIndex = indexes.indexes?.find((idx) => idx.name === indexName);
+      const existingIndex = indexes.indexes?.find(
+        (idx) => idx.name === indexName,
+      );
 
       if (existingIndex) {
-        console.log(`[Pinecone RAG] Found existing shared index: ${indexName}, using namespace: ${corpusDisplayName}`);
+        console.log(
+          `[Pinecone RAG] Found existing shared index: ${indexName}, using namespace: ${corpusDisplayName}`,
+        );
+
         return {
           name: `corpora/${corpusDisplayName}`,
           displayName: corpusDisplayName,
@@ -247,10 +286,14 @@ export class PineconeRAGRepository implements RAGRepository {
       }
 
       // Index doesn't exist - it should be created via Pinecone dashboard with integrated embeddings
-      console.error(`[Pinecone RAG] Index "${indexName}" not found. Please create it in Pinecone dashboard with llama-text-embed-v2 model.`);
+      console.error(
+        `[Pinecone RAG] Index "${indexName}" not found. Please create it in Pinecone dashboard with llama-text-embed-v2 model.`,
+      );
+
       return null;
     } catch (error) {
       console.error("[Pinecone RAG] Error getting or creating corpus:", error);
+
       return null;
     }
   }
@@ -301,7 +344,10 @@ export class PineconeRAGRepository implements RAGRepository {
       // Update cache
       const cacheKey = `docs_${corpusDisplayName}`;
       const cachedDocs = documentMetadataCache.get(cacheKey) || [];
-      const existingIndex = cachedDocs.findIndex((doc) => doc.displayName === displayName);
+      const existingIndex = cachedDocs.findIndex(
+        (doc) => doc.displayName === displayName,
+      );
+
       if (existingIndex >= 0) {
         cachedDocs[existingIndex] = ragFile;
       } else {
@@ -314,6 +360,7 @@ export class PineconeRAGRepository implements RAGRepository {
       return ragFile;
     } catch (error) {
       console.error("[Pinecone RAG] Error uploading document:", error);
+
       return null;
     }
   }
@@ -326,7 +373,9 @@ export class PineconeRAGRepository implements RAGRepository {
 
       // Check if the shared index exists
       const indexes = await this.pinecone.listIndexes();
-      const indexExists = indexes.indexes?.some((idx) => idx.name === indexName);
+      const indexExists = indexes.indexes?.some(
+        (idx) => idx.name === indexName,
+      );
 
       if (!indexExists) {
         return [];
@@ -348,6 +397,7 @@ export class PineconeRAGRepository implements RAGRepository {
       }));
     } catch (error) {
       console.error("[Pinecone RAG] Error listing corpora:", error);
+
       return [];
     }
   }
@@ -365,18 +415,30 @@ export class PineconeRAGRepository implements RAGRepository {
 
       // Delete all vectors in the namespace
       const index = this.pinecone.index(indexName);
+
       await index.namespace(namespace).deleteAll();
 
       // Clear cache
       documentMetadataCache.delete(`docs_${displayName}`);
 
       console.log("[Pinecone RAG] Namespace deleted successfully");
+
       return true;
     } catch (error) {
       console.error("[Pinecone RAG] Error deleting corpus:", error);
+
       return false;
     }
   }
 }
 
-export const ragRepository = new PineconeRAGRepository();
+// Lazy initialization to avoid build-time errors when env vars are not available
+let _ragRepository: PineconeRAGRepository | null = null;
+
+export const getRagRepository = (): PineconeRAGRepository => {
+  if (!_ragRepository) {
+    _ragRepository = new PineconeRAGRepository();
+  }
+
+  return _ragRepository;
+};

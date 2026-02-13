@@ -15,10 +15,11 @@ import {
 import { Input } from "@heroui/input";
 import { Spinner } from "@heroui/spinner";
 
+import { ProjectCard } from "./components/ProjectCard";
+
 import { useAuth } from "@/infrastructure/context/AuthContext";
 import { useProjects } from "@/infrastructure/hooks/useProjects";
 import { Project } from "@/domain/entities/Project";
-import { ProjectCard } from "./components/ProjectCard";
 import Threads from "@/components/Threads";
 
 export default function DashboardPage() {
@@ -160,11 +161,11 @@ export default function DashboardPage() {
   return (
     <div className="relative min-h-screen pt-16">
       <Threads
-        color={[0.5, 0.3, 1]}
-        amplitude={1.5}
-        distance={0.2}
         enableMouseInteraction
+        amplitude={1.5}
         className="fixed inset-0 -z-10"
+        color={[0.5, 0.3, 1]}
+        distance={0.2}
       />
       <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-8">
         <div className="flex justify-between items-center mb-8">
@@ -193,11 +194,11 @@ export default function DashboardPage() {
             {projects.map((project, index) => (
               <ProjectCard
                 key={project.id}
-                project={project}
-                onEditClick={handleEditClick}
-                onDeleteClick={handleDeleteClick}
                 formatDate={formatDate}
                 index={index}
+                project={project}
+                onDeleteClick={handleDeleteClick}
+                onEditClick={handleEditClick}
               />
             ))}
           </div>
@@ -216,6 +217,7 @@ export default function DashboardPage() {
                 <ModalHeader>Create New Project</ModalHeader>
                 <ModalBody>
                   <Input
+                    isRequired
                     label="Project Name"
                     placeholder="Enter project name"
                     value={projectName}
@@ -229,7 +231,6 @@ export default function DashboardPage() {
                         handleCreateProject(onClose);
                       }
                     }}
-                    isRequired
                   />
                   <Input
                     label="Description"
@@ -253,8 +254,8 @@ export default function DashboardPage() {
                   </Button>
                   <Button
                     color="primary"
-                    isLoading={isSubmitting}
                     isDisabled={!projectName.trim()}
+                    isLoading={isSubmitting}
                     onPress={() => handleCreateProject(onClose)}
                   >
                     Create
@@ -281,6 +282,7 @@ export default function DashboardPage() {
                 <ModalHeader>Edit Project</ModalHeader>
                 <ModalBody>
                   <Input
+                    isRequired
                     label="Project Name"
                     placeholder="Enter project name"
                     value={projectName}
@@ -294,7 +296,6 @@ export default function DashboardPage() {
                         handleUpdateProject(onClose);
                       }
                     }}
-                    isRequired
                   />
                   <Input
                     label="Description"
@@ -314,6 +315,7 @@ export default function DashboardPage() {
                   <Input
                     label="GitHub URL"
                     placeholder="https://github.com/user/repo"
+                    type="url"
                     value={projectGithubUrl}
                     onChange={(e) => setProjectGithubUrl(e.target.value)}
                     onKeyDown={(e) => {
@@ -325,7 +327,6 @@ export default function DashboardPage() {
                         handleUpdateProject(onClose);
                       }
                     }}
-                    type="url"
                   />
                 </ModalBody>
                 <ModalFooter>
@@ -334,8 +335,8 @@ export default function DashboardPage() {
                   </Button>
                   <Button
                     color="primary"
-                    isLoading={isSubmitting}
                     isDisabled={!projectName.trim()}
+                    isLoading={isSubmitting}
                     onPress={() => handleUpdateProject(onClose)}
                   >
                     Save Changes
@@ -364,8 +365,8 @@ export default function DashboardPage() {
                   </Button>
                   <Button
                     color="danger"
-                    onPress={() => handleConfirmDelete(onClose)}
                     isLoading={isSubmitting}
+                    onPress={() => handleConfirmDelete(onClose)}
                   >
                     Delete
                   </Button>

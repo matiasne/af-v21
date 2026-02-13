@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable jsx-a11y/label-has-associated-control */
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
@@ -14,7 +15,12 @@ import { Spinner } from "@heroui/spinner";
 import { Chip } from "@heroui/chip";
 import { Tabs, Tab } from "@heroui/tabs";
 import { ScrollShadow } from "@heroui/scroll-shadow";
-import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@heroui/dropdown";
+import {
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+} from "@heroui/dropdown";
 
 import {
   TaskCategory,
@@ -71,8 +77,17 @@ interface ExistingTask {
 interface GroomingSessionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onApproveTask: (task: Omit<SuggestedTask, "id" | "status" | "epicId">) => Promise<string>;
-  onApproveEpic: (epic: { title: string; description: string; priority: "high" | "medium" | "low" }, taskIds: string[]) => Promise<void>;
+  onApproveTask: (
+    task: Omit<SuggestedTask, "id" | "status" | "epicId">,
+  ) => Promise<string>;
+  onApproveEpic: (
+    epic: {
+      title: string;
+      description: string;
+      priority: "high" | "medium" | "low";
+    },
+    taskIds: string[],
+  ) => Promise<void>;
   projectContext?: {
     name: string;
     description?: string;
@@ -84,7 +99,10 @@ interface GroomingSessionModalProps {
   ragStoreName?: string;
 }
 
-const CATEGORY_COLORS: Record<TaskCategory, "primary" | "secondary" | "success" | "warning" | "danger"> = {
+const CATEGORY_COLORS: Record<
+  TaskCategory,
+  "primary" | "secondary" | "success" | "warning" | "danger"
+> = {
   backend: "primary",
   frontend: "secondary",
   database: "success",
@@ -118,7 +136,9 @@ export default function GroomingSessionModal({
   const [expandedEpicId, setExpandedEpicId] = useState<string | null>(null);
   const [approvingTaskId, setApprovingTaskId] = useState<string | null>(null);
   const [approvingEpicId, setApprovingEpicId] = useState<string | null>(null);
-  const [uploadedDocuments, setUploadedDocuments] = useState<UploadedDocument[]>([]);
+  const [uploadedDocuments, setUploadedDocuments] = useState<
+    UploadedDocument[]
+  >([]);
   const [isProcessingDocument, setIsProcessingDocument] = useState(false);
   const [selectedTab, setSelectedTab] = useState<"tasks" | "epics">("tasks");
   const [isTaskSelectorModalOpen, setIsTaskSelectorModalOpen] = useState(false);
@@ -126,7 +146,9 @@ export default function GroomingSessionModal({
 
   // Session persistence state
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
-  const [previousSessions, setPreviousSessions] = useState<GroomingSession[]>([]);
+  const [previousSessions, setPreviousSessions] = useState<GroomingSession[]>(
+    [],
+  );
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
   const [isSessionSelectorOpen, setIsSessionSelectorOpen] = useState(false);
 
@@ -135,34 +157,48 @@ export default function GroomingSessionModal({
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Build task context string for the AI
-  const buildTaskContext = (task: SuggestedTask | ExistingTask, isSuggested: boolean = false) => {
-    const suggestedTask = isSuggested ? task as SuggestedTask : null;
+  const buildTaskContext = (
+    task: SuggestedTask | ExistingTask,
+    isSuggested: boolean = false,
+  ) => {
+    const suggestedTask = isSuggested ? (task as SuggestedTask) : null;
     const lines = [
       `Task: ${task.title}`,
       `Description: ${task.description || "No description provided"}`,
       `Category: ${task.category}`,
       `Priority: ${task.priority}`,
     ];
+
     if (suggestedTask?.cleanArchitectureArea) {
       lines.push(`Architecture Layer: ${suggestedTask.cleanArchitectureArea}`);
     }
-    if (suggestedTask?.acceptanceCriteria && suggestedTask.acceptanceCriteria.length > 0) {
-      lines.push(`Acceptance Criteria:\n${suggestedTask.acceptanceCriteria.map(c => `  - ${c}`).join("\n")}`);
+    if (
+      suggestedTask?.acceptanceCriteria &&
+      suggestedTask.acceptanceCriteria.length > 0
+    ) {
+      lines.push(
+        `Acceptance Criteria:\n${suggestedTask.acceptanceCriteria.map((c) => `  - ${c}`).join("\n")}`,
+      );
     }
+
     return lines.join("\n");
   };
 
   // Build epic context string for the AI
   const buildEpicContext = (epic: SuggestedEpic) => {
-    const epicTasks = suggestedTasks.filter(t => t.epicId === epic.id);
+    const epicTasks = suggestedTasks.filter((t) => t.epicId === epic.id);
     const lines = [
       `Epic: ${epic.title}`,
       `Description: ${epic.description}`,
       `Priority: ${epic.priority}`,
     ];
+
     if (epicTasks.length > 0) {
-      lines.push(`Related Tasks:\n${epicTasks.map(t => `  - ${t.title}`).join("\n")}`);
+      lines.push(
+        `Related Tasks:\n${epicTasks.map((t) => `  - ${t.title}`).join("\n")}`,
+      );
     }
+
     return lines.join("\n");
   };
 
@@ -171,7 +207,11 @@ export default function GroomingSessionModal({
     if (!userId || !projectId) return;
     setIsLoadingSessions(true);
     try {
-      const sessions = await groomingSessionRepository.getSessions(userId, projectId);
+      const sessions = await groomingSessionRepository.getSessions(
+        userId,
+        projectId,
+      );
+
       setPreviousSessions(sessions);
     } catch (error) {
       console.error("Error loading previous sessions:", error);
@@ -188,10 +228,14 @@ export default function GroomingSessionModal({
 
     try {
       // Load messages from subcollection
-      const sessionMessages = await groomingSessionRepository.getMessages(userId, projectId, session.id);
+      const sessionMessages = await groomingSessionRepository.getMessages(
+        userId,
+        projectId,
+        session.id,
+      );
 
       // Convert to ChatMessage format
-      const chatMessages: ChatMessage[] = sessionMessages.map(msg => ({
+      const chatMessages: ChatMessage[] = sessionMessages.map((msg) => ({
         role: msg.role,
         content: msg.content,
       }));
@@ -202,6 +246,7 @@ export default function GroomingSessionModal({
           role: "assistant",
           content: `Hello! I'm here to help you with your grooming session${projectContext?.name ? ` for **${projectContext.name}**` : ""}. Tell me about the features, improvements, or bugs you'd like to work on, and I'll help you break them down into actionable tasks and epics.\n\nYou can also upload documents (requirements, specs, user stories) and I'll extract tasks and epics from them.\n\nWhat would you like to discuss today?`,
         };
+
         chatMessages.push(greeting);
       }
 
@@ -217,28 +262,32 @@ export default function GroomingSessionModal({
 
       // Load suggested tasks and epics from the session
       if (session.suggestedTasks && session.suggestedTasks.length > 0) {
-        setSuggestedTasks(session.suggestedTasks.map(t => ({
-          id: t.id,
-          title: t.title,
-          description: t.description,
-          category: t.category,
-          priority: t.priority,
-          cleanArchitectureArea: t.cleanArchitectureArea,
-          acceptanceCriteria: t.acceptanceCriteria,
-          status: t.status,
-          epicId: t.epicId,
-        })));
+        setSuggestedTasks(
+          session.suggestedTasks.map((t) => ({
+            id: t.id,
+            title: t.title,
+            description: t.description,
+            category: t.category,
+            priority: t.priority,
+            cleanArchitectureArea: t.cleanArchitectureArea,
+            acceptanceCriteria: t.acceptanceCriteria,
+            status: t.status,
+            epicId: t.epicId,
+          })),
+        );
       }
 
       if (session.suggestedEpics && session.suggestedEpics.length > 0) {
-        setSuggestedEpics(session.suggestedEpics.map(e => ({
-          id: e.id,
-          title: e.title,
-          description: e.description,
-          priority: e.priority,
-          status: e.status,
-          taskIds: e.taskIds,
-        })));
+        setSuggestedEpics(
+          session.suggestedEpics.map((e) => ({
+            id: e.id,
+            title: e.title,
+            description: e.description,
+            priority: e.priority,
+            status: e.status,
+            taskIds: e.taskIds,
+          })),
+        );
       }
     } catch (error) {
       console.error("Error loading session:", error);
@@ -248,41 +297,65 @@ export default function GroomingSessionModal({
   };
 
   // Create a new session
-  const createSession = async (firstMessageContent: string): Promise<string | null> => {
+  const createSession = async (
+    firstMessageContent: string,
+  ): Promise<string | null> => {
     if (!userId || !projectId) return null;
     try {
       // Create a title from the first message (truncate if too long)
-      const title = firstMessageContent.length > 50
-        ? firstMessageContent.substring(0, 47) + "..."
-        : firstMessageContent;
+      const title =
+        firstMessageContent.length > 50
+          ? firstMessageContent.substring(0, 47) + "..."
+          : firstMessageContent;
 
-      const sessionId = await groomingSessionRepository.createSession(userId, projectId, title);
+      const sessionId = await groomingSessionRepository.createSession(
+        userId,
+        projectId,
+        title,
+      );
+
       setCurrentSessionId(sessionId);
+
       return sessionId;
     } catch (error) {
       console.error("Error creating session:", error);
+
       return null;
     }
   };
 
   // Save a message to the current session
-  const saveMessage = async (message: Omit<GroomingSessionMessage, "timestamp">, sessionId?: string | null) => {
+  const saveMessage = async (
+    message: Omit<GroomingSessionMessage, "timestamp">,
+    sessionId?: string | null,
+  ) => {
     const targetSessionId = sessionId ?? currentSessionId;
+
     if (!userId || !projectId || !targetSessionId) return;
     try {
-      await groomingSessionRepository.addMessage(userId, projectId, targetSessionId, message);
+      await groomingSessionRepository.addMessage(
+        userId,
+        projectId,
+        targetSessionId,
+        message,
+      );
     } catch (error) {
       console.error("Error saving message:", error);
     }
   };
 
   // Save suggested tasks and epics to the session
-  const saveSuggestionsToSession = async (tasks: SuggestedTask[], epics: SuggestedEpic[], sessionId?: string | null) => {
+  const saveSuggestionsToSession = async (
+    tasks: SuggestedTask[],
+    epics: SuggestedEpic[],
+    sessionId?: string | null,
+  ) => {
     const targetSessionId = sessionId ?? currentSessionId;
+
     if (!userId || !projectId || !targetSessionId) return;
     try {
       // Convert to domain format
-      const domainTasks: DomainSuggestedTask[] = tasks.map(t => ({
+      const domainTasks: DomainSuggestedTask[] = tasks.map((t) => ({
         id: t.id,
         title: t.title,
         description: t.description,
@@ -294,7 +367,7 @@ export default function GroomingSessionModal({
         epicId: t.epicId,
       }));
 
-      const domainEpics: DomainSuggestedEpic[] = epics.map(e => ({
+      const domainEpics: DomainSuggestedEpic[] = epics.map((e) => ({
         id: e.id,
         title: e.title,
         description: e.description,
@@ -303,10 +376,15 @@ export default function GroomingSessionModal({
         taskIds: e.taskIds,
       }));
 
-      await groomingSessionRepository.updateSession(userId, projectId, targetSessionId, {
-        suggestedTasks: domainTasks,
-        suggestedEpics: domainEpics,
-      });
+      await groomingSessionRepository.updateSession(
+        userId,
+        projectId,
+        targetSessionId,
+        {
+          suggestedTasks: domainTasks,
+          suggestedEpics: domainEpics,
+        },
+      );
     } catch (error) {
       console.error("Error saving suggestions:", error);
     }
@@ -325,11 +403,13 @@ export default function GroomingSessionModal({
 
     const userMessage: ChatMessage = { role: "user", content: messageContent };
     const newMessages = [...messages, userMessage];
+
     setMessages(newMessages);
     setIsLoading(true);
 
     // Create session if this is the first user message
     let sessionId = currentSessionId;
+
     if (!sessionId && userId && projectId) {
       sessionId = await createSession(messageContent);
     }
@@ -340,9 +420,12 @@ export default function GroomingSessionModal({
     }
 
     try {
-      const documentContext = uploadedDocuments.length > 0
-        ? uploadedDocuments.map((d) => `Document "${d.name}":\n${d.content}`).join("\n\n---\n\n")
-        : undefined;
+      const documentContext =
+        uploadedDocuments.length > 0
+          ? uploadedDocuments
+              .map((d) => `Document "${d.name}":\n${d.content}`)
+              .join("\n\n---\n\n")
+          : undefined;
 
       const response = await fetch("/api/chat/grooming", {
         method: "POST",
@@ -368,31 +451,46 @@ export default function GroomingSessionModal({
 
       // Save assistant message to session
       if (sessionId) {
-        await saveMessage({ role: "assistant", content: data.message.content }, sessionId);
+        await saveMessage(
+          { role: "assistant", content: data.message.content },
+          sessionId,
+        );
       }
 
       // Update suggested tasks
       let updatedTasks = suggestedTasks;
+
       if (data.suggestedTasks && data.suggestedTasks.length > 0) {
         setSuggestedTasks((prev) => {
           const existingIds = new Set(prev.map((t) => t.id));
           const newTasks = data.suggestedTasks
             .filter((t: SuggestedTask) => !existingIds.has(t.id))
-            .map((t: Omit<SuggestedTask, "status">) => ({ ...t, status: "pending" as const }));
+            .map((t: Omit<SuggestedTask, "status">) => ({
+              ...t,
+              status: "pending" as const,
+            }));
+
           updatedTasks = [...prev, ...newTasks];
+
           return updatedTasks;
         });
       }
 
       // Update suggested epics
       let updatedEpics = suggestedEpics;
+
       if (data.suggestedEpics && data.suggestedEpics.length > 0) {
         setSuggestedEpics((prev) => {
           const existingIds = new Set(prev.map((e) => e.id));
           const newEpics = data.suggestedEpics
             .filter((e: SuggestedEpic) => !existingIds.has(e.id))
-            .map((e: Omit<SuggestedEpic, "status">) => ({ ...e, status: "pending" as const }));
+            .map((e: Omit<SuggestedEpic, "status">) => ({
+              ...e,
+              status: "pending" as const,
+            }));
+
           updatedEpics = [...prev, ...newEpics];
+
           return updatedEpics;
         });
       }
@@ -419,6 +517,7 @@ export default function GroomingSessionModal({
   const handleReferenceTask = (task: SuggestedTask) => {
     const taskContext = buildTaskContext(task, true);
     const messageContent = `I want to discuss this task:\n\n${taskContext}`;
+
     setIsTaskSelectorModalOpen(false);
     setTaskSearchQuery("");
     sendMessageDirectly(messageContent);
@@ -428,6 +527,7 @@ export default function GroomingSessionModal({
   const handleReferenceEpic = (epic: SuggestedEpic) => {
     const epicContext = buildEpicContext(epic);
     const messageContent = `I want to discuss this epic:\n\n${epicContext}`;
+
     setIsTaskSelectorModalOpen(false);
     setTaskSearchQuery("");
     sendMessageDirectly(messageContent);
@@ -437,29 +537,34 @@ export default function GroomingSessionModal({
   const handleReferenceExistingTask = (task: ExistingTask) => {
     const taskContext = buildTaskContext(task, false);
     const messageContent = `I want to discuss this existing project task:\n\n${taskContext}`;
+
     setIsTaskSelectorModalOpen(false);
     setTaskSearchQuery("");
     sendMessageDirectly(messageContent);
   };
 
   // Filter tasks and epics based on search query
-  const filteredExistingTasks = existingTasks.filter((task) =>
-    task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
-    (task.description && task.description.toLowerCase().includes(taskSearchQuery.toLowerCase()))
+  const filteredExistingTasks = existingTasks.filter(
+    (task) =>
+      task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
+      (task.description &&
+        task.description.toLowerCase().includes(taskSearchQuery.toLowerCase())),
   );
 
   const filteredSuggestedTasks = suggestedTasks
     .filter((t) => t.status !== "rejected")
-    .filter((task) =>
-      task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
-      task.description.toLowerCase().includes(taskSearchQuery.toLowerCase())
+    .filter(
+      (task) =>
+        task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
+        task.description.toLowerCase().includes(taskSearchQuery.toLowerCase()),
     );
 
   const filteredSuggestedEpics = suggestedEpics
     .filter((e) => e.status !== "rejected")
-    .filter((epic) =>
-      epic.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
-      epic.description.toLowerCase().includes(taskSearchQuery.toLowerCase())
+    .filter(
+      (epic) =>
+        epic.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
+        epic.description.toLowerCase().includes(taskSearchQuery.toLowerCase()),
     );
 
   const scrollToBottom = () => {
@@ -477,12 +582,22 @@ export default function GroomingSessionModal({
         role: "assistant",
         content: `Hello! I'm here to help you with your grooming session${projectContext?.name ? ` for **${projectContext.name}**` : ""}. Tell me about the features, improvements, or bugs you'd like to work on, and I'll help you break them down into actionable tasks and epics.\n\nYou can also upload documents (requirements, specs, user stories) and I'll extract tasks and epics from them.\n\nWhat would you like to discuss today?`,
       };
+
       setMessages([greeting]);
     }
-  }, [isOpen, messages.length, projectContext?.name, currentSessionId, isLoading]);
+  }, [
+    isOpen,
+    messages.length,
+    projectContext?.name,
+    currentSessionId,
+    isLoading,
+  ]);
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const files = event.target.files;
+
     if (!files || files.length === 0) return;
 
     setIsProcessingDocument(true);
@@ -505,6 +620,7 @@ export default function GroomingSessionModal({
         };
 
         const newMessages = [...messages, uploadMessage];
+
         setMessages(newMessages);
         setIsLoading(true);
 
@@ -515,8 +631,12 @@ export default function GroomingSessionModal({
           body: JSON.stringify({
             messages: newMessages,
             projectContext,
-            existingTasks: suggestedTasks.filter((t) => t.status !== "rejected"),
-            existingEpics: suggestedEpics.filter((e) => e.status !== "rejected"),
+            existingTasks: suggestedTasks.filter(
+              (t) => t.status !== "rejected",
+            ),
+            existingEpics: suggestedEpics.filter(
+              (e) => e.status !== "rejected",
+            ),
             documentContent: content,
             documentName: file.name,
             ragStoreName,
@@ -538,7 +658,11 @@ export default function GroomingSessionModal({
             const existingIds = new Set(prev.map((t) => t.id));
             const newTasks = data.suggestedTasks
               .filter((t: SuggestedTask) => !existingIds.has(t.id))
-              .map((t: Omit<SuggestedTask, "status">) => ({ ...t, status: "pending" as const }));
+              .map((t: Omit<SuggestedTask, "status">) => ({
+                ...t,
+                status: "pending" as const,
+              }));
+
             return [...prev, ...newTasks];
           });
         }
@@ -549,7 +673,11 @@ export default function GroomingSessionModal({
             const existingIds = new Set(prev.map((e) => e.id));
             const newEpics = data.suggestedEpics
               .filter((e: SuggestedEpic) => !existingIds.has(e.id))
-              .map((e: Omit<SuggestedEpic, "status">) => ({ ...e, status: "pending" as const }));
+              .map((e: Omit<SuggestedEpic, "status">) => ({
+                ...e,
+                status: "pending" as const,
+              }));
+
             return [...prev, ...newEpics];
           });
         }
@@ -576,8 +704,10 @@ export default function GroomingSessionModal({
   const readFileContent = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
+
       reader.onload = (e) => {
         const content = e.target?.result as string;
+
         resolve(content);
       };
       reader.onerror = () => reject(new Error("Failed to read file"));
@@ -587,6 +717,7 @@ export default function GroomingSessionModal({
 
   const getFileType = (filename: string): string => {
     const ext = filename.split(".").pop()?.toLowerCase();
+
     switch (ext) {
       case "md":
         return "text/markdown";
@@ -611,12 +742,14 @@ export default function GroomingSessionModal({
     const messageContent = inputValue.trim();
     const userMessage: ChatMessage = { role: "user", content: messageContent };
     const newMessages = [...messages, userMessage];
+
     setMessages(newMessages);
     setInputValue("");
     setIsLoading(true);
 
     // Create session if this is the first user message
     let sessionId = currentSessionId;
+
     if (!sessionId && userId && projectId) {
       sessionId = await createSession(messageContent);
     }
@@ -628,9 +761,12 @@ export default function GroomingSessionModal({
 
     try {
       // Include document contents in context if any
-      const documentContext = uploadedDocuments.length > 0
-        ? uploadedDocuments.map((d) => `Document "${d.name}":\n${d.content}`).join("\n\n---\n\n")
-        : undefined;
+      const documentContext =
+        uploadedDocuments.length > 0
+          ? uploadedDocuments
+              .map((d) => `Document "${d.name}":\n${d.content}`)
+              .join("\n\n---\n\n")
+          : undefined;
 
       const response = await fetch("/api/chat/grooming", {
         method: "POST",
@@ -656,31 +792,46 @@ export default function GroomingSessionModal({
 
       // Save assistant message to session
       if (sessionId) {
-        await saveMessage({ role: "assistant", content: data.message.content }, sessionId);
+        await saveMessage(
+          { role: "assistant", content: data.message.content },
+          sessionId,
+        );
       }
 
       // Update suggested tasks
       let updatedTasks = suggestedTasks;
+
       if (data.suggestedTasks && data.suggestedTasks.length > 0) {
         setSuggestedTasks((prev) => {
           const existingIds = new Set(prev.map((t) => t.id));
           const newTasks = data.suggestedTasks
             .filter((t: SuggestedTask) => !existingIds.has(t.id))
-            .map((t: Omit<SuggestedTask, "status">) => ({ ...t, status: "pending" as const }));
+            .map((t: Omit<SuggestedTask, "status">) => ({
+              ...t,
+              status: "pending" as const,
+            }));
+
           updatedTasks = [...prev, ...newTasks];
+
           return updatedTasks;
         });
       }
 
       // Update suggested epics
       let updatedEpics = suggestedEpics;
+
       if (data.suggestedEpics && data.suggestedEpics.length > 0) {
         setSuggestedEpics((prev) => {
           const existingIds = new Set(prev.map((e) => e.id));
           const newEpics = data.suggestedEpics
             .filter((e: SuggestedEpic) => !existingIds.has(e.id))
-            .map((e: Omit<SuggestedEpic, "status">) => ({ ...e, status: "pending" as const }));
+            .map((e: Omit<SuggestedEpic, "status">) => ({
+              ...e,
+              status: "pending" as const,
+            }));
+
           updatedEpics = [...prev, ...newEpics];
+
           return updatedEpics;
         });
       }
@@ -715,7 +866,7 @@ export default function GroomingSessionModal({
         acceptanceCriteria: task.acceptanceCriteria,
       });
       setSuggestedTasks((prev) =>
-        prev.map((t) => (t.id === task.id ? { ...t, status: "approved" } : t))
+        prev.map((t) => (t.id === task.id ? { ...t, status: "approved" } : t)),
       );
       setExpandedTaskId(null);
     } catch (error) {
@@ -727,7 +878,7 @@ export default function GroomingSessionModal({
 
   const handleRejectTask = (taskId: string) => {
     setSuggestedTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, status: "rejected" } : t))
+      prev.map((t) => (t.id === taskId ? { ...t, status: "rejected" } : t)),
     );
     setExpandedTaskId(null);
   };
@@ -736,11 +887,13 @@ export default function GroomingSessionModal({
     setApprovingEpicId(epic.id);
     try {
       // Get the tasks that belong to this epic and are pending
-      const epicTasks = suggestedTasks
-        .filter((t) => t.epicId === epic.id && t.status === "pending");
+      const epicTasks = suggestedTasks.filter(
+        (t) => t.epicId === epic.id && t.status === "pending",
+      );
 
       // First, create all the tasks that belong to this epic and collect the real Firestore IDs
       const createdTaskIds: string[] = [];
+
       for (const task of epicTasks) {
         const createdTaskId = await onApproveTask({
           title: task.title,
@@ -750,10 +903,13 @@ export default function GroomingSessionModal({
           cleanArchitectureArea: task.cleanArchitectureArea,
           acceptanceCriteria: task.acceptanceCriteria,
         });
+
         createdTaskIds.push(createdTaskId);
         // Mark task as approved
         setSuggestedTasks((prev) =>
-          prev.map((t) => (t.id === task.id ? { ...t, status: "approved" } : t))
+          prev.map((t) =>
+            t.id === task.id ? { ...t, status: "approved" } : t,
+          ),
         );
       }
 
@@ -764,11 +920,11 @@ export default function GroomingSessionModal({
           description: epic.description,
           priority: epic.priority,
         },
-        createdTaskIds
+        createdTaskIds,
       );
 
       setSuggestedEpics((prev) =>
-        prev.map((e) => (e.id === epic.id ? { ...e, status: "approved" } : e))
+        prev.map((e) => (e.id === epic.id ? { ...e, status: "approved" } : e)),
       );
       setExpandedEpicId(null);
     } catch (error) {
@@ -780,7 +936,7 @@ export default function GroomingSessionModal({
 
   const handleRejectEpic = (epicId: string) => {
     setSuggestedEpics((prev) =>
-      prev.map((e) => (e.id === epicId ? { ...e, status: "rejected" } : e))
+      prev.map((e) => (e.id === epicId ? { ...e, status: "rejected" } : e)),
     );
     setExpandedEpicId(null);
   };
@@ -826,8 +982,10 @@ export default function GroomingSessionModal({
 
     if (diffMins < 1) return "Just now";
     if (diffMins < 60) return `${diffMins} min ago`;
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+    if (diffHours < 24)
+      return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
     if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+
     return date.toLocaleDateString();
   };
 
@@ -843,12 +1001,12 @@ export default function GroomingSessionModal({
 
   return (
     <Modal
-      isOpen={isOpen}
-      onClose={handleClose}
-      size="5xl"
-      isDismissable={!isLoading && !isProcessingDocument}
       hideCloseButton={isLoading || isProcessingDocument}
+      isDismissable={!isLoading && !isProcessingDocument}
+      isOpen={isOpen}
       scrollBehavior="inside"
+      size="5xl"
+      onClose={handleClose}
     >
       <ModalContent className="h-[80vh]">
         <ModalHeader className="flex flex-col gap-1 border-b border-default-200">
@@ -861,27 +1019,34 @@ export default function GroomingSessionModal({
                 viewBox="0 0 24 24"
               >
                 <path
+                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
                 />
               </svg>
               <span className="text-lg font-semibold">Grooming Session</span>
               {currentSessionId && (
-                <Chip size="sm" variant="flat" color="primary" classNames={{ base: "h-5", content: "text-xs" }}>
+                <Chip
+                  size="sm"
+                  variant="flat"
+                  color="primary"
+                  classNames={{ base: "h-5", content: "text-xs" }}
+                >
                   Session saved
                 </Chip>
               )}
             </div>
             {userId && projectId && (
               <div className="flex items-center gap-2">
-                <Dropdown isOpen={isSessionSelectorOpen} onOpenChange={setIsSessionSelectorOpen}>
+                <Dropdown
+                  isOpen={isSessionSelectorOpen}
+                  onOpenChange={setIsSessionSelectorOpen}
+                >
                   <DropdownTrigger>
                     <Button
-                      size="sm"
-                      variant="flat"
                       isLoading={isLoadingSessions}
+                      size="sm"
                       startContent={
                         !isLoadingSessions && (
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -889,8 +1054,11 @@ export default function GroomingSessionModal({
                           </svg>
                         )
                       }
+                      variant="flat"
                     >
-                      {previousSessions.length > 0 ? `${previousSessions.length} Previous` : "History"}
+                      {previousSessions.length > 0
+                        ? `${previousSessions.length} Previous`
+                        : "History"}
                     </Button>
                   </DropdownTrigger>
                   <DropdownMenu
@@ -904,8 +1072,18 @@ export default function GroomingSessionModal({
                           key="new-session"
                           className="text-primary"
                           startContent={
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 4v16m8-8H4"
+                              />
                             </svg>
                           }
                           onPress={handleStartNewSession}
@@ -915,11 +1093,13 @@ export default function GroomingSessionModal({
                         {previousSessions.map((session) => (
                           <DropdownItem
                             key={session.id}
+                            className={currentSessionId === session.id ? "bg-primary-100" : ""}
                             description={formatSessionDate(session.updatedAt)}
                             onPress={() => loadSession(session)}
-                            className={currentSessionId === session.id ? "bg-primary-100" : ""}
                           >
-                            <span className="line-clamp-1">{session.title}</span>
+                            <span className="line-clamp-1">
+                              {session.title}
+                            </span>
                           </DropdownItem>
                         ))}
                       </>
@@ -934,7 +1114,8 @@ export default function GroomingSessionModal({
             )}
           </div>
           <span className="text-sm text-default-500 font-normal">
-            Discuss features, upload documents, and get task & epic suggestions from AI
+            Discuss features, upload documents, and get task & epic suggestions
+            from AI
           </span>
         </ModalHeader>
 
@@ -949,10 +1130,10 @@ export default function GroomingSessionModal({
                   {uploadedDocuments.map((doc) => (
                     <Chip
                       key={doc.name}
+                      classNames={{ base: "h-6", content: "text-xs" }}
                       size="sm"
                       variant="flat"
                       onClose={() => removeDocument(doc.name)}
-                      classNames={{ base: "h-6", content: "text-xs" }}
                     >
                       {doc.name}
                     </Chip>
@@ -982,9 +1163,11 @@ export default function GroomingSessionModal({
               {(isLoading || isProcessingDocument) && (
                 <div className="flex justify-start">
                   <div className="bg-default-100 rounded-xl px-4 py-3 flex items-center gap-2">
-                    <Spinner size="sm" color="primary" />
+                    <Spinner color="primary" size="sm" />
                     {isProcessingDocument && (
-                      <span className="text-sm text-default-500">Processing document...</span>
+                      <span className="text-sm text-default-500">
+                        Processing document...
+                      </span>
                     )}
                   </div>
                 </div>
@@ -997,21 +1180,21 @@ export default function GroomingSessionModal({
               <div className="flex gap-2">
                 {/* Hidden file input */}
                 <input
-                  type="file"
                   ref={fileInputRef}
-                  onChange={handleFileUpload}
-                  accept=".txt,.md,.json,.csv,.xml,.html"
                   multiple
+                  accept=".txt,.md,.json,.csv,.xml,.html"
                   className="hidden"
+                  type="file"
+                  onChange={handleFileUpload}
                 />
 
                 {/* Upload button */}
                 <Button
                   isIconOnly
-                  variant="flat"
-                  onPress={() => fileInputRef.current?.click()}
                   isDisabled={isLoading || isProcessingDocument}
                   title="Upload document"
+                  variant="flat"
+                  onPress={() => fileInputRef.current?.click()}
                 >
                   <svg
                     className="w-5 h-5"
@@ -1020,10 +1203,10 @@ export default function GroomingSessionModal({
                     viewBox="0 0 24 24"
                   >
                     <path
+                      d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
                     />
                   </svg>
                 </Button>
@@ -1031,9 +1214,9 @@ export default function GroomingSessionModal({
                 {/* Discuss task/epic button - opens modal */}
                 <Button
                   isIconOnly
-                  variant="flat"
                   isDisabled={isLoading || isProcessingDocument || (suggestedTasks.length === 0 && suggestedEpics.length === 0 && existingTasks.length === 0)}
                   title="Discuss a task or epic"
+                  variant="flat"
                   onPress={() => setIsTaskSelectorModalOpen(true)}
                 >
                   <svg
@@ -1043,35 +1226,35 @@ export default function GroomingSessionModal({
                     viewBox="0 0 24 24"
                   >
                     <path
+                      d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"
                     />
                   </svg>
                 </Button>
 
                 <Input
                   ref={inputRef}
+                  classNames={{
+                    inputWrapper: "bg-default-100",
+                  }}
+                  isDisabled={isLoading || isProcessingDocument}
                   placeholder="Describe a feature or ask about the documents..."
                   value={inputValue}
-                  onValueChange={setInputValue}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
                       handleSendMessage();
                     }
                   }}
-                  isDisabled={isLoading || isProcessingDocument}
-                  classNames={{
-                    inputWrapper: "bg-default-100",
-                  }}
+                  onValueChange={setInputValue}
                 />
                 <Button
-                  color="primary"
                   isIconOnly
-                  onPress={handleSendMessage}
+                  color="primary"
                   isDisabled={!inputValue.trim() || isLoading || isProcessingDocument}
+                  onPress={handleSendMessage}
                 >
                   <svg
                     className="w-5 h-5"
@@ -1080,10 +1263,10 @@ export default function GroomingSessionModal({
                     viewBox="0 0 24 24"
                   >
                     <path
+                      d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
                     />
                   </svg>
                 </Button>
@@ -1098,14 +1281,14 @@ export default function GroomingSessionModal({
           <div className="w-[380px] flex flex-col bg-default-50 dark:bg-default-100/30">
             <div className="p-3 border-b border-default-200">
               <Tabs
-                selectedKey={selectedTab}
-                onSelectionChange={(key) => setSelectedTab(key as "tasks" | "epics")}
-                size="sm"
-                variant="solid"
                 classNames={{
                   tabList: "w-full",
                   tab: "flex-1",
                 }}
+                selectedKey={selectedTab}
+                size="sm"
+                variant="solid"
+                onSelectionChange={(key) => setSelectedTab(key as "tasks" | "epics")}
               >
                 <Tab
                   key="tasks"
@@ -1148,10 +1331,10 @@ export default function GroomingSessionModal({
                       viewBox="0 0 24 24"
                     >
                       <path
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeWidth={1.5}
-                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
                       />
                     </svg>
                     <p className="text-sm text-default-400">
@@ -1162,76 +1345,87 @@ export default function GroomingSessionModal({
                   suggestedTasks.map((task) => (
                     <TaskCard
                       key={task.id}
-                      task={task}
+                      epicName={task.epicId ? suggestedEpics.find((e) => e.id === task.epicId)?.title : undefined}
+                      isApproving={approvingTaskId === task.id}
                       isExpanded={expandedTaskId === task.id}
+                      task={task}
+                      onApprove={() => handleApproveTask(task)}
                       onExpand={() => {
                         if (task.status === "pending" && expandedTaskId !== task.id) {
                           setExpandedTaskId(task.id);
                         }
                       }}
-                      onApprove={() => handleApproveTask(task)}
-                      onReject={() => handleRejectTask(task.id)}
                       onReference={() => handleReferenceTask(task)}
-                      isApproving={approvingTaskId === task.id}
-                      epicName={task.epicId ? suggestedEpics.find((e) => e.id === task.epicId)?.title : undefined}
+                      onReject={() => handleRejectTask(task.id)}
                     />
                   ))
                 )
+              ) : // Epics tab
+              suggestedEpics.length === 0 ? (
+                <div className="text-center py-8">
+                  <svg
+                    className="w-12 h-12 mx-auto text-default-300 mb-3"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                    />
+                  </svg>
+                  <p className="text-sm text-default-400">
+                    Epics will appear here as you discuss features
+                  </p>
+                </div>
               ) : (
-                // Epics tab
-                suggestedEpics.length === 0 ? (
-                  <div className="text-center py-8">
-                    <svg
-                      className="w-12 h-12 mx-auto text-default-300 mb-3"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.5}
-                        d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-                      />
-                    </svg>
-                    <p className="text-sm text-default-400">
-                      Epics will appear here as you discuss features
-                    </p>
-                  </div>
-                ) : (
-                  suggestedEpics.map((epic) => (
-                    <EpicCard
-                      key={epic.id}
-                      epic={epic}
-                      tasks={getEpicTasks(epic.id)}
-                      isExpanded={expandedEpicId === epic.id}
-                      onExpand={() => {
-                        if (epic.status === "pending" && expandedEpicId !== epic.id) {
-                          setExpandedEpicId(epic.id);
-                        }
-                      }}
-                      onApprove={() => handleApproveEpic(epic)}
-                      onReject={() => handleRejectEpic(epic.id)}
-                      onReference={() => handleReferenceEpic(epic)}
-                      isApproving={approvingEpicId === epic.id}
-                    />
-                  ))
-                )
+                suggestedEpics.map((epic) => (
+                  <EpicCard
+                    key={epic.id}
+                    epic={epic}
+                    tasks={getEpicTasks(epic.id)}
+                    isExpanded={expandedEpicId === epic.id}
+                    onExpand={() => {
+                      if (
+                        epic.status === "pending" &&
+                        expandedEpicId !== epic.id
+                      ) {
+                        setExpandedEpicId(epic.id);
+                      }
+                    }}
+                    onApprove={() => handleApproveEpic(epic)}
+                    onReject={() => handleRejectEpic(epic.id)}
+                    onReference={() => handleReferenceEpic(epic)}
+                    isApproving={approvingEpicId === epic.id}
+                  />
+                ))
               )}
             </div>
 
             {/* Summary footer */}
             <div className="p-3 border-t border-default-200 text-xs text-default-500">
               <div className="flex justify-between">
-                <span>Tasks: {pendingTasks.length} pending, {approvedTasks.length} approved</span>
-                <span>Epics: {pendingEpics.length} pending, {approvedEpics.length} approved</span>
+                <span>
+                  Tasks: {pendingTasks.length} pending, {approvedTasks.length}{" "}
+                  approved
+                </span>
+                <span>
+                  Epics: {pendingEpics.length} pending, {approvedEpics.length}{" "}
+                  approved
+                </span>
               </div>
             </div>
           </div>
         </ModalBody>
 
         <ModalFooter className="border-t border-default-200">
-          <Button variant="flat" onPress={handleClose} isDisabled={isLoading || isProcessingDocument}>
+          <Button
+            variant="flat"
+            onPress={handleClose}
+            isDisabled={isLoading || isProcessingDocument}
+          >
             Close Session
           </Button>
         </ModalFooter>
@@ -1240,16 +1434,18 @@ export default function GroomingSessionModal({
       {/* Task Selector Modal */}
       <Modal
         isOpen={isTaskSelectorModalOpen}
+        scrollBehavior="inside"
+        size="lg"
         onClose={() => {
           setIsTaskSelectorModalOpen(false);
           setTaskSearchQuery("");
         }}
-        size="lg"
-        scrollBehavior="inside"
       >
         <ModalContent>
           <ModalHeader className="flex flex-col gap-1">
-            <span className="text-lg font-semibold">Select Task or Epic to Discuss</span>
+            <span className="text-lg font-semibold">
+              Select Task or Epic to Discuss
+            </span>
             <span className="text-sm text-default-500 font-normal">
               Search and select a task or epic to start a discussion
             </span>
@@ -1257,9 +1453,9 @@ export default function GroomingSessionModal({
           <ModalBody className="pb-6">
             {/* Search Input */}
             <Input
+              isClearable
+              classNames={{ inputWrapper: "bg-default-100" }}
               placeholder="Search tasks and epics..."
-              value={taskSearchQuery}
-              onValueChange={setTaskSearchQuery}
               startContent={
                 <svg
                   className="w-4 h-4 text-default-400"
@@ -1275,9 +1471,9 @@ export default function GroomingSessionModal({
                   />
                 </svg>
               }
-              isClearable
+              value={taskSearchQuery}
               onClear={() => setTaskSearchQuery("")}
-              classNames={{ inputWrapper: "bg-default-100" }}
+              onValueChange={setTaskSearchQuery}
             />
 
             <ScrollShadow className="max-h-[400px] mt-4">
@@ -1294,24 +1490,28 @@ export default function GroomingSessionModal({
                         className="w-full text-left p-3 rounded-lg border border-default-200 hover:border-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all"
                         onClick={() => handleReferenceExistingTask(task)}
                       >
-                        <p className="text-sm font-medium text-default-800">{task.title}</p>
+                        <p className="text-sm font-medium text-default-800">
+                          {task.title}
+                        </p>
                         {task.description && (
-                          <p className="text-xs text-default-500 mt-1 line-clamp-2">{task.description}</p>
+                          <p className="text-xs text-default-500 mt-1 line-clamp-2">
+                            {task.description}
+                          </p>
                         )}
                         <div className="flex items-center gap-1.5 mt-2">
                           <Chip
-                            size="sm"
-                            color={CATEGORY_COLORS[task.category]}
-                            variant="flat"
                             classNames={{ base: "h-5", content: "text-xs px-1" }}
+                            color={CATEGORY_COLORS[task.category]}
+                            size="sm"
+                            variant="flat"
                           >
                             {task.category}
                           </Chip>
                           <Chip
-                            size="sm"
-                            color={PRIORITY_COLORS[task.priority]}
-                            variant="dot"
                             classNames={{ base: "h-5", content: "text-xs px-1" }}
+                            color={PRIORITY_COLORS[task.priority]}
+                            size="sm"
+                            variant="dot"
                           >
                             {task.priority}
                           </Chip>
@@ -1336,33 +1536,37 @@ export default function GroomingSessionModal({
                         onClick={() => handleReferenceTask(task)}
                       >
                         <div className="flex items-start justify-between">
-                          <p className="text-sm font-medium text-default-800">{task.title}</p>
+                          <p className="text-sm font-medium text-default-800">
+                            {task.title}
+                          </p>
                           {task.status === "approved" && (
                             <Chip
-                              size="sm"
-                              color="success"
-                              variant="flat"
                               classNames={{ base: "h-5 ml-2", content: "text-xs px-1" }}
+                              color="success"
+                              size="sm"
+                              variant="flat"
                             >
                               approved
                             </Chip>
                           )}
                         </div>
-                        <p className="text-xs text-default-500 mt-1 line-clamp-2">{task.description}</p>
+                        <p className="text-xs text-default-500 mt-1 line-clamp-2">
+                          {task.description}
+                        </p>
                         <div className="flex items-center gap-1.5 mt-2">
                           <Chip
-                            size="sm"
-                            color={CATEGORY_COLORS[task.category]}
-                            variant="flat"
                             classNames={{ base: "h-5", content: "text-xs px-1" }}
+                            color={CATEGORY_COLORS[task.category]}
+                            size="sm"
+                            variant="flat"
                           >
                             {task.category}
                           </Chip>
                           <Chip
-                            size="sm"
-                            color={PRIORITY_COLORS[task.priority]}
-                            variant="dot"
                             classNames={{ base: "h-5", content: "text-xs px-1" }}
+                            color={PRIORITY_COLORS[task.priority]}
+                            size="sm"
+                            variant="dot"
                           >
                             {task.priority}
                           </Chip>
@@ -1388,39 +1592,54 @@ export default function GroomingSessionModal({
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex items-center gap-2">
-                            <svg className="w-4 h-4 text-secondary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                            <svg
+                              className="w-4 h-4 text-secondary flex-shrink-0"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                              />
                             </svg>
-                            <p className="text-sm font-medium text-default-800">{epic.title}</p>
+                            <p className="text-sm font-medium text-default-800">
+                              {epic.title}
+                            </p>
                           </div>
                           {epic.status === "approved" && (
                             <Chip
-                              size="sm"
-                              color="success"
-                              variant="flat"
                               classNames={{ base: "h-5 ml-2", content: "text-xs px-1" }}
+                              color="success"
+                              size="sm"
+                              variant="flat"
                             >
                               approved
                             </Chip>
                           )}
                         </div>
-                        <p className="text-xs text-default-500 mt-1 line-clamp-2 ml-6">{epic.description}</p>
+                        <p className="text-xs text-default-500 mt-1 line-clamp-2 ml-6">
+                          {epic.description}
+                        </p>
                         <div className="flex items-center gap-1.5 mt-2 ml-6">
                           <Chip
-                            size="sm"
-                            color={PRIORITY_COLORS[epic.priority]}
-                            variant="dot"
                             classNames={{ base: "h-5", content: "text-xs px-1" }}
+                            color={PRIORITY_COLORS[epic.priority]}
+                            size="sm"
+                            variant="dot"
                           >
                             {epic.priority}
                           </Chip>
                           {epic.taskIds.length > 0 && (
                             <Chip
+                              classNames={{ base: "h-5", content: "text-xs px-1" }}
                               size="sm"
                               variant="flat"
-                              classNames={{ base: "h-5", content: "text-xs px-1" }}
                             >
-                              {epic.taskIds.length} task{epic.taskIds.length !== 1 ? "s" : ""}
+                              {epic.taskIds.length} task
+                              {epic.taskIds.length !== 1 ? "s" : ""}
                             </Chip>
                           )}
                         </div>
@@ -1432,29 +1651,29 @@ export default function GroomingSessionModal({
 
               {/* Empty state */}
               {filteredExistingTasks.length === 0 &&
-               filteredSuggestedTasks.length === 0 &&
-               filteredSuggestedEpics.length === 0 && (
-                <div className="text-center py-8">
-                  <svg
-                    className="w-12 h-12 mx-auto text-default-300 mb-3"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    />
-                  </svg>
-                  <p className="text-sm text-default-400">
-                    {taskSearchQuery
-                      ? `No tasks or epics found matching "${taskSearchQuery}"`
-                      : "No tasks or epics available"}
-                  </p>
-                </div>
-              )}
+                filteredSuggestedTasks.length === 0 &&
+                filteredSuggestedEpics.length === 0 && (
+                  <div className="text-center py-8">
+                    <svg
+                      className="w-12 h-12 mx-auto text-default-300 mb-3"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                    <p className="text-sm text-default-400">
+                      {taskSearchQuery
+                        ? `No tasks or epics found matching "${taskSearchQuery}"`
+                        : "No tasks or epics available"}
+                    </p>
+                  </div>
+                )}
             </ScrollShadow>
           </ModalBody>
         </ModalContent>
@@ -1508,26 +1727,26 @@ function TaskCard({
             </p>
             <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
               <Chip
-                size="sm"
-                color={CATEGORY_COLORS[task.category]}
-                variant="flat"
                 classNames={{ base: "h-5", content: "text-xs px-1" }}
+                color={CATEGORY_COLORS[task.category]}
+                size="sm"
+                variant="flat"
               >
                 {task.category}
               </Chip>
               <Chip
-                size="sm"
-                color={PRIORITY_COLORS[task.priority]}
-                variant="dot"
                 classNames={{ base: "h-5", content: "text-xs px-1" }}
+                color={PRIORITY_COLORS[task.priority]}
+                size="sm"
+                variant="dot"
               >
                 {task.priority}
               </Chip>
               {epicName && (
                 <Chip
+                  classNames={{ base: "h-5", content: "text-xs px-1" }}
                   size="sm"
                   variant="bordered"
-                  classNames={{ base: "h-5", content: "text-xs px-1" }}
                 >
                   {epicName}
                 </Chip>
@@ -1536,15 +1755,35 @@ function TaskCard({
           </div>
           {task.status === "approved" && (
             <div className="flex-shrink-0 p-1 bg-success-100 rounded-full">
-              <svg className="w-4 h-4 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <svg
+                className="w-4 h-4 text-success"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
             </div>
           )}
           {task.status === "rejected" && (
             <div className="flex-shrink-0 p-1 bg-default-200 rounded-full">
-              <svg className="w-4 h-4 text-default-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="w-4 h-4 text-default-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </div>
           )}
@@ -1554,16 +1793,25 @@ function TaskCard({
       {isExpanded && task.status === "pending" && (
         <div className="px-3 pb-3 space-y-3 border-t border-default-100">
           <div className="pt-3">
-            <p className="text-xs font-medium text-default-600 mb-1">Description</p>
-            <p className="text-sm text-default-700 whitespace-pre-wrap">{task.description}</p>
+            <p className="text-xs font-medium text-default-600 mb-1">
+              Description
+            </p>
+            <p className="text-sm text-default-700 whitespace-pre-wrap">
+              {task.description}
+            </p>
           </div>
 
           {task.acceptanceCriteria.length > 0 && (
             <div>
-              <p className="text-xs font-medium text-default-600 mb-1">Acceptance Criteria</p>
+              <p className="text-xs font-medium text-default-600 mb-1">
+                Acceptance Criteria
+              </p>
               <ul className="space-y-1">
                 {task.acceptanceCriteria.map((criterion, idx) => (
-                  <li key={idx} className="text-sm text-default-700 flex items-start gap-2">
+                  <li
+                    key={idx}
+                    className="text-sm text-default-700 flex items-start gap-2"
+                  >
                     <span className="text-default-400 mt-0.5">-</span>
                     <span>{criterion}</span>
                   </li>
@@ -1573,7 +1821,11 @@ function TaskCard({
           )}
 
           <div className="flex items-center gap-1.5 pt-2">
-            <Chip size="sm" variant="flat" classNames={{ base: "h-5", content: "text-xs px-1" }}>
+            <Chip
+              size="sm"
+              variant="flat"
+              classNames={{ base: "h-5", content: "text-xs px-1" }}
+            >
               {task.cleanArchitectureArea}
             </Chip>
           </div>
@@ -1581,24 +1833,36 @@ function TaskCard({
           <div className="flex gap-2 pt-2">
             <div className="flex-1" onClick={(e) => e.stopPropagation()}>
               <Button
-                size="sm"
-                color="primary"
-                variant="flat"
-                onPress={onReference}
                 className="w-full"
+                color="primary"
+                size="sm"
                 startContent={
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
                 }
+                variant="flat"
+                onPress={onReference}
               >
                 Discuss
               </Button>
             </div>
-            <Button size="sm" color="danger" variant="flat" onPress={onReject} className="flex-1">
+            <Button
+              size="sm"
+              color="danger"
+              variant="flat"
+              onPress={onReject}
+              className="flex-1"
+            >
               Reject
             </Button>
-            <Button size="sm" color="success" onPress={onApprove} isLoading={isApproving} className="flex-1">
+            <Button
+              size="sm"
+              color="success"
+              onPress={onApprove}
+              isLoading={isApproving}
+              className="flex-1"
+            >
               Approve
             </Button>
           </div>
@@ -1651,25 +1915,37 @@ function EpicCard({
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <svg className="w-4 h-4 text-secondary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              <svg
+                className="w-4 h-4 text-secondary flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                />
               </svg>
-              <p className="text-sm font-medium text-default-800 line-clamp-2">{epic.title}</p>
+              <p className="text-sm font-medium text-default-800 line-clamp-2">
+                {epic.title}
+              </p>
             </div>
             <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
               <Chip
-                size="sm"
-                color={PRIORITY_COLORS[epic.priority]}
-                variant="dot"
                 classNames={{ base: "h-5", content: "text-xs px-1" }}
+                color={PRIORITY_COLORS[epic.priority]}
+                size="sm"
+                variant="dot"
               >
                 {epic.priority}
               </Chip>
               {tasks.length > 0 && (
                 <Chip
+                  classNames={{ base: "h-5", content: "text-xs px-1" }}
                   size="sm"
                   variant="flat"
-                  classNames={{ base: "h-5", content: "text-xs px-1" }}
                 >
                   {tasks.length} task{tasks.length !== 1 ? "s" : ""}
                 </Chip>
@@ -1678,15 +1954,35 @@ function EpicCard({
           </div>
           {epic.status === "approved" && (
             <div className="flex-shrink-0 p-1 bg-success-100 rounded-full">
-              <svg className="w-4 h-4 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <svg
+                className="w-4 h-4 text-success"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
             </div>
           )}
           {epic.status === "rejected" && (
             <div className="flex-shrink-0 p-1 bg-default-200 rounded-full">
-              <svg className="w-4 h-4 text-default-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="w-4 h-4 text-default-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </div>
           )}
@@ -1696,8 +1992,12 @@ function EpicCard({
       {isExpanded && epic.status === "pending" && (
         <div className="px-3 pb-3 space-y-3 border-t border-default-100">
           <div className="pt-3">
-            <p className="text-xs font-medium text-default-600 mb-1">Description</p>
-            <p className="text-sm text-default-700 whitespace-pre-wrap">{epic.description}</p>
+            <p className="text-xs font-medium text-default-600 mb-1">
+              Description
+            </p>
+            <p className="text-sm text-default-700 whitespace-pre-wrap">
+              {epic.description}
+            </p>
           </div>
 
           {tasks.length > 0 && (
@@ -1707,11 +2007,26 @@ function EpicCard({
               </p>
               <ul className="space-y-1">
                 {tasks.map((task) => (
-                  <li key={task.id} className="text-sm text-default-700 flex items-start gap-2">
-                    <span className={task.status === "approved" ? "text-success" : "text-default-400"}>
+                  <li
+                    key={task.id}
+                    className="text-sm text-default-700 flex items-start gap-2"
+                  >
+                    <span
+                      className={
+                        task.status === "approved"
+                          ? "text-success"
+                          : "text-default-400"
+                      }
+                    >
                       {task.status === "approved" ? "✓" : "•"}
                     </span>
-                    <span className={task.status === "approved" ? "line-through text-default-400" : ""}>
+                    <span
+                      className={
+                        task.status === "approved"
+                          ? "line-through text-default-400"
+                          : ""
+                      }
+                    >
                       {task.title}
                     </span>
                   </li>
@@ -1723,25 +2038,39 @@ function EpicCard({
           <div className="flex gap-2 pt-2">
             <div className="flex-1" onClick={(e) => e.stopPropagation()}>
               <Button
-                size="sm"
-                color="primary"
-                variant="flat"
-                onPress={onReference}
                 className="w-full"
+                color="primary"
+                size="sm"
                 startContent={
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
                 }
+                variant="flat"
+                onPress={onReference}
               >
                 Discuss
               </Button>
             </div>
-            <Button size="sm" color="danger" variant="flat" onPress={onReject} className="flex-1">
+            <Button
+              size="sm"
+              color="danger"
+              variant="flat"
+              onPress={onReject}
+              className="flex-1"
+            >
               Reject
             </Button>
-            <Button size="sm" color="success" onPress={onApprove} isLoading={isApproving} className="flex-1">
-              {pendingTaskCount > 0 ? `Approve with ${pendingTaskCount} tasks` : "Approve"}
+            <Button
+              size="sm"
+              color="success"
+              onPress={onApprove}
+              isLoading={isApproving}
+              className="flex-1"
+            >
+              {pendingTaskCount > 0
+                ? `Approve with ${pendingTaskCount} tasks`
+                : "Approve"}
             </Button>
           </div>
         </div>

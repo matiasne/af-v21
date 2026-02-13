@@ -15,13 +15,15 @@ import { useTheme } from "next-themes";
 import { useAuth } from "@/infrastructure/context/AuthContext";
 import { useProjectChatSafe } from "@/infrastructure/context/ProjectChatContext";
 import { SetPasswordModal } from "@/components/SetPasswordModal";
+import { SunFilledIcon, MoonFilledIcon } from "@/components/icons";
 
 export const Navbar = () => {
-  const { user, loading, signOut, setPassword, hasPasswordProvider } = useAuth();
+  const { user, loading, signOut, setPassword, hasPasswordProvider } =
+    useAuth();
   const projectChatContext = useProjectChatSafe();
   const projectContext = projectChatContext?.projectContext;
   const [isSetPasswordModalOpen, setIsSetPasswordModalOpen] = useState(false);
-  const { theme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -38,11 +40,13 @@ export const Navbar = () => {
           <NextLink href="/">
             {mounted ? (
               <Image
-                src={theme === "dark" ? "/echo-logo-wh.svg" : "/echo-logo-bl.svg"}
-                alt="Echo Logo"
-                width={120}
-                height={33}
                 priority
+                alt="Echo Logo"
+                height={33}
+                src={
+                  theme === "dark" ? "/echo-logo-wh.svg" : "/echo-logo-bl.svg"
+                }
+                width={120}
               />
             ) : (
               <div style={{ width: 120, height: 33 }} />
@@ -77,16 +81,22 @@ export const Navbar = () => {
                   onAction={(key) => {
                     if (key === "set-password") {
                       setIsSetPasswordModalOpen(true);
+                    } else if (key === "theme") {
+                      setTheme(theme === "dark" ? "light" : "dark");
                     } else if (key === "logout") {
                       signOut();
                     }
                   }}
                 >
-                  <DropdownItem key="profile" className="h-14 gap-2" textValue="Profile">
+                  <DropdownItem
+                    key="profile"
+                    className="h-14 gap-2"
+                    textValue="Profile"
+                  >
                     <p className="font-semibold">Signed in as</p>
                     <p className="font-semibold">{user.email}</p>
                   </DropdownItem>
-                  <DropdownItem key="dashboard" href="/dashboard" as={NextLink}>
+                  <DropdownItem key="dashboard" as={NextLink} href="/dashboard">
                     Dashboard
                   </DropdownItem>
                   <DropdownItem
@@ -94,6 +104,18 @@ export const Navbar = () => {
                     className={showSetPasswordOption ? "" : "hidden"}
                   >
                     Set Password
+                  </DropdownItem>
+                  <DropdownItem
+                    key="theme"
+                    startContent={
+                      theme === "dark" ? (
+                        <SunFilledIcon size={18} />
+                      ) : (
+                        <MoonFilledIcon size={18} />
+                      )
+                    }
+                  >
+                    {theme === "dark" ? "Light Mode" : "Dark Mode"}
                   </DropdownItem>
                   <DropdownItem key="logout" color="danger">
                     Log Out
@@ -111,7 +133,6 @@ export const Navbar = () => {
         onOpenChange={setIsSetPasswordModalOpen}
         onSetPassword={setPassword}
       />
-
     </div>
   );
 };

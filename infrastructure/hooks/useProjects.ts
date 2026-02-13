@@ -13,28 +13,32 @@ export function useProjects() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const fetchProjects = useCallback(async (showLoading = true) => {
-    if (!user) {
-      setProjects([]);
-      setLoading(false);
+  const fetchProjects = useCallback(
+    async (showLoading = true) => {
+      if (!user) {
+        setProjects([]);
+        setLoading(false);
 
-      return;
-    }
+        return;
+      }
 
-    if (showLoading) {
-      setLoading(true);
-    }
-    setError(null);
+      if (showLoading) {
+        setLoading(true);
+      }
+      setError(null);
 
-    try {
-      const ownedProjects = await projectRepository.getProjects(user.uid);
-      setProjects(ownedProjects);
-    } catch (err) {
-      setError(err as Error);
-    } finally {
-      setLoading(false);
-    }
-  }, [user, projectRepository]);
+      try {
+        const ownedProjects = await projectRepository.getProjects(user.uid);
+
+        setProjects(ownedProjects);
+      } catch (err) {
+        setError(err as Error);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [user, projectRepository],
+  );
 
   useEffect(() => {
     fetchProjects();
@@ -111,9 +115,13 @@ export function useProjects() {
       if (!user) return [];
 
       try {
-        return await projectRepository.getConfigChatMessages(user.uid, projectId);
+        return await projectRepository.getConfigChatMessages(
+          user.uid,
+          projectId,
+        );
       } catch (err) {
         setError(err as Error);
+
         return [];
       }
     },
@@ -123,7 +131,7 @@ export function useProjects() {
   const addConfigChatMessage = useCallback(
     async (
       projectId: string,
-      message: Omit<ConfigChatMessage, "timestamp">
+      message: Omit<ConfigChatMessage, "timestamp">,
     ): Promise<string | null> => {
       if (!user) return null;
 
@@ -131,10 +139,11 @@ export function useProjects() {
         return await projectRepository.addConfigChatMessage(
           user.uid,
           projectId,
-          message
+          message,
         );
       } catch (err) {
         setError(err as Error);
+
         return null;
       }
     },
@@ -147,9 +156,11 @@ export function useProjects() {
 
       try {
         await projectRepository.clearConfigChatMessages(user.uid, projectId);
+
         return true;
       } catch (err) {
         setError(err as Error);
+
         return false;
       }
     },
@@ -161,9 +172,13 @@ export function useProjects() {
       if (!user) return [];
 
       try {
-        return await projectRepository.getGeneralChatMessages(user.uid, projectId);
+        return await projectRepository.getGeneralChatMessages(
+          user.uid,
+          projectId,
+        );
       } catch (err) {
         setError(err as Error);
+
         return [];
       }
     },
@@ -173,7 +188,7 @@ export function useProjects() {
   const addGeneralChatMessage = useCallback(
     async (
       projectId: string,
-      message: Omit<ConfigChatMessage, "timestamp">
+      message: Omit<ConfigChatMessage, "timestamp">,
     ): Promise<string | null> => {
       if (!user) return null;
 
@@ -181,10 +196,11 @@ export function useProjects() {
         return await projectRepository.addGeneralChatMessage(
           user.uid,
           projectId,
-          message
+          message,
         );
       } catch (err) {
         setError(err as Error);
+
         return null;
       }
     },
@@ -199,6 +215,7 @@ export function useProjects() {
         return await projectRepository.getLegacyFilesCount(user.uid, projectId);
       } catch (err) {
         setError(err as Error);
+
         return 0;
       }
     },
@@ -215,12 +232,17 @@ export function useProjects() {
 
       if (!user) {
         console.log("[useProjects] No user, skipping update");
+
         return;
       }
 
       try {
         console.log("[useProjects] Calling repository.updateExecutorModel");
-        await projectRepository.updateExecutorModel(user.uid, projectId, executorModel);
+        await projectRepository.updateExecutorModel(
+          user.uid,
+          projectId,
+          executorModel,
+        );
         console.log("[useProjects] updateExecutorModel completed successfully");
         // Optionally refresh projects to get the updated data
         await fetchProjects(false);
@@ -236,7 +258,11 @@ export function useProjects() {
     (projectId: string, onUpdate: (project: Project | null) => void) => {
       if (!user) return () => {};
 
-      return projectRepository.subscribeToProject(user.uid, projectId, onUpdate);
+      return projectRepository.subscribeToProject(
+        user.uid,
+        projectId,
+        onUpdate,
+      );
     },
     [user, projectRepository],
   );
@@ -248,10 +274,12 @@ export function useProjects() {
       setError(null);
 
       try {
-        await projectRepository.startCodeAnalysis(user.uid, projectId, migrationId);
+        await projectRepository.startCodeAnalysis(projectId, migrationId);
+
         return true;
       } catch (err) {
         setError(err as Error);
+
         return false;
       }
     },
@@ -265,10 +293,12 @@ export function useProjects() {
       setError(null);
 
       try {
-        await projectRepository.stopCodeAnalysis(user.uid, projectId, migrationId);
+        await projectRepository.stopCodeAnalysis(projectId, migrationId);
+
         return true;
       } catch (err) {
         setError(err as Error);
+
         return false;
       }
     },
@@ -277,19 +307,27 @@ export function useProjects() {
 
   const resumeCodeAnalysis = useCallback(
     async (projectId: string, migrationId: string): Promise<boolean> => {
-      console.log("[useProjects] resumeCodeAnalysis called:", { hasUser: !!user, projectId, migrationId });
+      console.log("[useProjects] resumeCodeAnalysis called:", {
+        hasUser: !!user,
+        projectId,
+        migrationId,
+      });
       if (!user) return false;
 
       setError(null);
 
       try {
-        console.log("[useProjects] Calling projectRepository.resumeCodeAnalysis");
-        await projectRepository.resumeCodeAnalysis(user.uid, projectId, migrationId);
+        console.log(
+          "[useProjects] Calling projectRepository.resumeCodeAnalysis",
+        );
+        await projectRepository.resumeCodeAnalysis(projectId, migrationId);
         console.log("[useProjects] resumeCodeAnalysis completed successfully");
+
         return true;
       } catch (err) {
         console.error("[useProjects] Error in resumeCodeAnalysis:", err);
         setError(err as Error);
+
         return false;
       }
     },
@@ -297,10 +335,23 @@ export function useProjects() {
   );
 
   const subscribeToExecutorModule = useCallback(
-    (projectId: string, onUpdate: (data: { boilerplateDone?: boolean; action?: string; error?: string } | null) => void) => {
+    (
+      projectId: string,
+      onUpdate: (
+        data: {
+          boilerplateDone?: boolean;
+          action?: string;
+          error?: string;
+        } | null,
+      ) => void,
+    ) => {
       if (!user) return () => {};
 
-      return projectRepository.subscribeToExecutorModule(user.uid, projectId, onUpdate);
+      return projectRepository.subscribeToExecutorModule(
+        user.uid,
+        projectId,
+        onUpdate,
+      );
     },
     [user, projectRepository],
   );
@@ -313,9 +364,11 @@ export function useProjects() {
 
       try {
         await projectRepository.startBoilerplate(user.uid, projectId);
+
         return true;
       } catch (err) {
         setError(err as Error);
+
         return false;
       }
     },
@@ -330,9 +383,11 @@ export function useProjects() {
 
       try {
         await projectRepository.restartExecutorModule(user.uid, projectId);
+
         return true;
       } catch (err) {
         setError(err as Error);
+
         return false;
       }
     },
@@ -340,18 +395,28 @@ export function useProjects() {
   );
 
   const inviteUserToProject = useCallback(
-    async (projectId: string, inviteeEmail: string): Promise<{ success: boolean; error?: string }> => {
+    async (
+      projectId: string,
+      inviteeEmail: string,
+    ): Promise<{ success: boolean; error?: string }> => {
       if (!user) return { success: false, error: "Not authenticated" };
 
       try {
-        const result = await projectRepository.inviteUserToProject(user.uid, projectId, inviteeEmail);
+        const result = await projectRepository.inviteUserToProject(
+          user.uid,
+          projectId,
+          inviteeEmail,
+        );
+
         if (result.success) {
           // Refresh projects to get updated sharedWith list
           await fetchProjects(false);
         }
+
         return result;
       } catch (err) {
         setError(err as Error);
+
         return { success: false, error: "Failed to invite user" };
       }
     },
@@ -359,18 +424,28 @@ export function useProjects() {
   );
 
   const removeUserFromProject = useCallback(
-    async (projectId: string, userIdToRemove: string): Promise<{ success: boolean; error?: string }> => {
+    async (
+      projectId: string,
+      userIdToRemove: string,
+    ): Promise<{ success: boolean; error?: string }> => {
       if (!user) return { success: false, error: "Not authenticated" };
 
       try {
-        const result = await projectRepository.removeUserFromProject(user.uid, projectId, userIdToRemove);
+        const result = await projectRepository.removeUserFromProject(
+          user.uid,
+          projectId,
+          userIdToRemove,
+        );
+
         if (result.success) {
           // Refresh projects to get updated sharedWith list
           await fetchProjects(false);
         }
+
         return result;
       } catch (err) {
         setError(err as Error);
+
         return { success: false, error: "Failed to remove user" };
       }
     },

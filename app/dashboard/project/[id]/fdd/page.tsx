@@ -8,6 +8,9 @@ import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Divider } from "@heroui/divider";
 import { Chip } from "@heroui/chip";
 import { Accordion, AccordionItem } from "@heroui/accordion";
+import { Link } from "@heroui/link";
+
+import { FDDSidebar, FileAnalysisModal } from "./components";
 
 import { useAuth } from "@/infrastructure/context/AuthContext";
 import { useProjects } from "@/infrastructure/hooks/useProjects";
@@ -22,8 +25,6 @@ import {
   getSubsectionFilename,
 } from "@/domain/entities/FDD";
 import { fddRepository } from "@/infrastructure/repositories/FirebaseFDDRepository";
-import { Link } from "@heroui/link";
-import { FDDSidebar, FileAnalysisModal } from "./components";
 
 function FileReferencesChip({
   files,
@@ -51,7 +52,11 @@ function FileReferencesChip({
     // e.g., "common/ACCEPT_NUMERIC.C" becomes "common_ACCEPT_NUMERIC.C"
     const fileId = filePath.replace(/\//g, "_");
 
-    console.log("FileReferencesChip: Clicked file", { filePath, fileName, fileId });
+    console.log("FileReferencesChip: Clicked file", {
+      filePath,
+      fileName,
+      fileId,
+    });
     setSelectedFileId(fileId);
     setSelectedFileName(fileName);
   };
@@ -62,9 +67,9 @@ function FileReferencesChip({
         {displayedFiles.map((file) => (
           <Chip
             key={file}
+            className="text-xs cursor-pointer hover:border-primary transition-colors"
             size="sm"
             variant="bordered"
-            className="text-xs cursor-pointer hover:border-primary transition-colors"
             onClick={() => handleFileClick(file)}
           >
             {file.split("/").pop()}
@@ -72,10 +77,10 @@ function FileReferencesChip({
         ))}
         {!expanded && files.length > 5 && (
           <Chip
+            className="cursor-pointer hover:bg-default-200 transition-colors"
+            color="default"
             size="sm"
             variant="flat"
-            color="default"
-            className="cursor-pointer hover:bg-default-200 transition-colors"
             onClick={() => setExpanded(true)}
           >
             +{files.length - 5} more
@@ -83,10 +88,10 @@ function FileReferencesChip({
         )}
         {expanded && files.length > 5 && (
           <Chip
+            className="cursor-pointer hover:bg-default-200 transition-colors"
+            color="default"
             size="sm"
             variant="flat"
-            color="default"
-            className="cursor-pointer hover:bg-default-200 transition-colors"
             onClick={() => setExpanded(false)}
           >
             Show less
@@ -96,16 +101,16 @@ function FileReferencesChip({
 
       {selectedFileId && (
         <FileAnalysisModal
+          fileId={selectedFileId}
+          fileName={selectedFileName}
           isOpen={!!selectedFileId}
+          migrationId={migrationId}
+          projectId={projectId}
+          userId={userId}
           onClose={() => {
             setSelectedFileId(null);
             setSelectedFileName("");
           }}
-          userId={userId}
-          projectId={projectId}
-          migrationId={migrationId}
-          fileId={selectedFileId}
-          fileName={selectedFileName}
         />
       )}
     </>
@@ -146,11 +151,11 @@ function DocumentLink({
 
   return (
     <Link
-      href={href}
-      size="sm"
-      color="secondary"
       showAnchorIcon
       className="text-xs"
+      color="secondary"
+      href={href}
+      size="sm"
     >
       View Document
     </Link>
@@ -177,18 +182,22 @@ function SectionCard({
       <CardHeader className="flex flex-col items-start gap-1">
         <div className="flex items-center gap-2 w-full justify-between">
           <div className="flex items-center gap-2">
-            <Chip size="sm" color="secondary" variant="flat">
+            <Chip color="secondary" size="sm" variant="flat">
               {section.number}
             </Chip>
             <h3 className="text-lg font-semibold">{section.title}</h3>
           </div>
           <div className="flex items-center gap-2">
             {section.fileReferences.length > 0 && (
-              <Chip size="sm" variant="flat" color="default">
+              <Chip color="default" size="sm" variant="flat">
                 {section.fileReferences.length} files
               </Chip>
             )}
-            <DocumentLink projectId={projectId} processId={processId} section={section} />
+            <DocumentLink
+              processId={processId}
+              projectId={projectId}
+              section={section}
+            />
           </div>
         </div>
         {section.description && (
@@ -201,16 +210,16 @@ function SectionCard({
         )}
         <FileReferencesChip
           files={section.fileReferences}
-          userId={userId}
-          projectId={projectId}
           migrationId={migrationId}
+          projectId={projectId}
+          userId={userId}
         />
       </CardHeader>
       {section.subsections.length > 0 && (
         <>
           <Divider />
           <CardBody className="pt-2">
-            <Accordion variant="light" selectionMode="multiple">
+            <Accordion selectionMode="multiple" variant="light">
               {section.subsections.map((subsection) => (
                 <AccordionItem
                   key={subsection.number}
@@ -226,13 +235,13 @@ function SectionCard({
                       <span className="font-medium">{subsection.title}</span>
                       <div className="flex items-center gap-2 ml-auto">
                         {subsection.fileReferences.length > 0 && (
-                          <Chip size="sm" variant="flat" color="default">
+                          <Chip color="default" size="sm" variant="flat">
                             {subsection.fileReferences.length} files
                           </Chip>
                         )}
                         <DocumentLink
-                          projectId={projectId}
                           processId={processId}
+                          projectId={projectId}
                           section={section}
                           subsection={subsection}
                         />
@@ -252,9 +261,9 @@ function SectionCard({
                   )}
                   <FileReferencesChip
                     files={subsection.fileReferences}
-                    userId={userId}
-                    projectId={projectId}
                     migrationId={migrationId}
+                    projectId={projectId}
+                    userId={userId}
                   />
                 </AccordionItem>
               ))}
@@ -271,21 +280,30 @@ export default function FDDPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const { projects, loading: projectsLoading } = useProjects();
-  const { setProjectContext, setCurrentProjectId, setIsConfiguration, setPageTitle, projectOwnerId } =
-    useProjectChat();
+  const {
+    setProjectContext,
+    setCurrentProjectId,
+    setIsConfiguration,
+    setPageTitle,
+    projectOwnerId,
+  } = useProjectChat();
   const [project, setProject] = useState<Project | null>(null);
   const [toc, setToc] = useState<FDDTableOfContents | null>(null);
   const [tocLoading, setTocLoading] = useState(true);
-  const [selectedSectionNumber, setSelectedSectionNumber] = useState<string | undefined>();
+  const [selectedSectionNumber, setSelectedSectionNumber] = useState<
+    string | undefined
+  >();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const sectionRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const projectId = params.id as string;
-  const { migration, initializing: migrationInitializing } = useMigration(projectId, projectOwnerId);
+  const { migration, initializing: migrationInitializing } =
+    useMigration(projectId);
 
   // Scroll to section when selected from sidebar
   const scrollToSection = useCallback((sectionNumber: string) => {
     const element = sectionRefs.current.get(sectionNumber);
+
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "start" });
       setSelectedSectionNumber(sectionNumber);
@@ -296,14 +314,14 @@ export default function FDDPage() {
     (section: FDDSection) => {
       scrollToSection(section.number);
     },
-    [scrollToSection]
+    [scrollToSection],
   );
 
   const handleSelectSubsection = useCallback(
     (section: FDDSection, subsection: FDDSubsection) => {
       scrollToSection(subsection.number);
     },
-    [scrollToSection]
+    [scrollToSection],
   );
 
   const setSectionRef = useCallback(
@@ -314,12 +332,13 @@ export default function FDDPage() {
         sectionRefs.current.delete(number);
       }
     },
-    []
+    [],
   );
 
   // Set page title
   useEffect(() => {
     setPageTitle("Functional Design Document");
+
     return () => setPageTitle(null);
   }, [setPageTitle]);
 
@@ -334,6 +353,7 @@ export default function FDDPage() {
   useEffect(() => {
     if (projects.length > 0 && projectId) {
       const foundProject = projects.find((p) => p.id === projectId);
+
       if (foundProject) {
         setProject(foundProject);
       } else {
@@ -365,13 +385,13 @@ export default function FDDPage() {
     if (!user?.uid || !projectId || !migration?.id) {
       setToc(null);
       setTocLoading(false);
+
       return;
     }
 
     setTocLoading(true);
 
     const unsubscribe = fddRepository.subscribeTableOfContents(
-      user.uid,
       projectId,
       migration.id,
       (updatedToc) => {
@@ -381,7 +401,7 @@ export default function FDDPage() {
       (error) => {
         console.error("Error subscribing to FDD TOC:", error);
         setTocLoading(false);
-      }
+      },
     );
 
     return () => {
@@ -411,8 +431,9 @@ export default function FDDPage() {
         const sectionRefs = s.fileReferences.length;
         const subsectionRefs = s.subsections.reduce(
           (subAcc, sub) => subAcc + sub.fileReferences.length,
-          0
+          0,
         );
+
         return acc + sectionRefs + subsectionRefs;
       }, 0)
     : 0;
@@ -429,10 +450,10 @@ export default function FDDPage() {
           {/* Sidebar Toggle Button (visible when sidebar is closed) */}
           {!isSidebarOpen && (
             <Button
-              size="sm"
-              variant="flat"
               isIconOnly
               className="fixed left-4 top-20 z-10"
+              size="sm"
+              variant="flat"
               onPress={() => setIsSidebarOpen(true)}
             >
               <svg
@@ -443,9 +464,9 @@ export default function FDDPage() {
                 viewBox="0 0 24 24"
               >
                 <path
+                  d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
                 />
               </svg>
             </Button>
@@ -459,17 +480,17 @@ export default function FDDPage() {
           >
             <div className="w-72 h-full relative">
               <FDDSidebar
+                selectedSectionNumber={selectedSectionNumber}
                 toc={toc}
                 onSelectSection={handleSelectSection}
                 onSelectSubsection={handleSelectSubsection}
-                selectedSectionNumber={selectedSectionNumber}
               />
               {/* Close Sidebar Button */}
               <Button
-                size="sm"
-                variant="light"
                 isIconOnly
                 className="absolute top-2 right-2 min-w-6 w-6 h-6"
+                size="sm"
+                variant="light"
                 onPress={() => setIsSidebarOpen(false)}
               >
                 <svg
@@ -480,9 +501,9 @@ export default function FDDPage() {
                   viewBox="0 0 24 24"
                 >
                   <path
+                    d="M15.75 19.5L8.25 12l7.5-7.5"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    d="M15.75 19.5L8.25 12l7.5-7.5"
                   />
                 </svg>
               </Button>
@@ -496,14 +517,15 @@ export default function FDDPage() {
         <div className="container mx-auto max-w-5xl px-4 py-8 pb-24">
           {/* Header */}
           <div className="mb-6 flex items-center justify-between">
-            <h2 className="text-lg font-medium text-default-500">{project.name}</h2>
+            <h2 className="text-lg font-medium text-default-500">
+              {project.name}
+            </h2>
             {toc && (
               <div className="flex items-center gap-2">
                 {migration && (
                   <Button
-                    size="sm"
-                    variant="flat"
                     color="primary"
+                    size="sm"
                     startContent={
                       <svg
                         className="h-4 w-4"
@@ -513,25 +535,31 @@ export default function FDDPage() {
                         viewBox="0 0 24 24"
                       >
                         <path
+                          d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776"
                           strokeLinecap="round"
                           strokeLinejoin="round"
-                          d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776"
                         />
                       </svg>
                     }
-                    onPress={() => router.push(`/dashboard/project/${projectId}/files-analysis`)}
+                    variant="flat"
+                    onPress={() =>
+                      router.push(
+                        `/dashboard/project/${projectId}/files-analysis`,
+                      )
+                    }
                   >
                     View Files
                   </Button>
                 )}
-                <Chip size="sm" variant="flat" color="secondary">
+                <Chip color="secondary" size="sm" variant="flat">
                   v{toc.version}
                 </Chip>
-                {toc.metadata?.enrichmentCount !== undefined && toc.metadata.enrichmentCount > 0 && (
-                  <Chip size="sm" variant="flat">
-                    {toc.metadata.enrichmentCount} enrichments
-                  </Chip>
-                )}
+                {toc.metadata?.enrichmentCount !== undefined &&
+                  toc.metadata.enrichmentCount > 0 && (
+                    <Chip size="sm" variant="flat">
+                      {toc.metadata.enrichmentCount} enrichments
+                    </Chip>
+                  )}
               </div>
             )}
           </div>
@@ -541,8 +569,8 @@ export default function FDDPage() {
             <div className="mb-8">
               <h1 className="text-2xl font-bold mb-2">{toc.title}</h1>
               <p className="text-sm text-default-400">
-                {toc.sections.length} sections • {totalSubsections} subsections •{" "}
-                {totalFileRefs} file references
+                {toc.sections.length} sections • {totalSubsections} subsections
+                • {totalFileRefs} file references
               </p>
             </div>
           )}
@@ -563,19 +591,22 @@ export default function FDDPage() {
                   viewBox="0 0 24 24"
                 >
                   <path
+                    d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
                   />
                 </svg>
               </div>
               <p className="text-default-500 mb-4">
-                No migration found. Start a migration to generate the Functional Design Document.
+                No migration found. Start a migration to generate the Functional
+                Design Document.
               </p>
               <Button
                 color="primary"
                 variant="flat"
-                onPress={() => router.push(`/dashboard/project/${projectId}/migration`)}
+                onPress={() =>
+                  router.push(`/dashboard/project/${projectId}/migration`)
+                }
               >
                 Go to Migration
               </Button>
@@ -591,19 +622,22 @@ export default function FDDPage() {
                   viewBox="0 0 24 24"
                 >
                   <path
+                    d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
                   />
                 </svg>
               </div>
               <p className="text-default-500 mb-4">
-                The Functional Design Document will be generated during the migration process.
+                The Functional Design Document will be generated during the
+                migration process.
               </p>
               <Button
                 color="primary"
                 variant="flat"
-                onPress={() => router.push(`/dashboard/project/${projectId}/migration`)}
+                onPress={() =>
+                  router.push(`/dashboard/project/${projectId}/migration`)
+                }
               >
                 Go to Migration
               </Button>
@@ -616,12 +650,12 @@ export default function FDDPage() {
                 {toc.sections.map((section) => (
                   <div key={section.number} ref={setSectionRef(section.number)}>
                     <SectionCard
-                      section={section}
-                      projectId={projectId}
+                      migrationId={migration!.id}
                       processId={migration!.id}
+                      projectId={projectId}
+                      section={section}
                       subsectionRefs={setSectionRef}
                       userId={user.uid}
-                      migrationId={migration!.id}
                     />
                   </div>
                 ))}

@@ -10,10 +10,7 @@ export interface RAGRepository {
   /**
    * Search for relevant information in the RAG store
    */
-  searchFiles(
-    query: string,
-    storeName: string
-  ): Promise<RAGSearchResult[]>;
+  searchFiles(query: string, storeName: string): Promise<RAGSearchResult[]>;
 
   /**
    * Get corpus details
@@ -30,7 +27,7 @@ export interface RAGRepository {
    */
   deleteDocumentByDisplayName(
     corpusName: string,
-    displayName: string
+    displayName: string,
   ): Promise<boolean>;
 
   /**
@@ -44,6 +41,6 @@ export interface RAGRepository {
   uploadDocument(
     corpusName: string,
     displayName: string,
-    content: string
+    content: string,
   ): Promise<RAGFile | null>;
 }

@@ -9,6 +9,8 @@ export interface MigrationPlannerStatus {
   description: string | null;
   error: string | null;
   logFile: string | null;
+  processedEpicFiles: string[];
+  processedTaskFiles: string[];
   tasksGenerated: number;
   updatedAt: number | null;
 }
@@ -23,7 +25,9 @@ export type MigrationPlannerAction =
   | "completed"
   | "error";
 
-export function getMigrationPlannerActionLabel(action: MigrationPlannerAction): string {
+export function getMigrationPlannerActionLabel(
+  action: MigrationPlannerAction,
+): string {
   switch (action) {
     case "pending":
       return "Pending";
@@ -46,7 +50,9 @@ export function getMigrationPlannerActionLabel(action: MigrationPlannerAction): 
   }
 }
 
-export function getMigrationPlannerActionColor(action: MigrationPlannerAction): "default" | "primary" | "secondary" | "success" | "warning" | "danger" {
+export function getMigrationPlannerActionColor(
+  action: MigrationPlannerAction,
+): "default" | "primary" | "secondary" | "success" | "warning" | "danger" {
   switch (action) {
     case "pending":
       return "default";

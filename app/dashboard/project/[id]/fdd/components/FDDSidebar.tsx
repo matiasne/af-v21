@@ -4,7 +4,12 @@ import { useState, useCallback } from "react";
 import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
 import { Tooltip } from "@heroui/tooltip";
-import { FDDTableOfContents, FDDSection, FDDSubsection } from "@/domain/entities/FDD";
+
+import {
+  FDDTableOfContents,
+  FDDSection,
+  FDDSubsection,
+} from "@/domain/entities/FDD";
 
 interface FDDSidebarProps {
   toc: FDDTableOfContents;
@@ -38,16 +43,18 @@ function TreeItem({
       {/* Section Item */}
       <div
         className={`flex items-center gap-1 w-full rounded-lg transition-colors ${
-          isSelected ? "bg-secondary-100 dark:bg-secondary-900/30" : "hover:bg-default-100"
+          isSelected
+            ? "bg-secondary-100 dark:bg-secondary-900/30"
+            : "hover:bg-default-100"
         }`}
       >
         {/* Expand/Collapse Button */}
         {hasSubsections ? (
           <Button
-            size="sm"
-            variant="light"
             isIconOnly
             className="min-w-6 w-6 h-6"
+            size="sm"
+            variant="light"
             onPress={onToggle}
           >
             <svg
@@ -60,9 +67,9 @@ function TreeItem({
               viewBox="0 0 24 24"
             >
               <path
+                d="M8.25 4.5l7.5 7.5-7.5 7.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                d="M8.25 4.5l7.5 7.5-7.5 7.5"
               />
             </svg>
           </Button>
@@ -89,6 +96,7 @@ function TreeItem({
         <div className="ml-6 pl-2 border-l border-default-200 dark:border-default-700 mt-1 space-y-0.5">
           {section.subsections.map((subsection) => {
             const isSubSelected = selectedSectionNumber === subsection.number;
+
             return (
               <button
                 key={subsection.number}
@@ -124,17 +132,19 @@ export function FDDSidebar({
 }: FDDSidebarProps) {
   // Track expanded sections
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
-    new Set(toc.sections.map((s) => s.number))
+    new Set(toc.sections.map((s) => s.number)),
   );
 
   const toggleSection = useCallback((sectionNumber: string) => {
     setExpandedSections((prev) => {
       const next = new Set(prev);
+
       if (next.has(sectionNumber)) {
         next.delete(sectionNumber);
       } else {
         next.add(sectionNumber);
       }
+
       return next;
     });
   }, []);
@@ -149,7 +159,7 @@ export function FDDSidebar({
 
   const totalSubsections = toc.sections.reduce(
     (acc, s) => acc + s.subsections.length,
-    0
+    0,
   );
 
   return (
@@ -161,10 +171,10 @@ export function FDDSidebar({
           <div className="flex items-center gap-1">
             <Tooltip content="Expand All">
               <Button
-                size="sm"
-                variant="light"
                 isIconOnly
                 className="min-w-6 w-6 h-6"
+                size="sm"
+                variant="light"
                 onPress={expandAll}
               >
                 <svg
@@ -175,19 +185,19 @@ export function FDDSidebar({
                   viewBox="0 0 24 24"
                 >
                   <path
+                    d="M19.5 8.25l-7.5 7.5-7.5-7.5"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    d="M19.5 8.25l-7.5 7.5-7.5-7.5"
                   />
                 </svg>
               </Button>
             </Tooltip>
             <Tooltip content="Collapse All">
               <Button
-                size="sm"
-                variant="light"
                 isIconOnly
                 className="min-w-6 w-6 h-6"
+                size="sm"
+                variant="light"
                 onPress={collapseAll}
               >
                 <svg
@@ -198,9 +208,9 @@ export function FDDSidebar({
                   viewBox="0 0 24 24"
                 >
                   <path
+                    d="M4.5 15.75l7.5-7.5 7.5 7.5"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    d="M4.5 15.75l7.5-7.5 7.5 7.5"
                   />
                 </svg>
               </Button>
@@ -208,7 +218,7 @@ export function FDDSidebar({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Chip size="sm" variant="flat" color="secondary">
+          <Chip color="secondary" size="sm" variant="flat">
             {toc.sections.length} sections
           </Chip>
           <Chip size="sm" variant="flat">
@@ -222,12 +232,12 @@ export function FDDSidebar({
         {toc.sections.map((section) => (
           <TreeItem
             key={section.number}
-            section={section}
             isExpanded={expandedSections.has(section.number)}
-            onToggle={() => toggleSection(section.number)}
+            section={section}
+            selectedSectionNumber={selectedSectionNumber}
             onSelectSection={onSelectSection}
             onSelectSubsection={onSelectSubsection}
-            selectedSectionNumber={selectedSectionNumber}
+            onToggle={() => toggleSection(section.number)}
           />
         ))}
       </div>

@@ -15,8 +15,17 @@ export interface Phase {
 }
 
 export type TaskStatus = "backlog" | "todo" | "in_progress" | "completed";
-export type TaskCategory = "backend" | "frontend" | "database" | "integration" | "api";
-export type CleanArchitectureArea = "domain" | "application" | "infrastructure" | "presentation";
+export type TaskCategory =
+  | "backend"
+  | "frontend"
+  | "database"
+  | "integration"
+  | "api";
+export type CleanArchitectureArea =
+  | "domain"
+  | "application"
+  | "infrastructure"
+  | "presentation";
 
 export interface ExecutionPlanTask {
   id: string;

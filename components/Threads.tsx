@@ -144,6 +144,7 @@ const Threads = ({
 
     const renderer = new Renderer({ alpha: true });
     const gl = renderer.gl;
+
     gl.clearColor(0, 0, 0, 0);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
@@ -159,7 +160,7 @@ const Threads = ({
           value: new Color(
             gl.canvas.width,
             gl.canvas.height,
-            gl.canvas.width / gl.canvas.height
+            gl.canvas.width / gl.canvas.height,
           ),
         },
         uColor: { value: new Color(...color) },
@@ -173,6 +174,7 @@ const Threads = ({
 
     function resize() {
       const { clientWidth, clientHeight } = container;
+
       renderer.setSize(clientWidth, clientHeight);
       program.uniforms.iResolution.value.r = clientWidth;
       program.uniforms.iResolution.value.g = clientHeight;
@@ -188,6 +190,7 @@ const Threads = ({
       const rect = container.getBoundingClientRect();
       const x = (e.clientX - rect.left) / rect.width;
       const y = 1.0 - (e.clientY - rect.top) / rect.height;
+
       targetMouse = [x, y];
     }
     function handleMouseLeave() {
@@ -201,6 +204,7 @@ const Threads = ({
     function update(t: number) {
       if (enableMouseInteraction) {
         const smoothing = 0.05;
+
         currentMouse[0] += smoothing * (targetMouse[0] - currentMouse[0]);
         currentMouse[1] += smoothing * (targetMouse[1] - currentMouse[1]);
         program.uniforms.uMouse.value[0] = currentMouse[0];

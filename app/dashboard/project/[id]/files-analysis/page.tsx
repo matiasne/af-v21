@@ -4,31 +4,43 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Spinner } from "@heroui/spinner";
 
+import { FileListSection } from "../fdd/components";
+
 import { useAuth } from "@/infrastructure/context/AuthContext";
 import { useProjects } from "@/infrastructure/hooks/useProjects";
 import { useMigration } from "@/infrastructure/hooks/useMigration";
 import { useProjectChat } from "@/infrastructure/context/ProjectChatContext";
 import { Project } from "@/domain/entities/Project";
-import { FileListSection } from "../fdd/components";
 
 export default function FilesAnalysisPage() {
   const params = useParams();
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const { projects, loading: projectsLoading } = useProjects();
-  const { setProjectContext, setCurrentProjectId, setIsConfiguration, setPageTitle, setBreadcrumbs, projectOwnerId } =
-    useProjectChat();
+  const {
+    setProjectContext,
+    setCurrentProjectId,
+    setIsConfiguration,
+    setPageTitle,
+    setBreadcrumbs,
+    projectOwnerId,
+  } = useProjectChat();
   const [project, setProject] = useState<Project | null>(null);
 
   const projectId = params.id as string;
-  const { migration, initializing: migrationInitializing } = useMigration(projectId, projectOwnerId);
+  const { migration, initializing: migrationInitializing } =
+    useMigration(projectId);
 
   // Set page title and breadcrumbs
   useEffect(() => {
     setPageTitle("Analyzed Files");
     setBreadcrumbs([
-      { label: "Current Application Knowledge", href: `/dashboard/project/${projectId}/fdd` }
+      {
+        label: "Current Application Knowledge",
+        href: `/dashboard/project/${projectId}/fdd`,
+      },
     ]);
+
     return () => {
       setPageTitle(null);
       setBreadcrumbs([]);
@@ -46,6 +58,7 @@ export default function FilesAnalysisPage() {
   useEffect(() => {
     if (projects.length > 0 && projectId) {
       const foundProject = projects.find((p) => p.id === projectId);
+
       if (foundProject) {
         setProject(foundProject);
       } else {
@@ -101,9 +114,9 @@ export default function FilesAnalysisPage() {
               viewBox="0 0 24 24"
             >
               <path
+                d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776"
               />
             </svg>
           </div>
@@ -125,9 +138,9 @@ export default function FilesAnalysisPage() {
       </div>
 
       <FileListSection
-        userId={user.uid}
-        projectId={projectId}
         migrationId={migration.id}
+        projectId={projectId}
+        userId={user.uid}
       />
     </div>
   );

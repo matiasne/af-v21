@@ -23,13 +23,14 @@ import {
 } from "@heroui/dropdown";
 import { Tooltip } from "@heroui/tooltip";
 
+import { GraphNode } from "./components/GraphNodesModal";
+
 import { useAuth } from "@/infrastructure/context/AuthContext";
 import { useProjects } from "@/infrastructure/hooks/useProjects";
 import { useMigration } from "@/infrastructure/hooks/useMigration";
 import { useProjectChat } from "@/infrastructure/context/ProjectChatContext";
 import { Project } from "@/domain/entities/Project";
 import {
-  ExecutionPlanTask,
   TaskCategory,
   CleanArchitectureArea,
 } from "@/domain/entities/ExecutionPlan";
@@ -42,24 +43,32 @@ import {
 import { groomingSessionRepository } from "@/infrastructure/repositories/FirebaseGroomingSessionRepository";
 import { executionPlanRepository } from "@/infrastructure/repositories/FirebaseExecutionPlanRepository";
 import { RAGCorpus, RAGFile } from "@/domain/entities/RAGFile";
-import { GraphNode } from "./components/GraphNodesModal";
 
 // RAG API helper functions
-async function ragGetOrCreateCorpus(corpusDisplayName: string): Promise<RAGCorpus | null> {
+async function ragGetOrCreateCorpus(
+  corpusDisplayName: string,
+): Promise<RAGCorpus | null> {
   try {
     const response = await fetch("/api/rag/files", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "getOrCreateCorpus", corpusDisplayName }),
     });
+
     if (!response.ok) {
-      console.error("[RAG API] getOrCreateCorpus failed:", await response.text());
+      console.error(
+        "[RAG API] getOrCreateCorpus failed:",
+        await response.text(),
+      );
+
       return null;
     }
     const data = await response.json();
+
     return data.corpus;
   } catch (error) {
     console.error("[RAG API] Error in getOrCreateCorpus:", error);
+
     return null;
   }
 }
@@ -80,7 +89,7 @@ async function ragUploadDocument(
   displayName: string,
   content: string,
   projectId?: string,
-  taskMetadata?: TaskMetadata
+  taskMetadata?: TaskMetadata,
 ): Promise<RAGFile | null> {
   try {
     const response = await fetch("/api/rag/files", {
@@ -95,14 +104,18 @@ async function ragUploadDocument(
         taskMetadata,
       }),
     });
+
     if (!response.ok) {
       console.error("[RAG API] uploadDocument failed:", await response.text());
+
       return null;
     }
     const data = await response.json();
+
     return data.document;
   } catch (error) {
     console.error("[RAG API] Error in uploadDocument:", error);
+
     return null;
   }
 }
@@ -180,8 +193,12 @@ export default function GroomingPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const { projects, loading: projectsLoading } = useProjects();
-  const { setProjectContext, setCurrentProjectId, setIsConfiguration, projectOwnerId } =
-    useProjectChat();
+  const {
+    setProjectContext,
+    setCurrentProjectId,
+    setIsConfiguration,
+    projectOwnerId,
+  } = useProjectChat();
 
   const projectId = params.id as string;
 
@@ -189,10 +206,7 @@ export default function GroomingPage() {
   const [existingTasks, setExistingTasks] = useState<ExistingTask[]>([]);
   const [tasksLoading, setTasksLoading] = useState(true);
 
-  const { loading: migrationLoading } = useMigration(
-    projectId,
-    projectOwnerId
-  );
+  const { loading: migrationLoading } = useMigration(projectId);
 
   // Use the tasks RAG store for searching similar tasks during grooming
   const tasksRagStoreName = project?.taskRAGStore || `${projectId}-tasks-rag`;
@@ -205,9 +219,9 @@ export default function GroomingPage() {
   const [expandedEpicId, setExpandedEpicId] = useState<string | null>(null);
   const [approvingTaskId, setApprovingTaskId] = useState<string | null>(null);
   const [approvingEpicId, setApprovingEpicId] = useState<string | null>(null);
-  const [uploadedDocuments, setUploadedDocuments] = useState<UploadedDocument[]>(
-    []
-  );
+  const [uploadedDocuments, setUploadedDocuments] = useState<
+    UploadedDocument[]
+  >([]);
   const [isProcessingDocument, setIsProcessingDocument] = useState(false);
   const [selectedTab, setSelectedTab] = useState<"tasks" | "epics">("tasks");
   const [isTaskSelectorModalOpen, setIsTaskSelectorModalOpen] = useState(false);
@@ -218,12 +232,15 @@ export default function GroomingPage() {
 
   // Session persistence state
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
-  const [currentSessionTitle, setCurrentSessionTitle] = useState<string | null>(null);
+  const [currentSessionTitle, setCurrentSessionTitle] = useState<string | null>(
+    null,
+  );
   const [previousSessions, setPreviousSessions] = useState<GroomingSession[]>(
-    []
+    [],
   );
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
-  const [isSessionSidebarCollapsed, setIsSessionSidebarCollapsed] = useState(false);
+  const [isSessionSidebarCollapsed, setIsSessionSidebarCollapsed] =
+    useState(false);
 
   // Session management states (pin, rename, delete)
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
@@ -236,12 +253,17 @@ export default function GroomingPage() {
 
   // Dependency management state
   const [isDependencyModalOpen, setIsDependencyModalOpen] = useState(false);
-  const [dependencyTargetTaskId, setDependencyTargetTaskId] = useState<string | null>(null);
+  const [dependencyTargetTaskId, setDependencyTargetTaskId] = useState<
+    string | null
+  >(null);
   const [dependencySearchQuery, setDependencySearchQuery] = useState("");
-  const [selectedDependencyType, setSelectedDependencyType] = useState<"DEPENDS_ON" | "BLOCKS">("DEPENDS_ON");
+  const [selectedDependencyType, setSelectedDependencyType] = useState<
+    "DEPENDS_ON" | "BLOCKS"
+  >("DEPENDS_ON");
 
   // Task detail modal state
-  const [selectedTaskForDetail, setSelectedTaskForDetail] = useState<SuggestedTask | null>(null);
+  const [selectedTaskForDetail, setSelectedTaskForDetail] =
+    useState<SuggestedTask | null>(null);
   const [isTaskDetailModalOpen, setIsTaskDetailModalOpen] = useState(false);
   const [isEditingTask, setIsEditingTask] = useState(false);
   const [editedTaskTitle, setEditedTaskTitle] = useState("");
@@ -263,6 +285,7 @@ export default function GroomingPage() {
   useEffect(() => {
     if (projects.length > 0 && projectId) {
       const foundProject = projects.find((p) => p.id === projectId);
+
       if (foundProject) {
         setProject(foundProject);
       } else {
@@ -294,6 +317,7 @@ export default function GroomingPage() {
     if (!user?.uid || !projectId) {
       setExistingTasks([]);
       setTasksLoading(false);
+
       return;
     }
 
@@ -310,14 +334,14 @@ export default function GroomingPage() {
             description: task.description,
             category: task.category,
             priority: task.priority,
-          }))
+          })),
         );
         setTasksLoading(false);
       },
       (error) => {
         console.error("Error subscribing to tasks:", error);
         setTasksLoading(false);
-      }
+      },
     );
 
     return () => {
@@ -336,7 +360,7 @@ export default function GroomingPage() {
   // Build task context string for the AI
   const buildTaskContext = (
     task: SuggestedTask | ExistingTask,
-    isSuggested: boolean = false
+    isSuggested: boolean = false,
   ) => {
     const suggestedTask = isSuggested ? (task as SuggestedTask) : null;
     const lines = [
@@ -345,6 +369,7 @@ export default function GroomingPage() {
       `Category: ${task.category}`,
       `Priority: ${task.priority}`,
     ];
+
     if (suggestedTask?.cleanArchitectureArea) {
       lines.push(`Architecture Layer: ${suggestedTask.cleanArchitectureArea}`);
     }
@@ -353,9 +378,10 @@ export default function GroomingPage() {
       suggestedTask.acceptanceCriteria.length > 0
     ) {
       lines.push(
-        `Acceptance Criteria:\n${suggestedTask.acceptanceCriteria.map((c) => `  - ${c}`).join("\n")}`
+        `Acceptance Criteria:\n${suggestedTask.acceptanceCriteria.map((c) => `  - ${c}`).join("\n")}`,
       );
     }
+
     return lines.join("\n");
   };
 
@@ -367,11 +393,13 @@ export default function GroomingPage() {
       `Description: ${epic.description}`,
       `Priority: ${epic.priority}`,
     ];
+
     if (epicTasks.length > 0) {
       lines.push(
-        `Related Tasks:\n${epicTasks.map((t) => `  - ${t.title}`).join("\n")}`
+        `Related Tasks:\n${epicTasks.map((t) => `  - ${t.title}`).join("\n")}`,
       );
     }
+
     return lines.join("\n");
   };
 
@@ -382,8 +410,9 @@ export default function GroomingPage() {
     try {
       const sessions = await groomingSessionRepository.getSessions(
         user.uid,
-        projectId
+        projectId,
       );
+
       setPreviousSessions(sessions);
     } catch (error) {
       console.error("Error loading previous sessions:", error);
@@ -396,6 +425,7 @@ export default function GroomingPage() {
   const sortedSessions = [...previousSessions].sort((a, b) => {
     if (a.pinned && !b.pinned) return -1;
     if (!a.pinned && b.pinned) return 1;
+
     return b.updatedAt - a.updatedAt;
   });
 
@@ -404,6 +434,7 @@ export default function GroomingPage() {
     if (!user?.uid || !projectId) return;
 
     const session = previousSessions.find((s) => s.id === sessionId);
+
     if (!session) return;
 
     try {
@@ -411,12 +442,10 @@ export default function GroomingPage() {
         user.uid,
         projectId,
         sessionId,
-        { pinned: !session.pinned }
+        { pinned: !session.pinned },
       );
       setPreviousSessions((prev) =>
-        prev.map((s) =>
-          s.id === sessionId ? { ...s, pinned: !s.pinned } : s
-        )
+        prev.map((s) => (s.id === sessionId ? { ...s, pinned: !s.pinned } : s)),
       );
     } catch (error) {
       console.error("Error pinning session:", error);
@@ -425,19 +454,27 @@ export default function GroomingPage() {
 
   // Handle rename session
   const handleRenameSession = async () => {
-    if (!user?.uid || !projectId || !renameSessionId || !renameSessionTitle.trim()) return;
+    if (
+      !user?.uid ||
+      !projectId ||
+      !renameSessionId ||
+      !renameSessionTitle.trim()
+    )
+      return;
 
     try {
       await groomingSessionRepository.updateSession(
         user.uid,
         projectId,
         renameSessionId,
-        { title: renameSessionTitle.trim() }
+        { title: renameSessionTitle.trim() },
       );
       setPreviousSessions((prev) =>
         prev.map((s) =>
-          s.id === renameSessionId ? { ...s, title: renameSessionTitle.trim() } : s
-        )
+          s.id === renameSessionId
+            ? { ...s, title: renameSessionTitle.trim() }
+            : s,
+        ),
       );
       setIsRenameModalOpen(false);
       setRenameSessionId(null);
@@ -455,7 +492,7 @@ export default function GroomingPage() {
       await groomingSessionRepository.deleteSession(
         user.uid,
         projectId,
-        sessionId
+        sessionId,
       );
       setPreviousSessions((prev) => prev.filter((s) => s.id !== sessionId));
 
@@ -494,6 +531,7 @@ export default function GroomingPage() {
       if (!isResizingSuggestions) return;
       const newWidth = window.innerWidth - e.clientX;
       const clampedWidth = Math.max(280, Math.min(600, newWidth));
+
       setSuggestionsPanelWidth(clampedWidth);
     };
 
@@ -526,7 +564,7 @@ export default function GroomingPage() {
       const sessionMessages = await groomingSessionRepository.getMessages(
         user.uid,
         projectId,
-        session.id
+        session.id,
       );
 
       // Convert to ChatMessage format
@@ -541,6 +579,7 @@ export default function GroomingPage() {
           role: "assistant",
           content: `Hello! I'm here to help you with your grooming session${projectContext?.name ? ` for **${projectContext.name}**` : ""}. Tell me about the features, improvements, or bugs you'd like to work on, and I'll help you break them down into actionable tasks and epics.\n\nYou can also upload documents (requirements, specs, user stories) and I'll extract tasks and epics from them.\n\nWhat would you like to discuss today?`,
         };
+
         chatMessages.push(greeting);
       }
 
@@ -567,7 +606,7 @@ export default function GroomingPage() {
             acceptanceCriteria: t.acceptanceCriteria,
             status: t.status,
             epicId: t.epicId,
-          }))
+          })),
         );
       }
 
@@ -580,7 +619,7 @@ export default function GroomingPage() {
             priority: e.priority,
             status: e.status,
             taskIds: e.taskIds,
-          }))
+          })),
         );
       }
     } catch (error) {
@@ -592,7 +631,7 @@ export default function GroomingPage() {
 
   // Create a new session
   const createSession = async (
-    firstMessageContent: string
+    firstMessageContent: string,
   ): Promise<string | null> => {
     if (!user?.uid || !projectId) return null;
     try {
@@ -605,8 +644,9 @@ export default function GroomingPage() {
       const sessionId = await groomingSessionRepository.createSession(
         user.uid,
         projectId,
-        title
+        title,
       );
+
       setCurrentSessionId(sessionId);
 
       // Refresh the sessions list to include the new session
@@ -615,6 +655,7 @@ export default function GroomingPage() {
       return sessionId;
     } catch (error) {
       console.error("Error creating session:", error);
+
       return null;
     }
   };
@@ -622,16 +663,17 @@ export default function GroomingPage() {
   // Save a message to the current session
   const saveMessage = async (
     message: Omit<GroomingSessionMessage, "timestamp">,
-    sessionId?: string | null
+    sessionId?: string | null,
   ) => {
     const targetSessionId = sessionId ?? currentSessionId;
+
     if (!user?.uid || !projectId || !targetSessionId) return;
     try {
       await groomingSessionRepository.addMessage(
         user.uid,
         projectId,
         targetSessionId,
-        message
+        message,
       );
     } catch (error) {
       console.error("Error saving message:", error);
@@ -642,9 +684,10 @@ export default function GroomingPage() {
   const saveSuggestionsToSession = async (
     tasks: SuggestedTask[],
     epics: SuggestedEpic[],
-    sessionId?: string | null
+    sessionId?: string | null,
   ) => {
     const targetSessionId = sessionId ?? currentSessionId;
+
     if (!user?.uid || !projectId || !targetSessionId) return;
     try {
       // Convert to domain format
@@ -676,7 +719,7 @@ export default function GroomingPage() {
         {
           suggestedTasks: domainTasks,
           suggestedEpics: domainEpics,
-        }
+        },
       );
     } catch (error) {
       console.error("Error saving suggestions:", error);
@@ -696,11 +739,13 @@ export default function GroomingPage() {
 
     const userMessage: ChatMessage = { role: "user", content: messageContent };
     const newMessages = [...messages, userMessage];
+
     setMessages(newMessages);
     setIsLoading(true);
 
     // Create session if this is the first user message
     let sessionId = currentSessionId;
+
     if (!sessionId && user?.uid && projectId) {
       sessionId = await createSession(messageContent);
     }
@@ -718,9 +763,15 @@ export default function GroomingPage() {
               .join("\n\n---\n\n")
           : undefined;
 
-      console.log("[Grooming Page] Sending request with tasksRagStoreName:", tasksRagStoreName);
+      console.log(
+        "[Grooming Page] Sending request with tasksRagStoreName:",
+        tasksRagStoreName,
+      );
       console.log("[Grooming Page] projectId:", projectId);
-      console.log("[Grooming Page] project?.taskRAGStore:", project?.taskRAGStore);
+      console.log(
+        "[Grooming Page] project?.taskRAGStore:",
+        project?.taskRAGStore,
+      );
 
       const response = await fetch("/api/chat/grooming", {
         method: "POST",
@@ -754,12 +805,13 @@ export default function GroomingPage() {
       if (sessionId) {
         await saveMessage(
           { role: "assistant", content: data.message.content },
-          sessionId
+          sessionId,
         );
       }
 
       // Update suggested tasks
       let updatedTasks = suggestedTasks;
+
       if (data.suggestedTasks && data.suggestedTasks.length > 0) {
         setSuggestedTasks((prev) => {
           const existingIds = new Set(prev.map((t) => t.id));
@@ -769,13 +821,16 @@ export default function GroomingPage() {
               ...t,
               status: "pending" as const,
             }));
+
           updatedTasks = [...prev, ...newTasks];
+
           return updatedTasks;
         });
       }
 
       // Update suggested epics
       let updatedEpics = suggestedEpics;
+
       if (data.suggestedEpics && data.suggestedEpics.length > 0) {
         setSuggestedEpics((prev) => {
           const existingIds = new Set(prev.map((e) => e.id));
@@ -785,7 +840,9 @@ export default function GroomingPage() {
               ...e,
               status: "pending" as const,
             }));
+
           updatedEpics = [...prev, ...newEpics];
+
           return updatedEpics;
         });
       }
@@ -812,6 +869,7 @@ export default function GroomingPage() {
   const handleReferenceTask = (task: SuggestedTask) => {
     const taskContext = buildTaskContext(task, true);
     const messageContent = `I want to discuss this task:\n\n${taskContext}`;
+
     setIsTaskSelectorModalOpen(false);
     setTaskSearchQuery("");
     sendMessageDirectly(messageContent);
@@ -821,6 +879,7 @@ export default function GroomingPage() {
   const handleReferenceEpic = (epic: SuggestedEpic) => {
     const epicContext = buildEpicContext(epic);
     const messageContent = `I want to discuss this epic:\n\n${epicContext}`;
+
     setIsTaskSelectorModalOpen(false);
     setTaskSearchQuery("");
     sendMessageDirectly(messageContent);
@@ -830,6 +889,7 @@ export default function GroomingPage() {
   const handleReferenceExistingTask = (task: ExistingTask) => {
     const taskContext = buildTaskContext(task, false);
     const messageContent = `I want to discuss this existing project task:\n\n${taskContext}`;
+
     setIsTaskSelectorModalOpen(false);
     setTaskSearchQuery("");
     sendMessageDirectly(messageContent);
@@ -840,7 +900,7 @@ export default function GroomingPage() {
     (task) =>
       task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
       (task.description &&
-        task.description.toLowerCase().includes(taskSearchQuery.toLowerCase()))
+        task.description.toLowerCase().includes(taskSearchQuery.toLowerCase())),
   );
 
   const filteredSuggestedTasks = suggestedTasks
@@ -848,7 +908,7 @@ export default function GroomingPage() {
     .filter(
       (task) =>
         task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
-        task.description.toLowerCase().includes(taskSearchQuery.toLowerCase())
+        task.description.toLowerCase().includes(taskSearchQuery.toLowerCase()),
     );
 
   const filteredSuggestedEpics = suggestedEpics
@@ -856,7 +916,7 @@ export default function GroomingPage() {
     .filter(
       (epic) =>
         epic.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
-        epic.description.toLowerCase().includes(taskSearchQuery.toLowerCase())
+        epic.description.toLowerCase().includes(taskSearchQuery.toLowerCase()),
     );
 
   const scrollToBottom = () => {
@@ -881,6 +941,7 @@ export default function GroomingPage() {
         role: "assistant",
         content: `Hello! I'm here to help you with your grooming session${projectContext?.name ? ` for **${projectContext.name}**` : ""}. Tell me about the features, improvements, or bugs you'd like to work on, and I'll help you break them down into actionable tasks and epics.\n\nYou can also upload documents (requirements, specs, user stories) and I'll extract tasks and epics from them.\n\nWhat would you like to discuss today?`,
       };
+
       setMessages([greeting]);
     }
   }, [
@@ -894,9 +955,10 @@ export default function GroomingPage() {
   ]);
 
   const handleFileUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>
+    event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const files = event.target.files;
+
     if (!files || files.length === 0) return;
 
     setIsProcessingDocument(true);
@@ -919,6 +981,7 @@ export default function GroomingPage() {
         };
 
         const newMessages = [...messages, uploadMessage];
+
         setMessages(newMessages);
         setIsLoading(true);
 
@@ -929,8 +992,12 @@ export default function GroomingPage() {
           body: JSON.stringify({
             messages: newMessages,
             projectContext,
-            existingTasks: suggestedTasks.filter((t) => t.status !== "rejected"),
-            existingEpics: suggestedEpics.filter((e) => e.status !== "rejected"),
+            existingTasks: suggestedTasks.filter(
+              (t) => t.status !== "rejected",
+            ),
+            existingEpics: suggestedEpics.filter(
+              (e) => e.status !== "rejected",
+            ),
             documentContent: content,
             documentName: file.name,
             ragStoreName: tasksRagStoreName,
@@ -962,6 +1029,7 @@ export default function GroomingPage() {
                 ...t,
                 status: "pending" as const,
               }));
+
             return [...prev, ...newTasks];
           });
         }
@@ -976,6 +1044,7 @@ export default function GroomingPage() {
                 ...e,
                 status: "pending" as const,
               }));
+
             return [...prev, ...newEpics];
           });
         }
@@ -1002,8 +1071,10 @@ export default function GroomingPage() {
   const readFileContent = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
+
       reader.onload = (e) => {
         const content = e.target?.result as string;
+
         resolve(content);
       };
       reader.onerror = () => reject(new Error("Failed to read file"));
@@ -1013,6 +1084,7 @@ export default function GroomingPage() {
 
   const getFileType = (filename: string): string => {
     const ext = filename.split(".").pop()?.toLowerCase();
+
     switch (ext) {
       case "md":
         return "text/markdown";
@@ -1037,12 +1109,14 @@ export default function GroomingPage() {
     const messageContent = inputValue.trim();
     const userMessage: ChatMessage = { role: "user", content: messageContent };
     const newMessages = [...messages, userMessage];
+
     setMessages(newMessages);
     setInputValue("");
     setIsLoading(true);
 
     // Create session if this is the first user message
     let sessionId = currentSessionId;
+
     if (!sessionId && user?.uid && projectId) {
       sessionId = await createSession(messageContent);
     }
@@ -1093,12 +1167,13 @@ export default function GroomingPage() {
       if (sessionId) {
         await saveMessage(
           { role: "assistant", content: data.message.content },
-          sessionId
+          sessionId,
         );
       }
 
       // Update suggested tasks
       let updatedTasks = suggestedTasks;
+
       if (data.suggestedTasks && data.suggestedTasks.length > 0) {
         setSuggestedTasks((prev) => {
           const existingIds = new Set(prev.map((t) => t.id));
@@ -1108,13 +1183,16 @@ export default function GroomingPage() {
               ...t,
               status: "pending" as const,
             }));
+
           updatedTasks = [...prev, ...newTasks];
+
           return updatedTasks;
         });
       }
 
       // Update suggested epics
       let updatedEpics = suggestedEpics;
+
       if (data.suggestedEpics && data.suggestedEpics.length > 0) {
         setSuggestedEpics((prev) => {
           const existingIds = new Set(prev.map((e) => e.id));
@@ -1124,7 +1202,9 @@ export default function GroomingPage() {
               ...e,
               status: "pending" as const,
             }));
+
           updatedEpics = [...prev, ...newEpics];
+
           return updatedEpics;
         });
       }
@@ -1165,15 +1245,16 @@ export default function GroomingPage() {
       const taskId = await executionPlanRepository.createTask(
         user.uid,
         projectId,
-        taskData
+        taskData,
       );
 
       // Store task in RAG for semantic search
       const ragStoreNameForTasks =
         project?.taskRAGStore || `${projectId}-tasks-rag`;
+
       try {
-        const corpus =
-          await ragGetOrCreateCorpus(ragStoreNameForTasks);
+        const corpus = await ragGetOrCreateCorpus(ragStoreNameForTasks);
+
         if (corpus) {
           const taskContent = [
             `Task: ${taskData.title}`,
@@ -1205,7 +1286,7 @@ export default function GroomingPage() {
               cleanArchitectureArea: taskData.cleanArchitectureArea,
               dependsOn: dependsOnIds.length > 0 ? dependsOnIds : undefined,
               blocks: blocksIds.length > 0 ? blocksIds : undefined,
-            }
+            },
           );
         }
       } catch (ragError) {
@@ -1226,7 +1307,7 @@ export default function GroomingPage() {
       description: string;
       priority: "high" | "medium" | "low";
     },
-    taskIds: string[]
+    taskIds: string[],
   ) => {
     if (!user?.uid || !projectId) return;
 
@@ -1238,7 +1319,7 @@ export default function GroomingPage() {
           title: epicData.title,
           description: epicData.description,
           priority: epicData.priority,
-        }
+        },
       );
 
       if (taskIds.length > 0) {
@@ -1246,7 +1327,7 @@ export default function GroomingPage() {
           user.uid,
           projectId,
           epicId,
-          taskIds
+          taskIds,
         );
       }
     } catch (error) {
@@ -1269,8 +1350,9 @@ export default function GroomingPage() {
         blocks: task.blocks,
       });
       const updatedTasks = suggestedTasks.map((t) =>
-        t.id === task.id ? { ...t, status: "approved" as const } : t
+        t.id === task.id ? { ...t, status: "approved" as const } : t,
       );
+
       setSuggestedTasks(updatedTasks);
       // Save the updated status to the session
       await saveSuggestionsToSession(updatedTasks, suggestedEpics);
@@ -1283,8 +1365,9 @@ export default function GroomingPage() {
 
   const handleRejectTask = async (taskId: string) => {
     const updatedTasks = suggestedTasks.map((t) =>
-      t.id === taskId ? { ...t, status: "rejected" as const } : t
+      t.id === taskId ? { ...t, status: "rejected" as const } : t,
     );
+
     setSuggestedTasks(updatedTasks);
     // Save the updated status to the session
     await saveSuggestionsToSession(updatedTasks, suggestedEpics);
@@ -1329,14 +1412,19 @@ export default function GroomingPage() {
       prev.map((t) =>
         t.id === selectedTaskForDetail.id
           ? { ...t, title: editedTaskTitle, description: editedTaskDescription }
-          : t
-      )
+          : t,
+      ),
     );
 
     // Update the selected task
     setSelectedTaskForDetail((prev) => {
       if (!prev) return prev;
-      return { ...prev, title: editedTaskTitle, description: editedTaskDescription };
+
+      return {
+        ...prev,
+        title: editedTaskTitle,
+        description: editedTaskDescription,
+      };
     });
 
     setIsEditingTask(false);
@@ -1350,7 +1438,11 @@ export default function GroomingPage() {
     setIsDependencyModalOpen(true);
   };
 
-  const handleRemoveDependency = (taskId: string, depTaskId: string, type: "DEPENDS_ON" | "BLOCKS") => {
+  const handleRemoveDependency = (
+    taskId: string,
+    depTaskId: string,
+    type: "DEPENDS_ON" | "BLOCKS",
+  ) => {
     setSuggestedTasks((prev) =>
       prev.map((t) => {
         if (t.id !== taskId) return t;
@@ -1365,11 +1457,15 @@ export default function GroomingPage() {
             blocks: t.blocks?.filter((d) => d.taskId !== depTaskId) || [],
           };
         }
-      })
+      }),
     );
   };
 
-  const handleConfirmAddDependency = (selectedTask: { id: string; title: string; isExisting: boolean }) => {
+  const handleConfirmAddDependency = (selectedTask: {
+    id: string;
+    title: string;
+    isExisting: boolean;
+  }) => {
     if (!dependencyTargetTaskId) return;
 
     const newDep: TaskDependency = {
@@ -1385,18 +1481,20 @@ export default function GroomingPage() {
         if (selectedDependencyType === "DEPENDS_ON") {
           // Check if already exists
           if (t.dependsOn?.some((d) => d.taskId === selectedTask.id)) return t;
+
           return {
             ...t,
             dependsOn: [...(t.dependsOn || []), newDep],
           };
         } else {
           if (t.blocks?.some((d) => d.taskId === selectedTask.id)) return t;
+
           return {
             ...t,
             blocks: [...(t.blocks || []), newDep],
           };
         }
-      })
+      }),
     );
 
     setIsDependencyModalOpen(false);
@@ -1407,7 +1505,10 @@ export default function GroomingPage() {
   const getAvailableTasksForDependency = useCallback(() => {
     if (!dependencyTargetTaskId) return [];
 
-    const currentTask = suggestedTasks.find((t) => t.id === dependencyTargetTaskId);
+    const currentTask = suggestedTasks.find(
+      (t) => t.id === dependencyTargetTaskId,
+    );
+
     if (!currentTask) return [];
 
     // Filter suggested tasks (exclude current task and already added dependencies)
@@ -1417,10 +1518,12 @@ export default function GroomingPage() {
         if (t.status === "rejected") return false;
         // Check if already a dependency
         if (selectedDependencyType === "DEPENDS_ON") {
-          if (currentTask.dependsOn?.some((d) => d.taskId === t.id)) return false;
+          if (currentTask.dependsOn?.some((d) => d.taskId === t.id))
+            return false;
         } else {
           if (currentTask.blocks?.some((d) => d.taskId === t.id)) return false;
         }
+
         return true;
       })
       .map((t) => ({ id: t.id, title: t.title, isExisting: false }));
@@ -1429,28 +1532,36 @@ export default function GroomingPage() {
     const existingOptions = existingTasks
       .filter((t) => {
         if (selectedDependencyType === "DEPENDS_ON") {
-          if (currentTask.dependsOn?.some((d) => d.taskId === t.id)) return false;
+          if (currentTask.dependsOn?.some((d) => d.taskId === t.id))
+            return false;
         } else {
           if (currentTask.blocks?.some((d) => d.taskId === t.id)) return false;
         }
+
         return true;
       })
       .map((t) => ({ id: t.id, title: t.title, isExisting: true }));
 
     return [...suggestedOptions, ...existingOptions];
-  }, [dependencyTargetTaskId, suggestedTasks, existingTasks, selectedDependencyType]);
+  }, [
+    dependencyTargetTaskId,
+    suggestedTasks,
+    existingTasks,
+    selectedDependencyType,
+  ]);
 
   const handleApproveEpic = async (epic: SuggestedEpic) => {
     setApprovingEpicId(epic.id);
     try {
       // Get the tasks that belong to this epic and are pending
       const epicTasks = suggestedTasks.filter(
-        (t) => t.epicId === epic.id && t.status === "pending"
+        (t) => t.epicId === epic.id && t.status === "pending",
       );
 
       // First, create all the tasks that belong to this epic and collect the real Firestore IDs
       const createdTaskIds: string[] = [];
       let updatedTasks = [...suggestedTasks];
+
       for (const task of epicTasks) {
         const createdTaskId = await handleCreateTask({
           title: task.title,
@@ -1460,10 +1571,11 @@ export default function GroomingPage() {
           cleanArchitectureArea: task.cleanArchitectureArea,
           acceptanceCriteria: task.acceptanceCriteria,
         });
+
         createdTaskIds.push(createdTaskId);
         // Mark task as approved in the updated array
         updatedTasks = updatedTasks.map((t) =>
-          t.id === task.id ? { ...t, status: "approved" as const } : t
+          t.id === task.id ? { ...t, status: "approved" as const } : t,
         );
       }
       setSuggestedTasks(updatedTasks);
@@ -1475,12 +1587,13 @@ export default function GroomingPage() {
           description: epic.description,
           priority: epic.priority,
         },
-        createdTaskIds
+        createdTaskIds,
       );
 
       const updatedEpics = suggestedEpics.map((e) =>
-        e.id === epic.id ? { ...e, status: "approved" as const } : e
+        e.id === epic.id ? { ...e, status: "approved" as const } : e,
       );
+
       setSuggestedEpics(updatedEpics);
       setExpandedEpicId(null);
 
@@ -1495,8 +1608,9 @@ export default function GroomingPage() {
 
   const handleRejectEpic = async (epicId: string) => {
     const updatedEpics = suggestedEpics.map((e) =>
-      e.id === epicId ? { ...e, status: "rejected" as const } : e
+      e.id === epicId ? { ...e, status: "rejected" as const } : e,
     );
+
     setSuggestedEpics(updatedEpics);
     setExpandedEpicId(null);
     // Save the updated status to the session
@@ -1519,6 +1633,7 @@ export default function GroomingPage() {
       role: "assistant",
       content: `Hello! I'm here to help you with your grooming session${projectContext?.name ? ` for **${projectContext.name}**` : ""}. Tell me about the features, improvements, or bugs you'd like to work on, and I'll help you break them down into actionable tasks and epics.\n\nYou can also upload documents (requirements, specs, user stories) and I'll extract tasks and epics from them.\n\nWhat would you like to discuss today?`,
     };
+
     setMessages([greeting]);
   };
 
@@ -1536,6 +1651,7 @@ export default function GroomingPage() {
     if (diffHours < 24)
       return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
     if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+
     return date.toLocaleDateString();
   };
 
@@ -1571,65 +1687,116 @@ export default function GroomingPage() {
       <div
         className="flex-1 overflow-hidden px-4 py-3"
         style={{
-          display: 'grid',
+          display: "grid",
           gridTemplateColumns: isSessionSidebarCollapsed
             ? `52px 1fr ${suggestionsPanelWidth}px`
             : `280px 1fr ${suggestionsPanelWidth}px`,
-          gap: '12px',
-          height: '100%',
+          gap: "12px",
+          height: "100%",
         }}
       >
         {/* Left sidebar - Session History */}
-        <div
-          className="flex flex-col border border-default-200 bg-default-50/50 dark:bg-default-100/20 transition-all duration-300 overflow-hidden rounded-xl"
-        >
+        <div className="flex flex-col border border-default-200 bg-default-50/50 dark:bg-default-100/20 transition-all duration-300 overflow-hidden rounded-xl">
           {/* Toggle Sidebar Button */}
-          <div className={`p-3 pb-0 ${isSessionSidebarCollapsed ? "flex justify-center" : ""}`}>
-            <Tooltip content={isSessionSidebarCollapsed ? "Open sidebar" : "Close sidebar"} placement="right">
+          <div
+            className={`p-3 pb-0 ${isSessionSidebarCollapsed ? "flex justify-center" : ""}`}
+          >
+            <Tooltip
+              content={
+                isSessionSidebarCollapsed ? "Open sidebar" : "Close sidebar"
+              }
+              placement="right"
+            >
               <Button
-                variant="light"
                 isIconOnly
                 className="h-10 w-10 text-default-700 hover:bg-default-100"
-                onPress={() => setIsSessionSidebarCollapsed(!isSessionSidebarCollapsed)}
+                variant="light"
+                onPress={() =>
+                  setIsSessionSidebarCollapsed(!isSessionSidebarCollapsed)
+                }
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                  />
                 </svg>
               </Button>
             </Tooltip>
           </div>
 
           {/* Back to Task Board & New Chat Buttons */}
-          <div className={`p-3 space-y-1 ${isSessionSidebarCollapsed ? "flex flex-col items-center" : "mt-2"}`}>
+          <div
+            className={`p-3 space-y-1 ${isSessionSidebarCollapsed ? "flex flex-col items-center" : "mt-2"}`}
+          >
             {!isSessionSidebarCollapsed ? (
               <>
                 <Button
-                  variant="light"
                   className="w-full justify-start gap-2 h-9 px-3 text-default-600 hover:bg-default-100 rounded-xl"
-                  onPress={() => router.push(`/dashboard/project/${projectId}/kanban`)}
+                  variant="light"
+                  onPress={() =>
+                    router.push(`/dashboard/project/${projectId}/kanban`)
+                  }
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M15 19l-7-7 7-7"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                    />
                   </svg>
                   <span className="text-sm">Back to Task Board</span>
                 </Button>
                 <Button
-                  variant="light"
                   className="w-full justify-start gap-2 h-9 px-3 text-default-600 hover:bg-default-100 rounded-xl"
+                  variant="light"
                   onPress={() => router.push(`/dashboard/project/${projectId}`)}
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                    />
                   </svg>
                   <span className="text-sm">Start Migration</span>
                 </Button>
                 <Button
-                  variant="light"
                   className="w-full justify-start gap-2 h-9 px-3 text-default-600 hover:bg-default-100 rounded-xl"
+                  variant="light"
                   onPress={handleStartNewSession}
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                    />
                   </svg>
                   <span className="text-sm">New chat</span>
                 </Button>
@@ -1638,37 +1805,71 @@ export default function GroomingPage() {
               <>
                 <Tooltip content="Back to Task Board" placement="right">
                   <Button
-                    variant="light"
                     isIconOnly
                     className="w-full h-9 text-default-600 hover:bg-default-100 rounded-xl"
-                    onPress={() => router.push(`/dashboard/project/${projectId}/kanban`)}
+                    variant="light"
+                    onPress={() =>
+                      router.push(`/dashboard/project/${projectId}/kanban`)
+                    }
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M15 19l-7-7 7-7"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                      />
                     </svg>
                   </Button>
                 </Tooltip>
                 <Tooltip content="Start Migration" placement="right">
                   <Button
-                    variant="light"
                     isIconOnly
                     className="w-full h-9 text-default-600 hover:bg-default-100 rounded-xl"
-                    onPress={() => router.push(`/dashboard/project/${projectId}`)}
+                    variant="light"
+                    onPress={() =>
+                      router.push(`/dashboard/project/${projectId}`)
+                    }
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                      />
                     </svg>
                   </Button>
                 </Tooltip>
                 <Tooltip content="New chat" placement="right">
                   <Button
-                    variant="light"
                     isIconOnly
                     className="w-full h-9 text-default-600 hover:bg-default-100 rounded-xl"
+                    variant="light"
                     onPress={handleStartNewSession}
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                      />
                     </svg>
                   </Button>
                 </Tooltip>
@@ -1685,7 +1886,7 @@ export default function GroomingPage() {
 
               {isLoadingSessions ? (
                 <div className="flex items-center justify-center py-8">
-                  <Spinner size="sm" color="primary" />
+                  <Spinner color="primary" size="sm" />
                 </div>
               ) : sortedSessions.length === 0 ? (
                 <div className="text-center py-8">
@@ -1696,13 +1897,15 @@ export default function GroomingPage() {
                     viewBox="0 0 24 24"
                   >
                     <path
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={1.5}
-                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                     />
                   </svg>
-                  <p className="text-xs text-default-400">No previous sessions</p>
+                  <p className="text-xs text-default-400">
+                    No previous sessions
+                  </p>
                   <p className="text-xs text-default-400 mt-1">
                     Start chatting to create one
                   </p>
@@ -1712,20 +1915,20 @@ export default function GroomingPage() {
                   {sortedSessions.map((session) => (
                     <div
                       key={session.id}
-                      onClick={() => loadSession(session)}
                       className={`group relative w-full text-left px-3 py-2 rounded-xl transition-all cursor-pointer ${
                         currentSessionId === session.id
                           ? "bg-default-100 dark:bg-default-200/50"
                           : "hover:bg-default-100 dark:hover:bg-default-200/30"
                       }`}
+                      onClick={() => loadSession(session)}
                     >
                       {/* 3-dot menu */}
                       <div className="absolute right-1 top-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                         <Dropdown>
                           <DropdownTrigger>
                             <button
-                              onClick={(e) => e.stopPropagation()}
                               className="p-1 rounded hover:bg-default-200 dark:hover:bg-default-300/50"
+                              onClick={(e) => e.stopPropagation()}
                             >
                               <svg
                                 className="w-4 h-4 text-default-500"
@@ -1744,7 +1947,9 @@ export default function GroomingPage() {
                               startContent={
                                 <svg
                                   className="w-4 h-4"
-                                  fill={session.pinned ? "currentColor" : "none"}
+                                  fill={
+                                    session.pinned ? "currentColor" : "none"
+                                  }
                                   stroke="currentColor"
                                   viewBox="0 0 16 16"
                                 >
@@ -1765,10 +1970,10 @@ export default function GroomingPage() {
                                   viewBox="0 0 24 24"
                                 >
                                   <path
+                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
                                     strokeWidth={2}
-                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
                                   />
                                 </svg>
                               }
@@ -1788,10 +1993,10 @@ export default function GroomingPage() {
                                   viewBox="0 0 24 24"
                                 >
                                   <path
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
                                     strokeWidth={2}
-                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                                   />
                                 </svg>
                               }
@@ -1827,19 +2032,23 @@ export default function GroomingPage() {
             <div className="flex-1 overflow-y-auto px-1 py-2">
               {isLoadingSessions ? (
                 <div className="flex items-center justify-center py-4">
-                  <Spinner size="sm" color="primary" />
+                  <Spinner color="primary" size="sm" />
                 </div>
               ) : (
                 <div className="space-y-1">
                   {sortedSessions.map((session) => (
-                    <Tooltip key={session.id} content={session.title} placement="right">
+                    <Tooltip
+                      key={session.id}
+                      content={session.title}
+                      placement="right"
+                    >
                       <button
-                        onClick={() => loadSession(session)}
                         className={`w-full p-2 rounded-lg transition-all flex items-center justify-center ${
                           currentSessionId === session.id
                             ? "bg-default-100 dark:bg-default-200/50"
                             : "hover:bg-default-100/50 dark:hover:bg-default-200/30"
                         }`}
+                        onClick={() => loadSession(session)}
                       >
                         {session.pinned ? (
                           <svg
@@ -1857,10 +2066,10 @@ export default function GroomingPage() {
                             viewBox="0 0 24 24"
                           >
                             <path
+                              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
                               strokeLinecap="round"
                               strokeLinejoin="round"
                               strokeWidth={2}
-                              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
                             />
                           </svg>
                         )}
@@ -1887,10 +2096,10 @@ export default function GroomingPage() {
                     viewBox="0 0 24 24"
                   >
                     <path
+                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
                     />
                   </svg>
                 </div>
@@ -1902,11 +2111,13 @@ export default function GroomingPage() {
               <Tooltip content="View Task Relationship Graph">
                 <Button
                   isIconOnly
+                  className="relative"
+                  color="primary"
                   size="sm"
                   variant="flat"
-                  color="primary"
-                  onPress={() => router.push(`/dashboard/project/${projectId}/graph`)}
-                  className="relative"
+                  onPress={() =>
+                    router.push(`/dashboard/project/${projectId}/graph`)
+                  }
                 >
                   <svg
                     className="w-4 h-4"
@@ -1915,10 +2126,10 @@ export default function GroomingPage() {
                     viewBox="0 0 24 24"
                   >
                     <path
+                      d="M13 10V3L4 14h7v7l9-11h-7z"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M13 10V3L4 14h7v7l9-11h-7z"
                     />
                   </svg>
                 </Button>
@@ -1928,24 +2139,34 @@ export default function GroomingPage() {
 
           {/* Hidden file input - always present */}
           <input
-            type="file"
             ref={fileInputRef}
-            onChange={handleFileUpload}
-            accept=".txt,.md,.json,.csv,.xml,.html"
             multiple
+            accept=".txt,.md,.json,.csv,.xml,.html"
             className="hidden"
+            type="file"
+            onChange={handleFileUpload}
           />
 
           {/* Check if this is a new chat (only greeting message, no user messages) */}
-          {messages.length <= 1 && !messages.some(m => m.role === "user") ? (
+          {messages.length <= 1 && !messages.some((m) => m.role === "user") ? (
             /* New chat welcome screen - centered layout */
             <div className="flex-1 flex flex-col items-center justify-center px-8 overflow-hidden">
               {/* Welcome content */}
               <div className="text-center mb-4">
                 {/* Icon */}
                 <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-400 to-secondary-400 dark:from-primary-500 dark:to-secondary-500 mb-4">
-                  <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+                  <svg
+                    className="w-7 h-7 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                    />
                   </svg>
                 </div>
 
@@ -1956,7 +2177,8 @@ export default function GroomingPage() {
 
                 {/* Subtitle */}
                 <p className="text-default-500 text-sm max-w-md">
-                  Describe features, improvements, or bugs and I&apos;ll help break them into tasks and epics
+                  Describe features, improvements, or bugs and I&apos;ll help
+                  break them into tasks and epics
                   {projectContext?.name && (
                     <span className="block mt-1 text-primary-500 font-medium">
                       for {projectContext.name}
@@ -1972,8 +2194,10 @@ export default function GroomingPage() {
                   <div className="flex items-center px-4 py-3">
                     <input
                       ref={inputRef}
-                      type="text"
+                      className="flex-1 bg-transparent outline-none text-sm text-default-700 placeholder:text-default-400"
+                      disabled={isLoading || isProcessingDocument}
                       placeholder="Describe a feature or ask about the documents..."
+                      type="text"
                       value={inputValue}
                       onChange={(e) => setInputValue(e.target.value)}
                       onKeyDown={(e) => {
@@ -1982,16 +2206,26 @@ export default function GroomingPage() {
                           handleSendMessage();
                         }
                       }}
-                      disabled={isLoading || isProcessingDocument}
-                      className="flex-1 bg-transparent outline-none text-sm text-default-700 placeholder:text-default-400"
                     />
                     <button
-                      onClick={handleSendMessage}
-                      disabled={!inputValue.trim() || isLoading || isProcessingDocument}
                       className="p-2 bg-primary-500 hover:bg-primary-600 text-white rounded-xl disabled:opacity-40 disabled:hover:bg-primary-500 transition-colors ml-2"
+                      disabled={
+                        !inputValue.trim() || isLoading || isProcessingDocument
+                      }
+                      onClick={handleSendMessage}
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          d="M5 10l7-7m0 0l7 7m-7-7v18"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                        />
                       </svg>
                     </button>
                   </div>
@@ -1999,12 +2233,22 @@ export default function GroomingPage() {
                   {/* Actions row */}
                   <div className="flex items-center gap-1 px-3 py-2 border-t border-default-200 bg-default-50/50">
                     <button
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isLoading || isProcessingDocument}
                       className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-default-500 hover:text-default-700 hover:bg-default-100 rounded-lg transition-colors disabled:opacity-40"
+                      disabled={isLoading || isProcessingDocument}
+                      onClick={() => fileInputRef.current?.click()}
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                        />
                       </svg>
                       Attach
                     </button>
@@ -2018,10 +2262,10 @@ export default function GroomingPage() {
                     {uploadedDocuments.map((doc) => (
                       <Chip
                         key={doc.name}
+                        classNames={{ base: "h-6", content: "text-xs" }}
                         size="sm"
                         variant="flat"
                         onClose={() => removeDocument(doc.name)}
-                        classNames={{ base: "h-6", content: "text-xs" }}
                       >
                         {doc.name}
                       </Chip>
@@ -2039,14 +2283,16 @@ export default function GroomingPage() {
                   {/* Uploaded documents bar */}
                   {uploadedDocuments.length > 0 && (
                     <div className="flex items-center gap-2 flex-wrap mb-4 p-3 bg-default-50 dark:bg-default-100/30 rounded-lg">
-                      <span className="text-xs text-default-500">Documents:</span>
+                      <span className="text-xs text-default-500">
+                        Documents:
+                      </span>
                       {uploadedDocuments.map((doc) => (
                         <Chip
                           key={doc.name}
+                          classNames={{ base: "h-6", content: "text-xs" }}
                           size="sm"
                           variant="flat"
                           onClose={() => removeDocument(doc.name)}
-                          classNames={{ base: "h-6", content: "text-xs" }}
                         >
                           {doc.name}
                         </Chip>
@@ -2064,7 +2310,11 @@ export default function GroomingPage() {
                       {/* Assistant avatar - sparkles icon with gradient */}
                       {msg.role === "assistant" && (
                         <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-400 via-purple-500 to-pink-500 flex items-center justify-center">
-                          <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                          <svg
+                            className="w-5 h-5 text-white"
+                            fill="currentColor"
+                            viewBox="0 0 24 24"
+                          >
                             <path d="M12 2L9.5 9.5L2 12L9.5 14.5L12 22L14.5 14.5L22 12L14.5 9.5L12 2Z" />
                           </svg>
                         </div>
@@ -2077,7 +2327,9 @@ export default function GroomingPage() {
                             : "text-default-800 dark:text-white"
                         }`}
                       >
-                        <p className="text-[15px] whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                        <p className="text-[15px] whitespace-pre-wrap leading-relaxed">
+                          {msg.content}
+                        </p>
                       </div>
                     </div>
                   ))}
@@ -2085,12 +2337,16 @@ export default function GroomingPage() {
                     <div className="flex items-start gap-3 justify-start animate-in fade-in slide-in-from-bottom-2 duration-300">
                       {/* Assistant avatar - sparkles icon with gradient */}
                       <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-400 via-purple-500 to-pink-500 flex items-center justify-center">
-                        <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                        <svg
+                          className="w-5 h-5 text-white"
+                          fill="currentColor"
+                          viewBox="0 0 24 24"
+                        >
                           <path d="M12 2L9.5 9.5L2 12L9.5 14.5L12 22L14.5 14.5L22 12L14.5 9.5L12 2Z" />
                         </svg>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Spinner size="sm" color="primary" />
+                        <Spinner color="primary" size="sm" />
                         {isProcessingDocument && (
                           <span className="text-sm text-default-500">
                             Processing document...
@@ -2110,8 +2366,10 @@ export default function GroomingPage() {
                   <div className="flex items-center px-3 py-2">
                     <input
                       ref={inputRef}
-                      type="text"
+                      className="flex-1 bg-transparent outline-none text-sm text-default-700 placeholder:text-default-400"
+                      disabled={isLoading || isProcessingDocument}
                       placeholder="Describe a feature or ask about the documents..."
+                      type="text"
                       value={inputValue}
                       onChange={(e) => setInputValue(e.target.value)}
                       onKeyDown={(e) => {
@@ -2120,13 +2378,13 @@ export default function GroomingPage() {
                           handleSendMessage();
                         }
                       }}
-                      disabled={isLoading || isProcessingDocument}
-                      className="flex-1 bg-transparent outline-none text-sm text-default-700 placeholder:text-default-400"
                     />
                     <button
-                      onClick={handleSendMessage}
-                      disabled={!inputValue.trim() || isLoading || isProcessingDocument}
                       className="p-1.5 text-default-400 hover:text-primary-500 disabled:opacity-40 disabled:hover:text-default-400 transition-colors"
+                      disabled={
+                        !inputValue.trim() || isLoading || isProcessingDocument
+                      }
+                      onClick={handleSendMessage}
                     >
                       <svg
                         className="w-5 h-5"
@@ -2135,10 +2393,10 @@ export default function GroomingPage() {
                         viewBox="0 0 24 24"
                       >
                         <path
+                          d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={1.5}
-                          d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"
                         />
                       </svg>
                     </button>
@@ -2147,23 +2405,49 @@ export default function GroomingPage() {
                   {/* Actions row */}
                   <div className="flex items-center gap-1 px-2 py-1.5 border-t border-default-200 bg-default-50">
                     <button
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isLoading || isProcessingDocument}
                       className="flex items-center gap-1.5 px-2 py-1 text-xs text-default-500 hover:text-default-700 hover:bg-default-100 rounded-md transition-colors disabled:opacity-40"
+                      disabled={isLoading || isProcessingDocument}
+                      onClick={() => fileInputRef.current?.click()}
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                        />
                       </svg>
                       Attach
                     </button>
 
                     <button
-                      onClick={() => setIsTaskSelectorModalOpen(true)}
-                      disabled={isLoading || isProcessingDocument || (suggestedTasks.length === 0 && suggestedEpics.length === 0 && existingTasks.length === 0)}
                       className="flex items-center gap-1.5 px-2 py-1 text-xs text-default-500 hover:text-default-700 hover:bg-default-100 rounded-md transition-colors disabled:opacity-40"
+                      disabled={
+                        isLoading ||
+                        isProcessingDocument ||
+                        (suggestedTasks.length === 0 &&
+                          suggestedEpics.length === 0 &&
+                          existingTasks.length === 0)
+                      }
+                      onClick={() => setIsTaskSelectorModalOpen(true)}
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z" />
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                        />
                       </svg>
                       Discuss Task
                     </button>
@@ -2178,12 +2462,12 @@ export default function GroomingPage() {
         <div className="flex flex-col bg-default-50 dark:bg-default-100/30 overflow-hidden relative rounded-xl border border-default-200">
           {/* Resize handle */}
           <div
-            onMouseDown={handleSuggestionsResizeStart}
             className={`absolute left-0 top-0 bottom-0 cursor-col-resize transition-all z-10 rounded-l-xl ${
               isResizingSuggestions
                 ? "w-1 bg-primary-400"
                 : "w-px bg-transparent hover:w-1 hover:bg-primary-400"
             }`}
+            onMouseDown={handleSuggestionsResizeStart}
           />
           {/* Panel header */}
           <div className="px-4 pt-4 pb-3 border-b border-default-200 bg-default-100/50 dark:bg-default-200/20">
@@ -2196,30 +2480,32 @@ export default function GroomingPage() {
                   viewBox="0 0 24 24"
                 >
                   <path
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
                   />
                 </svg>
               </div>
-              <span className="font-semibold text-base text-default-700">Suggestions</span>
+              <span className="font-semibold text-base text-default-700">
+                Suggestions
+              </span>
             </div>
           </div>
 
           {/* Tabs */}
           <div className="px-4 pt-4">
             <Tabs
-              selectedKey={selectedTab}
-              onSelectionChange={(key) =>
-                setSelectedTab(key as "tasks" | "epics")
-              }
-              size="sm"
-              variant="solid"
               classNames={{
                 tabList: "w-full",
                 tab: "flex-1",
               }}
+              selectedKey={selectedTab}
+              size="sm"
+              variant="solid"
+              onSelectionChange={(key) =>
+                setSelectedTab(key as "tasks" | "epics")
+              }
             >
               <Tab
                 key="tasks"
@@ -2262,10 +2548,10 @@ export default function GroomingPage() {
                     viewBox="0 0 24 24"
                   >
                     <path
+                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={1.5}
-                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
                     />
                   </svg>
                   <p className="text-sm text-default-400">
@@ -2276,14 +2562,14 @@ export default function GroomingPage() {
                 suggestedTasks.map((task) => (
                   <TaskCard
                     key={task.id}
-                    task={task}
-                    onClick={() => handleOpenTaskDetail(task)}
                     epicName={
                       task.epicId
                         ? suggestedEpics.find((e) => e.id === task.epicId)
                             ?.title
                         : undefined
                     }
+                    task={task}
+                    onClick={() => handleOpenTaskDetail(task)}
                   />
                 ))
               )
@@ -2297,10 +2583,10 @@ export default function GroomingPage() {
                   viewBox="0 0 24 24"
                 >
                   <path
+                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={1.5}
-                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
                   />
                 </svg>
                 <p className="text-sm text-default-400">
@@ -2312,8 +2598,10 @@ export default function GroomingPage() {
                 <EpicCard
                   key={epic.id}
                   epic={epic}
-                  tasks={getEpicTasks(epic.id)}
+                  isApproving={approvingEpicId === epic.id}
                   isExpanded={expandedEpicId === epic.id}
+                  tasks={getEpicTasks(epic.id)}
+                  onApprove={() => handleApproveEpic(epic)}
                   onExpand={() => {
                     if (
                       epic.status === "pending" &&
@@ -2322,10 +2610,8 @@ export default function GroomingPage() {
                       setExpandedEpicId(epic.id);
                     }
                   }}
-                  onApprove={() => handleApproveEpic(epic)}
-                  onReject={() => handleRejectEpic(epic.id)}
                   onReference={() => handleReferenceEpic(epic)}
-                  isApproving={approvingEpicId === epic.id}
+                  onReject={() => handleRejectEpic(epic.id)}
                 />
               ))
             )}
@@ -2342,11 +2628,7 @@ export default function GroomingPage() {
       </div>
 
       {/* Rename Chat Modal - Gemini style */}
-      <Modal
-        isOpen={isRenameModalOpen}
-        onClose={closeRenameModal}
-        size="sm"
-      >
+      <Modal isOpen={isRenameModalOpen} size="sm" onClose={closeRenameModal}>
         <ModalContent>
           <ModalHeader className="flex flex-col gap-1 pb-2">
             <span className="text-lg font-semibold">Rename this chat</span>
@@ -2354,9 +2636,11 @@ export default function GroomingPage() {
           <ModalBody className="py-2">
             <Input
               autoFocus
-              value={renameSessionTitle}
-              onValueChange={setRenameSessionTitle}
+              classNames={{
+                inputWrapper: "bg-default-100",
+              }}
               placeholder="Enter chat name..."
+              value={renameSessionTitle}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   handleRenameSession();
@@ -2364,22 +2648,17 @@ export default function GroomingPage() {
                   closeRenameModal();
                 }
               }}
-              classNames={{
-                inputWrapper: "bg-default-100",
-              }}
+              onValueChange={setRenameSessionTitle}
             />
           </ModalBody>
           <ModalFooter className="pt-2">
-            <Button
-              variant="light"
-              onPress={closeRenameModal}
-            >
+            <Button variant="light" onPress={closeRenameModal}>
               Cancel
             </Button>
             <Button
               color="primary"
-              onPress={handleRenameSession}
               isDisabled={!renameSessionTitle.trim()}
+              onPress={handleRenameSession}
             >
               Rename
             </Button>
@@ -2390,12 +2669,12 @@ export default function GroomingPage() {
       {/* Task Selector Modal */}
       <Modal
         isOpen={isTaskSelectorModalOpen}
+        scrollBehavior="inside"
+        size="lg"
         onClose={() => {
           setIsTaskSelectorModalOpen(false);
           setTaskSearchQuery("");
         }}
-        size="lg"
-        scrollBehavior="inside"
       >
         <ModalContent>
           <ModalHeader className="flex flex-col gap-1">
@@ -2409,9 +2688,9 @@ export default function GroomingPage() {
           <ModalBody className="pb-6">
             {/* Search Input */}
             <Input
+              isClearable
+              classNames={{ inputWrapper: "bg-default-100" }}
               placeholder="Search tasks and epics..."
-              value={taskSearchQuery}
-              onValueChange={setTaskSearchQuery}
               startContent={
                 <svg
                   className="w-4 h-4 text-default-400"
@@ -2420,16 +2699,16 @@ export default function GroomingPage() {
                   viewBox="0 0 24 24"
                 >
                   <path
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                   />
                 </svg>
               }
-              isClearable
+              value={taskSearchQuery}
               onClear={() => setTaskSearchQuery("")}
-              classNames={{ inputWrapper: "bg-default-100" }}
+              onValueChange={setTaskSearchQuery}
             />
 
             <ScrollShadow className="max-h-[400px] mt-4">
@@ -2456,24 +2735,24 @@ export default function GroomingPage() {
                         )}
                         <div className="flex items-center gap-1.5 mt-2">
                           <Chip
-                            size="sm"
-                            color={CATEGORY_COLORS[task.category]}
-                            variant="flat"
                             classNames={{
                               base: "h-5",
                               content: "text-xs px-1",
                             }}
+                            color={CATEGORY_COLORS[task.category]}
+                            size="sm"
+                            variant="flat"
                           >
                             {task.category}
                           </Chip>
                           <Chip
-                            size="sm"
-                            color={PRIORITY_COLORS[task.priority]}
-                            variant="dot"
                             classNames={{
                               base: "h-5",
                               content: "text-xs px-1",
                             }}
+                            color={PRIORITY_COLORS[task.priority]}
+                            size="sm"
+                            variant="dot"
                           >
                             {task.priority}
                           </Chip>
@@ -2503,13 +2782,13 @@ export default function GroomingPage() {
                           </p>
                           {task.status === "approved" && (
                             <Chip
-                              size="sm"
-                              color="success"
-                              variant="flat"
                               classNames={{
                                 base: "h-5 ml-2",
                                 content: "text-xs px-1",
                               }}
+                              color="success"
+                              size="sm"
+                              variant="flat"
                             >
                               approved
                             </Chip>
@@ -2520,24 +2799,24 @@ export default function GroomingPage() {
                         </p>
                         <div className="flex items-center gap-1.5 mt-2">
                           <Chip
-                            size="sm"
-                            color={CATEGORY_COLORS[task.category]}
-                            variant="flat"
                             classNames={{
                               base: "h-5",
                               content: "text-xs px-1",
                             }}
+                            color={CATEGORY_COLORS[task.category]}
+                            size="sm"
+                            variant="flat"
                           >
                             {task.category}
                           </Chip>
                           <Chip
-                            size="sm"
-                            color={PRIORITY_COLORS[task.priority]}
-                            variant="dot"
                             classNames={{
                               base: "h-5",
                               content: "text-xs px-1",
                             }}
+                            color={PRIORITY_COLORS[task.priority]}
+                            size="sm"
+                            variant="dot"
                           >
                             {task.priority}
                           </Chip>
@@ -2570,10 +2849,10 @@ export default function GroomingPage() {
                               viewBox="0 0 24 24"
                             >
                               <path
+                                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 strokeWidth={2}
-                                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
                               />
                             </svg>
                             <p className="text-sm font-medium text-default-800">
@@ -2582,13 +2861,13 @@ export default function GroomingPage() {
                           </div>
                           {epic.status === "approved" && (
                             <Chip
-                              size="sm"
-                              color="success"
-                              variant="flat"
                               classNames={{
                                 base: "h-5 ml-2",
                                 content: "text-xs px-1",
                               }}
+                              color="success"
+                              size="sm"
+                              variant="flat"
                             >
                               approved
                             </Chip>
@@ -2599,24 +2878,24 @@ export default function GroomingPage() {
                         </p>
                         <div className="flex items-center gap-1.5 mt-2 ml-6">
                           <Chip
-                            size="sm"
-                            color={PRIORITY_COLORS[epic.priority]}
-                            variant="dot"
                             classNames={{
                               base: "h-5",
                               content: "text-xs px-1",
                             }}
+                            color={PRIORITY_COLORS[epic.priority]}
+                            size="sm"
+                            variant="dot"
                           >
                             {epic.priority}
                           </Chip>
                           {epic.taskIds.length > 0 && (
                             <Chip
-                              size="sm"
-                              variant="flat"
                               classNames={{
                                 base: "h-5",
                                 content: "text-xs px-1",
                               }}
+                              size="sm"
+                              variant="flat"
                             >
                               {epic.taskIds.length} task
                               {epic.taskIds.length !== 1 ? "s" : ""}
@@ -2641,10 +2920,10 @@ export default function GroomingPage() {
                       viewBox="0 0 24 24"
                     >
                       <path
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeWidth={1.5}
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                       />
                     </svg>
                     <p className="text-sm text-default-400">
@@ -2662,11 +2941,11 @@ export default function GroomingPage() {
       {/* Add Dependency Modal */}
       <Modal
         isOpen={isDependencyModalOpen}
+        size="md"
         onClose={() => {
           setIsDependencyModalOpen(false);
           setDependencyTargetTaskId(null);
         }}
-        size="md"
       >
         <ModalContent>
           <ModalHeader className="flex flex-col gap-1 pb-2">
@@ -2676,20 +2955,28 @@ export default function GroomingPage() {
             {/* Dependency Type Selector */}
             <div className="flex gap-2 mb-3">
               <Button
-                size="sm"
-                color={selectedDependencyType === "DEPENDS_ON" ? "warning" : "default"}
-                variant={selectedDependencyType === "DEPENDS_ON" ? "solid" : "flat"}
-                onPress={() => setSelectedDependencyType("DEPENDS_ON")}
                 className="flex-1"
+                color={
+                  selectedDependencyType === "DEPENDS_ON"
+                    ? "warning"
+                    : "default"
+                }
+                size="sm"
+                variant={
+                  selectedDependencyType === "DEPENDS_ON" ? "solid" : "flat"
+                }
+                onPress={() => setSelectedDependencyType("DEPENDS_ON")}
               >
                 Depends On
               </Button>
               <Button
+                className="flex-1"
+                color={
+                  selectedDependencyType === "BLOCKS" ? "danger" : "default"
+                }
                 size="sm"
-                color={selectedDependencyType === "BLOCKS" ? "danger" : "default"}
                 variant={selectedDependencyType === "BLOCKS" ? "solid" : "flat"}
                 onPress={() => setSelectedDependencyType("BLOCKS")}
-                className="flex-1"
               >
                 Blocks
               </Button>
@@ -2697,25 +2984,38 @@ export default function GroomingPage() {
 
             {/* Search Input */}
             <Input
+              classNames={{ inputWrapper: "bg-default-100" }}
               placeholder="Search tasks..."
-              value={dependencySearchQuery}
-              onChange={(e) => setDependencySearchQuery(e.target.value)}
               size="sm"
               startContent={
-                <svg className="w-4 h-4 text-default-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                <svg
+                  className="w-4 h-4 text-default-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                  />
                 </svg>
               }
-              classNames={{ inputWrapper: "bg-default-100" }}
+              value={dependencySearchQuery}
+              onChange={(e) => setDependencySearchQuery(e.target.value)}
             />
 
             {/* Task List */}
             <ScrollShadow className="max-h-64 mt-3">
               <div className="space-y-2">
                 {getAvailableTasksForDependency()
-                  .filter((t) =>
-                    dependencySearchQuery === "" ||
-                    t.title.toLowerCase().includes(dependencySearchQuery.toLowerCase())
+                  .filter(
+                    (t) =>
+                      dependencySearchQuery === "" ||
+                      t.title
+                        .toLowerCase()
+                        .includes(dependencySearchQuery.toLowerCase()),
                   )
                   .map((task) => (
                     <div
@@ -2725,18 +3025,24 @@ export default function GroomingPage() {
                     >
                       <p className="text-sm font-medium">{task.title}</p>
                       <Chip
+                        classNames={{
+                          base: "h-4 mt-1",
+                          content: "text-xs px-1",
+                        }}
+                        color={task.isExisting ? "secondary" : "primary"}
                         size="sm"
                         variant="flat"
-                        color={task.isExisting ? "secondary" : "primary"}
-                        classNames={{ base: "h-4 mt-1", content: "text-xs px-1" }}
                       >
                         {task.isExisting ? "Existing Task" : "Suggested Task"}
                       </Chip>
                     </div>
                   ))}
-                {getAvailableTasksForDependency().filter((t) =>
-                  dependencySearchQuery === "" ||
-                  t.title.toLowerCase().includes(dependencySearchQuery.toLowerCase())
+                {getAvailableTasksForDependency().filter(
+                  (t) =>
+                    dependencySearchQuery === "" ||
+                    t.title
+                      .toLowerCase()
+                      .includes(dependencySearchQuery.toLowerCase()),
                 ).length === 0 && (
                   <p className="text-sm text-default-400 text-center py-4">
                     No tasks available
@@ -2763,9 +3069,9 @@ export default function GroomingPage() {
       {/* Task Detail Modal */}
       <Modal
         isOpen={isTaskDetailModalOpen}
-        onClose={handleCloseTaskDetail}
-        size="2xl"
         scrollBehavior="inside"
+        size="2xl"
+        onClose={handleCloseTaskDetail}
       >
         <ModalContent>
           {selectedTaskForDetail && (
@@ -2774,15 +3080,17 @@ export default function GroomingPage() {
                 <div className="flex items-center justify-between w-full">
                   {isEditingTask ? (
                     <Input
-                      value={editedTaskTitle}
-                      onChange={(e) => setEditedTaskTitle(e.target.value)}
-                      size="lg"
-                      variant="bordered"
-                      placeholder="Task title"
                       classNames={{ input: "text-lg font-semibold" }}
+                      placeholder="Task title"
+                      size="lg"
+                      value={editedTaskTitle}
+                      variant="bordered"
+                      onChange={(e) => setEditedTaskTitle(e.target.value)}
                     />
                   ) : (
-                    <span className="text-lg font-semibold">{selectedTaskForDetail.title}</span>
+                    <span className="text-lg font-semibold">
+                      {selectedTaskForDetail.title}
+                    </span>
                   )}
                   {!isEditingTask && (
                     <Button
@@ -2791,43 +3099,55 @@ export default function GroomingPage() {
                       variant="light"
                       onPress={handleStartEditingTask}
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                        />
                       </svg>
                     </Button>
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                   <Chip
-                    size="sm"
-                    color={CATEGORY_COLORS[selectedTaskForDetail.category]}
-                    variant="flat"
                     classNames={{ base: "h-5", content: "text-xs px-1" }}
+                    color={CATEGORY_COLORS[selectedTaskForDetail.category]}
+                    size="sm"
+                    variant="flat"
                   >
                     {selectedTaskForDetail.category}
                   </Chip>
                   <Chip
-                    size="sm"
-                    color={PRIORITY_COLORS[selectedTaskForDetail.priority]}
-                    variant="dot"
                     classNames={{ base: "h-5", content: "text-xs px-1" }}
+                    color={PRIORITY_COLORS[selectedTaskForDetail.priority]}
+                    size="sm"
+                    variant="dot"
                   >
                     {selectedTaskForDetail.priority}
                   </Chip>
                   <Chip
+                    classNames={{ base: "h-5", content: "text-xs px-1" }}
                     size="sm"
                     variant="flat"
-                    classNames={{ base: "h-5", content: "text-xs px-1" }}
                   >
                     {selectedTaskForDetail.cleanArchitectureArea}
                   </Chip>
                   {selectedTaskForDetail.epicId && (
                     <Chip
+                      classNames={{ base: "h-5", content: "text-xs px-1" }}
                       size="sm"
                       variant="bordered"
-                      classNames={{ base: "h-5", content: "text-xs px-1" }}
                     >
-                      {suggestedEpics.find((e) => e.id === selectedTaskForDetail.epicId)?.title || "Epic"}
+                      {suggestedEpics.find(
+                        (e) => e.id === selectedTaskForDetail.epicId,
+                      )?.title || "Epic"}
                     </Chip>
                   )}
                 </div>
@@ -2835,15 +3155,17 @@ export default function GroomingPage() {
               <ModalBody className="py-4 space-y-4">
                 {/* Description */}
                 <div>
-                  <p className="text-sm font-medium text-default-600 mb-2">Description</p>
+                  <p className="text-sm font-medium text-default-600 mb-2">
+                    Description
+                  </p>
                   {isEditingTask ? (
                     <Textarea
-                      value={editedTaskDescription}
-                      onChange={(e) => setEditedTaskDescription(e.target.value)}
-                      variant="bordered"
-                      placeholder="Task description"
-                      minRows={3}
                       maxRows={8}
+                      minRows={3}
+                      placeholder="Task description"
+                      value={editedTaskDescription}
+                      variant="bordered"
+                      onChange={(e) => setEditedTaskDescription(e.target.value)}
                     />
                   ) : (
                     <p className="text-sm text-default-700 whitespace-pre-wrap bg-default-50 dark:bg-default-100 p-3 rounded-lg">
@@ -2863,8 +3185,8 @@ export default function GroomingPage() {
                       Cancel
                     </Button>
                     <Button
-                      size="sm"
                       color="primary"
+                      size="sm"
                       onPress={handleSaveTaskEdits}
                     >
                       Save Changes
@@ -2875,21 +3197,35 @@ export default function GroomingPage() {
                 {/* Acceptance Criteria */}
                 {selectedTaskForDetail.acceptanceCriteria.length > 0 && (
                   <div>
-                    <p className="text-sm font-medium text-default-600 mb-2">Acceptance Criteria</p>
+                    <p className="text-sm font-medium text-default-600 mb-2">
+                      Acceptance Criteria
+                    </p>
                     <ul className="space-y-2 bg-default-50 dark:bg-default-100 p-3 rounded-lg">
-                      {selectedTaskForDetail.acceptanceCriteria.map((criterion, idx) => (
-                        <li
-                          key={idx}
-                          className="text-sm text-default-700 flex items-start gap-2"
-                        >
-                          <span className="text-primary mt-0.5">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                          </span>
-                          <span>{criterion}</span>
-                        </li>
-                      ))}
+                      {selectedTaskForDetail.acceptanceCriteria.map(
+                        (criterion, idx) => (
+                          <li
+                            key={idx}
+                            className="text-sm text-default-700 flex items-start gap-2"
+                          >
+                            <span className="text-primary mt-0.5">
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                />
+                              </svg>
+                            </span>
+                            <span>{criterion}</span>
+                          </li>
+                        ),
+                      )}
                     </ul>
                   </div>
                 )}
@@ -2897,16 +3233,30 @@ export default function GroomingPage() {
                 {/* Dependencies Section */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-medium text-default-600">Dependencies</p>
+                    <p className="text-sm font-medium text-default-600">
+                      Dependencies
+                    </p>
                     <Button
-                      size="sm"
-                      variant="flat"
                       color="primary"
-                      onPress={() => handleAddDependency(selectedTaskForDetail.id)}
+                      size="sm"
                       startContent={
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        <svg
+                          className="w-3.5 h-3.5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            d="M12 4v16m8-8H4"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                          />
                         </svg>
+                      }
+                      variant="flat"
+                      onPress={() =>
+                        handleAddDependency(selectedTaskForDetail.id)
                       }
                     >
                       Add Dependency
@@ -2915,11 +3265,22 @@ export default function GroomingPage() {
 
                   <div className="bg-default-50 dark:bg-default-100 p-3 rounded-lg space-y-3">
                     {/* Depends On */}
-                    {selectedTaskForDetail.dependsOn && selectedTaskForDetail.dependsOn.length > 0 ? (
+                    {selectedTaskForDetail.dependsOn &&
+                    selectedTaskForDetail.dependsOn.length > 0 ? (
                       <div>
                         <p className="text-xs font-medium text-default-500 mb-2 flex items-center gap-1">
-                          <svg className="w-3.5 h-3.5 text-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          <svg
+                            className="w-3.5 h-3.5 text-warning"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                            />
                           </svg>
                           Depends On
                         </p>
@@ -2927,18 +3288,28 @@ export default function GroomingPage() {
                           {selectedTaskForDetail.dependsOn.map((dep, idx) => (
                             <Chip
                               key={`dep-${idx}`}
+                              classNames={{
+                                base: "h-6",
+                                content: "text-xs px-2",
+                              }}
+                              color="warning"
                               size="sm"
                               variant={dep.isExisting ? "bordered" : "flat"}
-                              color="warning"
-                              classNames={{ base: "h-6", content: "text-xs px-2" }}
                               onClose={() => {
-                                handleRemoveDependency(selectedTaskForDetail.id, dep.taskId, "DEPENDS_ON");
+                                handleRemoveDependency(
+                                  selectedTaskForDetail.id,
+                                  dep.taskId,
+                                  "DEPENDS_ON",
+                                );
                                 // Update the selected task in state
                                 setSelectedTaskForDetail((prev) => {
                                   if (!prev) return prev;
+
                                   return {
                                     ...prev,
-                                    dependsOn: prev.dependsOn?.filter((d) => d.taskId !== dep.taskId),
+                                    dependsOn: prev.dependsOn?.filter(
+                                      (d) => d.taskId !== dep.taskId,
+                                    ),
                                   };
                                 });
                               }}
@@ -2952,11 +3323,22 @@ export default function GroomingPage() {
                     ) : null}
 
                     {/* Blocks */}
-                    {selectedTaskForDetail.blocks && selectedTaskForDetail.blocks.length > 0 ? (
+                    {selectedTaskForDetail.blocks &&
+                    selectedTaskForDetail.blocks.length > 0 ? (
                       <div>
                         <p className="text-xs font-medium text-default-500 mb-2 flex items-center gap-1">
-                          <svg className="w-3.5 h-3.5 text-danger" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                          <svg
+                            className="w-3.5 h-3.5 text-danger"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                            />
                           </svg>
                           Blocks
                         </p>
@@ -2964,18 +3346,28 @@ export default function GroomingPage() {
                           {selectedTaskForDetail.blocks.map((block, idx) => (
                             <Chip
                               key={`block-${idx}`}
+                              classNames={{
+                                base: "h-6",
+                                content: "text-xs px-2",
+                              }}
+                              color="danger"
                               size="sm"
                               variant={block.isExisting ? "bordered" : "flat"}
-                              color="danger"
-                              classNames={{ base: "h-6", content: "text-xs px-2" }}
                               onClose={() => {
-                                handleRemoveDependency(selectedTaskForDetail.id, block.taskId, "BLOCKS");
+                                handleRemoveDependency(
+                                  selectedTaskForDetail.id,
+                                  block.taskId,
+                                  "BLOCKS",
+                                );
                                 // Update the selected task in state
                                 setSelectedTaskForDetail((prev) => {
                                   if (!prev) return prev;
+
                                   return {
                                     ...prev,
-                                    blocks: prev.blocks?.filter((b) => b.taskId !== block.taskId),
+                                    blocks: prev.blocks?.filter(
+                                      (b) => b.taskId !== block.taskId,
+                                    ),
                                   };
                                 });
                               }}
@@ -2989,12 +3381,14 @@ export default function GroomingPage() {
                     ) : null}
 
                     {/* No dependencies message */}
-                    {(!selectedTaskForDetail.dependsOn || selectedTaskForDetail.dependsOn.length === 0) &&
-                     (!selectedTaskForDetail.blocks || selectedTaskForDetail.blocks.length === 0) && (
-                      <p className="text-sm text-default-400 text-center py-2">
-                        No dependencies yet
-                      </p>
-                    )}
+                    {(!selectedTaskForDetail.dependsOn ||
+                      selectedTaskForDetail.dependsOn.length === 0) &&
+                      (!selectedTaskForDetail.blocks ||
+                        selectedTaskForDetail.blocks.length === 0) && (
+                        <p className="text-sm text-default-400 text-center py-2">
+                          No dependencies yet
+                        </p>
+                      )}
                   </div>
                 </div>
               </ModalBody>
@@ -3002,24 +3396,34 @@ export default function GroomingPage() {
                 {selectedTaskForDetail.status === "pending" ? (
                   <>
                     <Button
-                      size="sm"
                       color="primary"
+                      size="sm"
+                      startContent={
+                        <svg
+                          className="w-3.5 h-3.5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                          />
+                        </svg>
+                      }
                       variant="flat"
                       onPress={() => {
                         handleReferenceTask(selectedTaskForDetail);
                         handleCloseTaskDetail();
                       }}
-                      startContent={
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                        </svg>
-                      }
                     >
                       Discuss
                     </Button>
                     <Button
-                      size="sm"
                       color="danger"
+                      size="sm"
                       variant="flat"
                       onPress={() => {
                         handleRejectTask(selectedTaskForDetail.id);
@@ -3029,38 +3433,56 @@ export default function GroomingPage() {
                       Reject
                     </Button>
                     <Button
-                      size="sm"
                       color="success"
+                      isLoading={approvingTaskId === selectedTaskForDetail.id}
+                      size="sm"
                       onPress={() => {
                         handleApproveTask(selectedTaskForDetail);
                         handleCloseTaskDetail();
                       }}
-                      isLoading={approvingTaskId === selectedTaskForDetail.id}
                     >
                       Approve
                     </Button>
                   </>
                 ) : selectedTaskForDetail.status === "approved" ? (
                   <>
-                    <Chip color="success" variant="flat" size="sm">
+                    <Chip color="success" size="sm" variant="flat">
                       <div className="flex items-center gap-1">
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        <svg
+                          className="w-3.5 h-3.5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            d="M5 13l4 4L19 7"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                          />
                         </svg>
                         Task Approved - Added to Backlog
                       </div>
                     </Chip>
                     <Button
-                      size="sm"
                       color="default"
+                      size="sm"
                       variant="flat"
                       onPress={async () => {
                         const updatedTasks = suggestedTasks.map((t) =>
-                          t.id === selectedTaskForDetail.id ? { ...t, status: "pending" as const } : t
+                          t.id === selectedTaskForDetail.id
+                            ? { ...t, status: "pending" as const }
+                            : t,
                         );
+
                         setSuggestedTasks(updatedTasks);
-                        setSelectedTaskForDetail((prev) => prev ? { ...prev, status: "pending" } : prev);
-                        await saveSuggestionsToSession(updatedTasks, suggestedEpics);
+                        setSelectedTaskForDetail((prev) =>
+                          prev ? { ...prev, status: "pending" } : prev,
+                        );
+                        await saveSuggestionsToSession(
+                          updatedTasks,
+                          suggestedEpics,
+                        );
                       }}
                     >
                       Undo Approval
@@ -3068,25 +3490,43 @@ export default function GroomingPage() {
                   </>
                 ) : (
                   <>
-                    <Chip color="default" variant="flat" size="sm">
+                    <Chip color="default" size="sm" variant="flat">
                       <div className="flex items-center gap-1">
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        <svg
+                          className="w-3.5 h-3.5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            d="M6 18L18 6M6 6l12 12"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                          />
                         </svg>
                         Task Rejected
                       </div>
                     </Chip>
                     <Button
-                      size="sm"
                       color="primary"
+                      size="sm"
                       variant="flat"
                       onPress={async () => {
                         const updatedTasks = suggestedTasks.map((t) =>
-                          t.id === selectedTaskForDetail.id ? { ...t, status: "pending" as const } : t
+                          t.id === selectedTaskForDetail.id
+                            ? { ...t, status: "pending" as const }
+                            : t,
                         );
+
                         setSuggestedTasks(updatedTasks);
-                        setSelectedTaskForDetail((prev) => prev ? { ...prev, status: "pending" } : prev);
-                        await saveSuggestionsToSession(updatedTasks, suggestedEpics);
+                        setSelectedTaskForDetail((prev) =>
+                          prev ? { ...prev, status: "pending" } : prev,
+                        );
+                        await saveSuggestionsToSession(
+                          updatedTasks,
+                          suggestedEpics,
+                        );
                       }}
                     >
                       Restore Task
@@ -3098,7 +3538,6 @@ export default function GroomingPage() {
           )}
         </ModalContent>
       </Modal>
-
     </div>
   );
 }
@@ -3132,26 +3571,26 @@ function TaskCard({
             </p>
             <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
               <Chip
-                size="sm"
-                color={CATEGORY_COLORS[task.category]}
-                variant="flat"
                 classNames={{ base: "h-5", content: "text-xs px-1" }}
+                color={CATEGORY_COLORS[task.category]}
+                size="sm"
+                variant="flat"
               >
                 {task.category}
               </Chip>
               <Chip
-                size="sm"
-                color={PRIORITY_COLORS[task.priority]}
-                variant="dot"
                 classNames={{ base: "h-5", content: "text-xs px-1" }}
+                color={PRIORITY_COLORS[task.priority]}
+                size="sm"
+                variant="dot"
               >
                 {task.priority}
               </Chip>
               {epicName && (
                 <Chip
+                  classNames={{ base: "h-5", content: "text-xs px-1" }}
                   size="sm"
                   variant="bordered"
-                  classNames={{ base: "h-5", content: "text-xs px-1" }}
                 >
                   {epicName}
                 </Chip>
@@ -3159,20 +3598,20 @@ function TaskCard({
               {/* Show dependency count badges */}
               {task.dependsOn && task.dependsOn.length > 0 && (
                 <Chip
-                  size="sm"
-                  color="warning"
-                  variant="flat"
                   classNames={{ base: "h-5", content: "text-xs px-1" }}
+                  color="warning"
+                  size="sm"
+                  variant="flat"
                 >
                   {task.dependsOn.length} dep
                 </Chip>
               )}
               {task.blocks && task.blocks.length > 0 && (
                 <Chip
-                  size="sm"
-                  color="danger"
-                  variant="flat"
                   classNames={{ base: "h-5", content: "text-xs px-1" }}
+                  color="danger"
+                  size="sm"
+                  variant="flat"
                 >
                   blocks {task.blocks.length}
                 </Chip>
@@ -3188,10 +3627,10 @@ function TaskCard({
                 viewBox="0 0 24 24"
               >
                 <path
+                  d="M5 13l4 4L19 7"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M5 13l4 4L19 7"
                 />
               </svg>
             </div>
@@ -3205,10 +3644,10 @@ function TaskCard({
                 viewBox="0 0 24 24"
               >
                 <path
+                  d="M6 18L18 6M6 6l12 12"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
                 />
               </svg>
             </div>
@@ -3269,10 +3708,10 @@ function EpicCard({
                 viewBox="0 0 24 24"
               >
                 <path
+                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
                 />
               </svg>
               <p className="text-sm font-medium text-default-800 line-clamp-2">
@@ -3281,18 +3720,18 @@ function EpicCard({
             </div>
             <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
               <Chip
-                size="sm"
-                color={PRIORITY_COLORS[epic.priority]}
-                variant="dot"
                 classNames={{ base: "h-5", content: "text-xs px-1" }}
+                color={PRIORITY_COLORS[epic.priority]}
+                size="sm"
+                variant="dot"
               >
                 {epic.priority}
               </Chip>
               {tasks.length > 0 && (
                 <Chip
+                  classNames={{ base: "h-5", content: "text-xs px-1" }}
                   size="sm"
                   variant="flat"
-                  classNames={{ base: "h-5", content: "text-xs px-1" }}
                 >
                   {tasks.length} task{tasks.length !== 1 ? "s" : ""}
                 </Chip>
@@ -3308,10 +3747,10 @@ function EpicCard({
                 viewBox="0 0 24 24"
               >
                 <path
+                  d="M5 13l4 4L19 7"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M5 13l4 4L19 7"
                 />
               </svg>
             </div>
@@ -3325,10 +3764,10 @@ function EpicCard({
                 viewBox="0 0 24 24"
               >
                 <path
+                  d="M6 18L18 6M6 6l12 12"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
                 />
               </svg>
             </div>
@@ -3385,11 +3824,9 @@ function EpicCard({
           <div className="flex gap-2 pt-2">
             <div className="flex-1" onClick={(e) => e.stopPropagation()}>
               <Button
-                size="sm"
-                color="primary"
-                variant="flat"
-                onPress={onReference}
                 className="w-full"
+                color="primary"
+                size="sm"
                 startContent={
                   <svg
                     className="w-3.5 h-3.5"
@@ -3398,32 +3835,34 @@ function EpicCard({
                     viewBox="0 0 24 24"
                   >
                     <path
+                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
                     />
                   </svg>
                 }
+                variant="flat"
+                onPress={onReference}
               >
                 Discuss
               </Button>
             </div>
             <Button
-              size="sm"
+              className="flex-1"
               color="danger"
+              size="sm"
               variant="flat"
               onPress={onReject}
-              className="flex-1"
             >
               Reject
             </Button>
             <Button
-              size="sm"
-              color="success"
-              onPress={onApprove}
-              isLoading={isApproving}
               className="flex-1"
+              color="success"
+              isLoading={isApproving}
+              size="sm"
+              onPress={onApprove}
             >
               {pendingTaskCount > 0
                 ? `Approve with ${pendingTaskCount} tasks`

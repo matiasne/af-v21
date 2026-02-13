@@ -33,12 +33,12 @@ interface TaskDetailModalProps {
   onMoveToBacklog?: (taskId: string) => Promise<void>;
   onUpdateTask?: (
     taskId: string,
-    updates: { title?: string; description?: string; dependencies?: string[] }
+    updates: { title?: string; description?: string; dependencies?: string[] },
   ) => Promise<void>;
 }
 
 const getStatusColor = (
-  status: TaskStatus
+  status: TaskStatus,
 ): "default" | "primary" | "warning" | "success" => {
   switch (status) {
     case "backlog":
@@ -70,7 +70,7 @@ const getStatusLabel = (status: TaskStatus): string => {
 };
 
 const getCategoryColor = (
-  category: TaskCategory
+  category: TaskCategory,
 ): "default" | "primary" | "secondary" | "success" | "warning" | "danger" => {
   switch (category) {
     case "backend":
@@ -89,7 +89,7 @@ const getCategoryColor = (
 };
 
 const getArchitectureAreaColor = (
-  area: CleanArchitectureArea
+  area: CleanArchitectureArea,
 ): "default" | "primary" | "secondary" | "success" | "warning" => {
   switch (area) {
     case "domain":
@@ -119,7 +119,8 @@ export function TaskDetailModal({
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isMovingToBacklog, setIsMovingToBacklog] = useState(false);
-  const [showMoveToBacklogConfirm, setShowMoveToBacklogConfirm] = useState(false);
+  const [showMoveToBacklogConfirm, setShowMoveToBacklogConfirm] =
+    useState(false);
 
   // Editing state
   const [isEditing, setIsEditing] = useState(false);
@@ -236,23 +237,24 @@ export function TaskDetailModal({
 
   const getEpicName = (epicId: string) => {
     const epic = epics.find((e) => e.id === epicId);
+
     return epic?.title || null;
   };
 
   if (!task) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="2xl" scrollBehavior="inside">
+    <Modal isOpen={isOpen} scrollBehavior="inside" size="2xl" onClose={onClose}>
       <ModalContent>
         <ModalHeader className="flex flex-col gap-1">
           <div className="flex items-center justify-between w-full">
             {isEditing ? (
               <Input
+                className="flex-1 mr-2"
+                placeholder="Task title"
+                size="lg"
                 value={editedTitle}
                 onValueChange={setEditedTitle}
-                placeholder="Task title"
-                className="flex-1 mr-2"
-                size="lg"
               />
             ) : (
               <h2 className="text-lg font-semibold">{task.title}</h2>
@@ -260,10 +262,10 @@ export function TaskDetailModal({
             {onUpdateTask && !isEditing && (
               <Button
                 isIconOnly
-                variant="light"
-                size="sm"
-                onPress={handleStartEditing}
                 aria-label="Edit task"
+                size="sm"
+                variant="light"
+                onPress={handleStartEditing}
               >
                 <svg
                   className="w-4 h-4"
@@ -272,27 +274,23 @@ export function TaskDetailModal({
                   viewBox="0 0 24 24"
                 >
                   <path
+                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
                   />
                 </svg>
               </Button>
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2 mt-2">
-            <Chip
-              size="sm"
-              color={getStatusColor(task.status)}
-              variant="flat"
-            >
+            <Chip color={getStatusColor(task.status)} size="sm" variant="flat">
               {getStatusLabel(task.status)}
             </Chip>
             {task.category && (
               <Chip
-                size="sm"
                 color={getCategoryColor(task.category)}
+                size="sm"
                 variant="flat"
               >
                 {task.category}
@@ -300,19 +298,15 @@ export function TaskDetailModal({
             )}
             {task.cleanArchitectureArea && (
               <Chip
-                size="sm"
                 color={getArchitectureAreaColor(task.cleanArchitectureArea)}
+                size="sm"
                 variant="bordered"
               >
                 {task.cleanArchitectureArea}
               </Chip>
             )}
             {task.epicId && getEpicName(task.epicId) && (
-              <Chip
-                size="sm"
-                color="secondary"
-                variant="dot"
-              >
+              <Chip color="secondary" size="sm" variant="dot">
                 {getEpicName(task.epicId)}
               </Chip>
             )}
@@ -326,11 +320,11 @@ export function TaskDetailModal({
             </h3>
             {isEditing ? (
               <Textarea
+                maxRows={8}
+                minRows={3}
+                placeholder="Task description"
                 value={editedDescription}
                 onValueChange={setEditedDescription}
-                placeholder="Task description"
-                minRows={3}
-                maxRows={8}
               />
             ) : task.description ? (
               <p className="text-sm text-default-600 whitespace-pre-wrap">
@@ -350,17 +344,20 @@ export function TaskDetailModal({
                   Epic
                 </h3>
                 <Select
+                  className="max-w-xs"
+                  isLoading={isUpdatingEpic}
                   label="Assign to Epic"
                   placeholder="Select an epic"
-                  selectedKeys={task.epicId ? new Set([task.epicId]) : new Set()}
+                  selectedKeys={
+                    task.epicId ? new Set([task.epicId]) : new Set()
+                  }
                   onSelectionChange={(keys) => {
                     const epicId = Array.from(keys)[0] as string;
+
                     if (epicId) {
                       handleEpicChange(epicId);
                     }
                   }}
-                  isLoading={isUpdatingEpic}
-                  className="max-w-xs"
                 >
                   {epics.map((epic) => (
                     <SelectItem key={epic.id} textValue={epic.title}>
@@ -393,10 +390,10 @@ export function TaskDetailModal({
                         viewBox="0 0 24 24"
                       >
                         <path
+                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={2}
-                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                         />
                       </svg>
                       <span>{criteria}</span>
@@ -411,15 +408,19 @@ export function TaskDetailModal({
           <Divider className="my-4" />
           <div className="mb-4">
             <h3 className="text-sm font-semibold text-default-700 mb-2">
-              Dependencies {!isEditing && task.dependencies && task.dependencies.length > 0 && `(${task.dependencies.length})`}
+              Dependencies{" "}
+              {!isEditing &&
+                task.dependencies &&
+                task.dependencies.length > 0 &&
+                `(${task.dependencies.length})`}
             </h3>
             {isEditing ? (
               <div>
                 <Input
+                  description="Separate multiple dependencies with commas"
+                  placeholder="Enter dependencies separated by commas"
                   value={editedDependencies}
                   onValueChange={setEditedDependencies}
-                  placeholder="Enter dependencies separated by commas"
-                  description="Separate multiple dependencies with commas"
                 />
               </div>
             ) : task.dependencies && task.dependencies.length > 0 ? (
@@ -436,10 +437,10 @@ export function TaskDetailModal({
                       viewBox="0 0 24 24"
                     >
                       <path
+                        d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeWidth={2}
-                        d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
                       />
                     </svg>
                     <span>{dep}</span>
@@ -459,7 +460,9 @@ export function TaskDetailModal({
                 <h3 className="text-sm font-semibold text-default-700 mb-2">
                   Source Document
                 </h3>
-                <p className="text-sm text-default-600">{task.sourceDocument}</p>
+                <p className="text-sm text-default-600">
+                  {task.sourceDocument}
+                </p>
               </div>
             </>
           )}
@@ -492,10 +495,10 @@ export function TaskDetailModal({
                     viewBox="0 0 24 24"
                   >
                     <path
+                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                     />
                   </svg>
                   <div>
@@ -526,87 +529,94 @@ export function TaskDetailModal({
               <>
                 <Button
                   color="primary"
-                  onPress={handleSaveEdits}
                   isLoading={isSaving}
+                  onPress={handleSaveEdits}
                 >
                   Save Changes
                 </Button>
                 <Button
+                  isDisabled={isSaving}
                   variant="flat"
                   onPress={handleCancelEditing}
-                  isDisabled={isSaving}
                 >
                   Cancel
                 </Button>
               </>
             )}
             {/* Delete button */}
-            {onDeleteTask && !showDeleteConfirm && !showMoveToBacklogConfirm && !isEditing && (
-              <Button
-                color="danger"
-                variant="light"
-                onPress={handleDeleteClick}
-                startContent={
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
-                }
-              >
-                Delete
-              </Button>
-            )}
+            {onDeleteTask &&
+              !showDeleteConfirm &&
+              !showMoveToBacklogConfirm &&
+              !isEditing && (
+                <Button
+                  color="danger"
+                  startContent={
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                      />
+                    </svg>
+                  }
+                  variant="light"
+                  onPress={handleDeleteClick}
+                >
+                  Delete
+                </Button>
+              )}
             {/* Move to Backlog button - only show for completed tasks */}
-            {onMoveToBacklog && task.status === "completed" && !showDeleteConfirm && !showMoveToBacklogConfirm && !isEditing && (
-              <Button
-                color="warning"
-                variant="light"
-                onPress={handleMoveToBacklogClick}
-                startContent={
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
-                    />
-                  </svg>
-                }
-              >
-                Move to Backlog
-              </Button>
-            )}
+            {onMoveToBacklog &&
+              task.status === "completed" &&
+              !showDeleteConfirm &&
+              !showMoveToBacklogConfirm &&
+              !isEditing && (
+                <Button
+                  color="warning"
+                  startContent={
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                      />
+                    </svg>
+                  }
+                  variant="light"
+                  onPress={handleMoveToBacklogClick}
+                >
+                  Move to Backlog
+                </Button>
+              )}
             {/* Delete confirmation */}
             {showDeleteConfirm && (
               <div className="flex items-center gap-2">
                 <span className="text-sm text-danger">Delete this task?</span>
                 <Button
-                  size="sm"
                   color="danger"
-                  onPress={handleConfirmDelete}
                   isLoading={isDeleting}
+                  size="sm"
+                  onPress={handleConfirmDelete}
                 >
                   Yes, Delete
                 </Button>
                 <Button
+                  isDisabled={isDeleting}
                   size="sm"
                   variant="flat"
                   onPress={handleCancelDelete}
-                  isDisabled={isDeleting}
                 >
                   Cancel
                 </Button>
@@ -615,20 +625,22 @@ export function TaskDetailModal({
             {/* Move to Backlog confirmation */}
             {showMoveToBacklogConfirm && (
               <div className="flex items-center gap-2">
-                <span className="text-sm text-warning">Move this task back to backlog?</span>
+                <span className="text-sm text-warning">
+                  Move this task back to backlog?
+                </span>
                 <Button
-                  size="sm"
                   color="warning"
-                  onPress={handleConfirmMoveToBacklog}
                   isLoading={isMovingToBacklog}
+                  size="sm"
+                  onPress={handleConfirmMoveToBacklog}
                 >
                   Yes, Move
                 </Button>
                 <Button
+                  isDisabled={isMovingToBacklog}
                   size="sm"
                   variant="flat"
                   onPress={handleCancelMoveToBacklog}
-                  isDisabled={isMovingToBacklog}
                 >
                   Cancel
                 </Button>
